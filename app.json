@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Controle+",
+    "slug": "FinanceApp",
+    "version": "1.4.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E2A38"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mautic.financeapp"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1E2A38",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "package": "com.mautic.financeapp",
+      "versionCode": 5
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "59994d16-92d2-439e-b416-f9ace5a353ed"
+      }
+    }
+  }
+}
