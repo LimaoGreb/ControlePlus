@@ -11,6 +11,8 @@ import {
   saveIsInvestor,
   loadInvestments,
   saveInvestments,
+  loadProjects,
+  saveProjects,
   loadMakesContributions,
   saveMakesContributions,
   loadContributionGoal,
@@ -28,6 +30,7 @@ export function SettingsProvider({ children }) {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [isInvestor, setIsInvestorState] = useState(false);
   const [investments, setInvestments] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [makesContributions, setMakesContributionsState] = useState(false);
   const [contributionGoalPct, setContributionGoalPctState] = useState(10);
   const [ready, setReady] = useState(false);
@@ -41,7 +44,8 @@ export function SettingsProvider({ children }) {
       loadMakesContributions(),
       loadContributionGoal(),
       loadAvatar(),
-    ]).then(([n, pms, inv, invts, mc, goal, av]) => {
+      loadProjects(),
+    ]).then(([n, pms, inv, invts, mc, goal, av, projs]) => {
       setUserNameState(n);
       setPaymentMethods(pms);
       setIsInvestorState(inv);
@@ -49,6 +53,7 @@ export function SettingsProvider({ children }) {
       setMakesContributionsState(mc);
       setContributionGoalPctState(goal);
       setAvatarState(av);
+      setProjects(projs);
       setReady(true);
     });
   }, []);
@@ -132,6 +137,27 @@ export function SettingsProvider({ children }) {
     persistInvestments(investments.filter((it) => it.id !== id));
   };
 
+  // --- Projetos / metas ---
+  const persistProjects = (next) => {
+    setProjects(next);
+    saveProjects(next);
+  };
+
+  const addProject = () => {
+    persistProjects([
+      ...projects,
+      { id: genId('proj'), name: '', target: 0, monthly: 0, saved: 0 },
+    ]);
+  };
+
+  const updateProject = (id, field, value) => {
+    persistProjects(projects.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  };
+
+  const removeProject = (id) => {
+    persistProjects(projects.filter((p) => p.id !== id));
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -150,6 +176,10 @@ export function SettingsProvider({ children }) {
         addInvestment,
         updateInvestment,
         removeInvestment,
+        projects,
+        addProject,
+        updateProject,
+        removeProject,
         makesContributions,
         setMakesContributions,
         contributionGoalPct,

@@ -1,6 +1,6 @@
 // Raiz do app: providers (SafeArea, Tema, Configurações, Dados) + navegação.
 import React from 'react';
-import { View, ActivityIndicator, StatusBar, Platform, UIManager } from 'react-native';
+import { View, ActivityIndicator, StatusBar, Platform, UIManager, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
@@ -18,6 +18,7 @@ import AllMonthsScreen from './src/screens/AllMonthsScreen';
 import MonthScreen from './src/screens/MonthScreen';
 import AnnualSummaryScreen from './src/screens/AnnualSummaryScreen';
 import InvestmentsScreen from './src/screens/InvestmentsScreen';
+import ProjectsScreen from './src/screens/ProjectsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import FloatingTabBar from './src/components/FloatingTabBar';
@@ -31,17 +32,33 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const RootStack = createNativeStackNavigator();
+
+// Botão de engrenagem (Configurações) no topo direito.
+function GearButton({ navigation, color }) {
+  return (
+    <TouchableOpacity
+      onPress={() => navigation.navigate('Settings')}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      style={{ paddingHorizontal: 6 }}
+    >
+      <Ionicons name="settings-outline" size={22} color={color} />
+    </TouchableOpacity>
+  );
+}
 
 function AllMonthsStack() {
   const { colors } = useTheme();
-  const screenOptions = {
-    headerStyle: { backgroundColor: colors.card },
-    headerTintColor: colors.text,
-    headerTitleStyle: { fontWeight: '800' },
-    contentStyle: { backgroundColor: colors.background },
-  };
   return (
-    <Stack.Navigator screenOptions={screenOptions}>
+    <Stack.Navigator
+      screenOptions={({ navigation }) => ({
+        headerStyle: { backgroundColor: colors.card },
+        headerTintColor: colors.text,
+        headerTitleStyle: { fontWeight: '800' },
+        contentStyle: { backgroundColor: colors.background },
+        headerRight: () => <GearButton navigation={navigation} color={colors.text} />,
+      })}
+    >
       <Stack.Screen name="AllMonthsList" component={AllMonthsScreen} options={{ title: `Meses de ${YEAR}` }} />
       <Stack.Screen
         name="MonthDetail"
@@ -63,17 +80,18 @@ function Tabs() {
   return (
     <Tab.Navigator
       tabBar={(props) => <FloatingTabBar {...props} />}
-      screenOptions={({ route }) => ({
+      screenOptions={({ route, navigation }) => ({
         headerStyle: { backgroundColor: colors.card },
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '800' },
+        headerRight: () => <GearButton navigation={navigation} color={colors.text} />,
         tabBarIcon: ({ color, size }) => {
           const icons = {
             Atual: 'today-outline',
             Meses: 'calendar-outline',
             Anual: 'stats-chart-outline',
             Investir: 'trending-up-outline',
-            Config: 'settings-outline',
+            Projetos: 'flag-outline',
           };
           return <Ionicons name={icons[route.name]} size={size} color={color} />;
         },
@@ -102,9 +120,9 @@ function Tabs() {
         />
       )}
       <Tab.Screen
-        name="Config"
-        component={SettingsScreen}
-        options={{ title: 'Configurações', tabBarLabel: 'Config' }}
+        name="Projetos"
+        component={ProjectsScreen}
+        options={{ title: 'Projetos', tabBarLabel: 'Projetos' }}
       />
     </Tab.Navigator>
   );
@@ -143,7 +161,17 @@ function Navigation() {
   return (
     <NavigationContainer theme={navTheme}>
       <StatusBar barStyle={colors.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
-      <Tabs />
+      <RootStack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.card },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '800' },
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        <RootStack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
+        <RootStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Configurações' }} />
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 }

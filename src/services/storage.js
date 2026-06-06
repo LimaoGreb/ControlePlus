@@ -11,6 +11,7 @@ const AVATAR_KEY = '@financas:avatar';
 const PAYMETHODS_KEY = '@financas:formasPagamento';
 const INVESTOR_KEY = '@financas:investidor';
 const INVESTMENTS_KEY = '@financas:investimentos';
+const PROJECTS_KEY = '@financas:projetos';
 const CONTRIB_KEY = '@financas:contribuicoes';
 const CONTRIB_GOAL_KEY = '@financas:contribuicoesMeta';
 
@@ -158,6 +159,24 @@ export async function saveInvestments(list) {
     await AsyncStorage.setItem(INVESTMENTS_KEY, JSON.stringify(list || []));
   } catch (err) {
     console.warn('Falha ao salvar investimentos:', err);
+  }
+}
+
+export async function loadProjects() {
+  try {
+    const raw = await AsyncStorage.getItem(PROJECTS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveProjects(list) {
+  try {
+    await AsyncStorage.setItem(PROJECTS_KEY, JSON.stringify(list || []));
+  } catch (err) {
+    console.warn('Falha ao salvar projetos:', err);
   }
 }
 

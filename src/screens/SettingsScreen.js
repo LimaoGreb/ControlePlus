@@ -107,8 +107,6 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView ref={scrollRef} style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { color: colors.text }]}>Configurações</Text>
-
       {/* Perfil */}
       <Card title="Perfil" colors={colors}>
         <AvatarPicker />
