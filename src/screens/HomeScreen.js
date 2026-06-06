@@ -5,6 +5,7 @@ import { useScrollToTop, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import MonthContent from '../components/MonthContent';
 import Avatar from '../components/Avatar';
+import QuickAddFab from '../components/QuickAddFab';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 
@@ -40,6 +41,7 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1 }}>
       <MonthContent monthIndex={currentMonth} header={header} scrollRef={scrollRef} />
+      <QuickAddFab monthIndex={currentMonth} />
     </View>
   );
 }

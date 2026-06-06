@@ -6,6 +6,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { contrastText } from '../utils/colorUtils';
+import { hapticTap, hapticSuccess } from '../utils/haptics';
 import CurrencyInput from './CurrencyInput';
 import DueDayChip from './DueDayChip';
 
@@ -114,7 +115,10 @@ export default function ItemRow({
       leftThreshold={48}
       rightThreshold={48}
       onSwipeableOpen={(direction) => {
-        onToggleConcluded && onToggleConcluded(direction === 'left');
+        const concluding = direction === 'left';
+        if (concluding) hapticSuccess();
+        else hapticTap();
+        onToggleConcluded && onToggleConcluded(concluding);
         swipeRef.current && swipeRef.current.close();
       }}
       overshootLeft={false}

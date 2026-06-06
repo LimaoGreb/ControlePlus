@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../theme/ThemeContext';
 import { monthStatus, concludedCount } from '../utils/calculations';
+import { hapticSuccess } from '../utils/haptics';
 import { MONTH_NAMES, YEAR } from '../data/initialData';
 
 function confirmAction(title, message, confirmLabel, onConfirm) {
@@ -55,9 +56,10 @@ export default function CompleteMonthButton({ monthIndex, month }) {
         style={[styles.btn, { borderColor: colors.border }]}
         activeOpacity={0.7}
         onPress={() =>
-          confirmAction('Concluir mês', `Marcar todas as despesas de ${label} como pagas?`, 'Concluir tudo', () =>
-            concludeAllItems(monthIndex, true)
-          )
+          confirmAction('Concluir mês', `Marcar todas as despesas de ${label} como pagas?`, 'Concluir tudo', () => {
+            hapticSuccess();
+            concludeAllItems(monthIndex, true);
+          })
         }
       >
         <Ionicons name="checkmark-done-outline" size={18} color={colors.textSecondary} />

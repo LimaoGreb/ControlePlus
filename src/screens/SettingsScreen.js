@@ -309,7 +309,7 @@ export default function SettingsScreen() {
       {/* Sobre */}
       <Card title="Sobre o app" colors={colors}>
         <Info label="Nome" value="Controle+" colors={colors} />
-        <Info label="Versão" value="1.6.0" colors={colors} />
+        <Info label="Versão" value="1.7.0" colors={colors} />
         <Info label="Ano de controle" value={String(YEAR)} colors={colors} />
         <Info label="Armazenamento" value="Local (AsyncStorage)" colors={colors} />
         <Info label="Plataforma" value={Platform.OS} colors={colors} />
