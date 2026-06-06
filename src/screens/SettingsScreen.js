@@ -21,6 +21,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { contrastText } from '../utils/colorUtils';
 import CollapsibleCard from '../components/CollapsibleCard';
+import AvatarPicker from '../components/AvatarPicker';
 import { YEAR } from '../data/initialData';
 
 function Card({ title, colors, children }) {
@@ -110,7 +111,8 @@ export default function SettingsScreen() {
 
       {/* Perfil */}
       <Card title="Perfil" colors={colors}>
-        <Text style={[styles.label, { color: colors.text }]}>Seu nome</Text>
+        <AvatarPicker />
+        <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>Seu nome</Text>
         <TextInput
           value={userName}
           onChangeText={setUserName}

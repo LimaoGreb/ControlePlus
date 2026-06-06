@@ -3,6 +3,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   loadUserName,
   saveUserName,
+  loadAvatar,
+  saveAvatar,
   loadPaymentMethods,
   savePaymentMethods,
   loadIsInvestor,
@@ -22,6 +24,7 @@ const genId = (p) => `${p}_${Date.now().toString(36)}_${idCounter++}`;
 
 export function SettingsProvider({ children }) {
   const [userName, setUserNameState] = useState('');
+  const [avatar, setAvatarState] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [isInvestor, setIsInvestorState] = useState(false);
   const [investments, setInvestments] = useState([]);
@@ -37,16 +40,23 @@ export function SettingsProvider({ children }) {
       loadInvestments(),
       loadMakesContributions(),
       loadContributionGoal(),
-    ]).then(([n, pms, inv, invts, mc, goal]) => {
+      loadAvatar(),
+    ]).then(([n, pms, inv, invts, mc, goal, av]) => {
       setUserNameState(n);
       setPaymentMethods(pms);
       setIsInvestorState(inv);
       setInvestments(invts);
       setMakesContributionsState(mc);
       setContributionGoalPctState(goal);
+      setAvatarState(av);
       setReady(true);
     });
   }, []);
+
+  const setAvatar = (av) => {
+    setAvatarState(av);
+    saveAvatar(av);
+  };
 
   const setMakesContributions = (value) => {
     setMakesContributionsState(value);
@@ -127,6 +137,8 @@ export function SettingsProvider({ children }) {
       value={{
         userName,
         setUserName,
+        avatar,
+        setAvatar,
         paymentMethods,
         addPaymentMethod,
         removePaymentMethod,

@@ -29,7 +29,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Controle+ usa suas fotos para definir sua imagem de perfil."
+        }
+      ]
     ],
     "extra": {
       "eas": {

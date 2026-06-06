@@ -7,6 +7,7 @@ const DATA_KEY = `@financas:dados:${YEAR}`;
 const THEME_KEY = '@financas:tema';
 const PALETTE_KEY = '@financas:paleta';
 const NAME_KEY = '@financas:nome';
+const AVATAR_KEY = '@financas:avatar';
 const PAYMETHODS_KEY = '@financas:formasPagamento';
 const INVESTOR_KEY = '@financas:investidor';
 const INVESTMENTS_KEY = '@financas:investimentos';
@@ -87,6 +88,24 @@ export async function saveUserName(name) {
     await AsyncStorage.setItem(NAME_KEY, name || '');
   } catch (err) {
     console.warn('Falha ao salvar nome:', err);
+  }
+}
+
+export async function loadAvatar() {
+  try {
+    const raw = await AsyncStorage.getItem(AVATAR_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveAvatar(avatar) {
+  try {
+    if (avatar) await AsyncStorage.setItem(AVATAR_KEY, JSON.stringify(avatar));
+    else await AsyncStorage.removeItem(AVATAR_KEY);
+  } catch (err) {
+    console.warn('Falha ao salvar avatar:', err);
   }
 }
 
