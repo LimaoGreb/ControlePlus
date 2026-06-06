@@ -46,6 +46,20 @@ async function fetchCryptoPrice(symbolOrId) {
   return typeof price === 'number' ? price : null;
 }
 
+// Cotação de Dólar e Euro (em R$) — AwesomeAPI, grátis e sem chave.
+export async function fetchCurrencies() {
+  try {
+    const res = await fetch('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL');
+    const json = await res.json();
+    const usd = json?.USDBRL?.bid ? parseFloat(json.USDBRL.bid) : null;
+    const eur = json?.EURBRL?.bid ? parseFloat(json.EURBRL.bid) : null;
+    return { usd, eur };
+  } catch (e) {
+    console.warn('fetchCurrencies', e);
+    return { usd: null, eur: null };
+  }
+}
+
 // Se o tipo do ativo permite cotação automática.
 export function isQuotable(typeId) {
   return STOCK_TYPES.includes(typeId) || typeId === 'cripto';

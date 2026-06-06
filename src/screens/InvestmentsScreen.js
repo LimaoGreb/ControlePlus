@@ -1,5 +1,5 @@
 // Tela de Investimentos — carteira manual com rentabilidade e alocação.
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ScrollView,
   View,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   LayoutAnimation,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useScrollToTop } from '@react-navigation/native';
@@ -16,7 +17,7 @@ import { useSettings } from '../context/SettingsContext';
 import { contrastText } from '../utils/colorUtils';
 import { formatBRL, formatPercent } from '../utils/currency';
 import { portfolioTotals, byGroup } from '../utils/investments';
-import { isQuotable, fetchQuote } from '../services/quotes';
+import { isQuotable, fetchQuote, fetchCurrencies } from '../services/quotes';
 import InvestmentCard from '../components/InvestmentCard';
 
 // Barra de alocação por classe, clicável (abre os itens daquela classe).
@@ -81,7 +82,13 @@ export default function InvestmentsScreen() {
   useScrollToTop(scrollRef);
 
   const [updatingAll, setUpdatingAll] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [currencies, setCurrencies] = useState({ usd: null, eur: null });
   const hasQuotable = investments.some((i) => isQuotable(i.typeId) && i.ticker);
+
+  useEffect(() => {
+    fetchCurrencies().then(setCurrencies);
+  }, []);
 
   const updateAllQuotes = async () => {
     setUpdatingAll(true);
@@ -95,9 +102,43 @@ export default function InvestmentsScreen() {
     setUpdatingAll(false);
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([updateAllQuotes(), fetchCurrencies().then(setCurrencies)]);
+    setRefreshing(false);
+  };
+
   return (
-    <ScrollView ref={scrollRef} style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
+    <ScrollView
+      ref={scrollRef}
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+    >
       <Text style={[styles.title, { color: colors.text }]}>Investimentos</Text>
+
+      {/* Mercado hoje: Dólar e Euro */}
+      <View style={[styles.marketCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.marketItem}>
+          <Text style={styles.marketFlag}>🇺🇸</Text>
+          <View>
+            <Text style={[styles.marketLabel, { color: colors.textSecondary }]}>Dólar</Text>
+            <Text style={[styles.marketValue, { color: colors.text }]}>
+              {currencies.usd ? formatBRL(currencies.usd) : '—'}
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.marketDivider, { backgroundColor: colors.border }]} />
+        <View style={styles.marketItem}>
+          <Text style={styles.marketFlag}>🇪🇺</Text>
+          <View>
+            <Text style={[styles.marketLabel, { color: colors.textSecondary }]}>Euro</Text>
+            <Text style={[styles.marketValue, { color: colors.text }]}>
+              {currencies.eur ? formatBRL(currencies.eur) : '—'}
+            </Text>
+          </View>
+        </View>
+      </View>
 
       {/* Resumo da carteira */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -211,6 +252,12 @@ const styles = StyleSheet.create({
   rLabel: { fontSize: 13, fontWeight: '600' },
   rValue: { fontSize: 26, fontWeight: '900', marginTop: 2 },
   rPct: { fontSize: 14, fontWeight: '700' },
+  marketCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 14 },
+  marketItem: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  marketFlag: { fontSize: 26, marginRight: 10 },
+  marketLabel: { fontSize: 12, fontWeight: '600' },
+  marketValue: { fontSize: 18, fontWeight: '800' },
+  marketDivider: { width: 1, height: 36, marginHorizontal: 8 },
   quoteAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 12, marginBottom: 14 },
   quoteAllText: { fontSize: 14, fontWeight: '800', marginLeft: 8 },
   allocWrap: { marginBottom: 14 },
