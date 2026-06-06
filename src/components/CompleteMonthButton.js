@@ -70,7 +70,7 @@ export default function CompleteMonthButton({ monthIndex, month }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'flex-end', marginTop: 6 },
+  wrap: { alignItems: 'flex-start', marginTop: 6 },
   progress: { fontSize: 11.5, fontWeight: '600', marginBottom: 6 },
   btn: {
     flexDirection: 'row',
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   btnText: { fontSize: 13, fontWeight: '600', marginLeft: 6 },
-  doneWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 6 },
+  doneWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 6 },
   doneText: { fontSize: 14, fontWeight: '800', marginLeft: 6 },
   hint: { fontSize: 11, marginLeft: 6 },
 });
