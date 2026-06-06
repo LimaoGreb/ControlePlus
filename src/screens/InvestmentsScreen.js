@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   LayoutAnimation,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useScrollToTop } from '@react-navigation/native';
@@ -15,6 +16,7 @@ import { useSettings } from '../context/SettingsContext';
 import { contrastText } from '../utils/colorUtils';
 import { formatBRL, formatPercent } from '../utils/currency';
 import { portfolioTotals, byGroup } from '../utils/investments';
+import { isQuotable, fetchQuote } from '../services/quotes';
 import InvestmentCard from '../components/InvestmentCard';
 
 // Barra de alocação por classe, clicável (abre os itens daquela classe).
@@ -78,6 +80,21 @@ export default function InvestmentsScreen() {
   const scrollRef = useRef(null);
   useScrollToTop(scrollRef);
 
+  const [updatingAll, setUpdatingAll] = useState(false);
+  const hasQuotable = investments.some((i) => isQuotable(i.typeId) && i.ticker);
+
+  const updateAllQuotes = async () => {
+    setUpdatingAll(true);
+    for (const inv of investments) {
+      if (isQuotable(inv.typeId) && inv.ticker) {
+        const p = await fetchQuote(inv.typeId, inv.ticker);
+        const qty = Number(inv.quantity) || 0;
+        if (p != null && qty > 0) updateInvestment(inv.id, 'current', Math.round(p * qty * 100) / 100);
+      }
+    }
+    setUpdatingAll(false);
+  };
+
   return (
     <ScrollView ref={scrollRef} style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { color: colors.text }]}>Investimentos</Text>
@@ -122,6 +139,24 @@ export default function InvestmentsScreen() {
         </View>
       )}
 
+      {/* Atualizar cotações (ações/FIIs/cripto com ticker) */}
+      {hasQuotable && (
+        <TouchableOpacity
+          style={[styles.quoteAllBtn, { borderColor: colors.primary }]}
+          onPress={updateAllQuotes}
+          disabled={updatingAll}
+        >
+          {updatingAll ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Ionicons name="cloud-download-outline" size={20} color={colors.primary} />
+          )}
+          <Text style={[styles.quoteAllText, { color: colors.primary }]}>
+            {updatingAll ? 'Atualizando...' : 'Atualizar cotações agora'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Lista de investimentos */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
         Meus ativos ({investments.length})
@@ -139,6 +174,7 @@ export default function InvestmentsScreen() {
           investment={inv}
           onChangeName={(t) => updateInvestment(inv.id, 'name', t)}
           onChangeType={(t) => updateInvestment(inv.id, 'typeId', t)}
+          onChangeField={(field, v) => updateInvestment(inv.id, field, v)}
           onChangeInvested={(v) => updateInvestment(inv.id, 'invested', v)}
           onChangeCurrent={(v) => updateInvestment(inv.id, 'current', v)}
           onRemove={() => removeInvestment(inv.id)}
@@ -151,8 +187,9 @@ export default function InvestmentsScreen() {
       </TouchableOpacity>
 
       <Text style={[styles.note, { color: colors.textMuted }]}>
-        Dica: atualize o "valor atual" de tempos em tempos para acompanhar a rentabilidade.
-        A cotação automática (em tempo real) é um recurso planejado para o futuro.
+        💡 Para ações, FIIs e cripto: informe o ticker (PETR4, MXRF11, BTC…) e a
+        quantidade, e toque em 🔄 para puxar o preço atual automaticamente. Renda
+        fixa você atualiza o valor manualmente.
       </Text>
 
       <View style={{ height: 96 }} />
@@ -174,6 +211,8 @@ const styles = StyleSheet.create({
   rLabel: { fontSize: 13, fontWeight: '600' },
   rValue: { fontSize: 26, fontWeight: '900', marginTop: 2 },
   rPct: { fontSize: 14, fontWeight: '700' },
+  quoteAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 12, marginBottom: 14 },
+  quoteAllText: { fontSize: 14, fontWeight: '800', marginLeft: 8 },
   allocWrap: { marginBottom: 14 },
   allocHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   allocLabel: { fontSize: 15, fontWeight: '800' },
