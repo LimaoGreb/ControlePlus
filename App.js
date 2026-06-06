@@ -21,6 +21,7 @@ import InvestmentsScreen from './src/screens/InvestmentsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import FloatingTabBar from './src/components/FloatingTabBar';
+import NotificationsManager from './src/components/NotificationsManager';
 import { MONTH_NAMES, YEAR } from './src/data/initialData';
 
 // Habilita animação de layout (accordion) no Android.
@@ -155,6 +156,7 @@ export default function App() {
         <SettingsProvider>
           <DataProvider>
             <InstallmentProvider>
+              <NotificationsManager />
               <Navigation />
             </InstallmentProvider>
           </DataProvider>

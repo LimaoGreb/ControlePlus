@@ -66,6 +66,7 @@ export default function ContributionsSection({ monthIndex, month, goalPct = 10 }
           accentColor={color}
           swipeable
           onToggleConcluded={(v) => updateItem(monthIndex, 'contributions', item.id, 'concluded', v)}
+          onChangeDueDay={(d) => updateItem(monthIndex, 'contributions', item.id, 'dueDay', d)}
           onChangeName={(t) => updateItem(monthIndex, 'contributions', item.id, 'name', t)}
           onChangeValue={(v) => updateItem(monthIndex, 'contributions', item.id, 'value', v)}
           onRemove={() => removeItem(monthIndex, 'contributions', item.id)}

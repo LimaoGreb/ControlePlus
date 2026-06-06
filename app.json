@@ -35,7 +35,8 @@
         {
           "photosPermission": "O Controle+ usa suas fotos para definir sua imagem de perfil."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "extra": {
       "eas": {

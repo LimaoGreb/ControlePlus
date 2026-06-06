@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { contrastText } from '../utils/colorUtils';
 import CurrencyInput from './CurrencyInput';
+import DueDayChip from './DueDayChip';
 
 export default function ItemRow({
   item,
@@ -21,6 +22,7 @@ export default function ItemRow({
   // Conclusão por arraste (apenas despesas):
   swipeable = false,
   onToggleConcluded,
+  onChangeDueDay,
 }) {
   const { colors } = useTheme();
   const accent = accentColor || colors.primary;
@@ -63,9 +65,12 @@ export default function ItemRow({
         )}
       </View>
 
-      {showPayment && paymentMethods.length > 0 && (
+      {(swipeable || (showPayment && paymentMethods.length > 0)) && (
         <View style={styles.chipsRow}>
-          {paymentMethods.map((pm) => {
+          {swipeable && onChangeDueDay && (
+            <DueDayChip dueDay={item.dueDay} onChange={onChangeDueDay} color={accent} />
+          )}
+          {showPayment && paymentMethods.map((pm) => {
             const selected = item.payment === pm.name;
             return (
               <TouchableOpacity

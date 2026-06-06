@@ -63,6 +63,7 @@ export default function ExpensesSection({
           paymentMethods={paymentMethods}
           swipeable
           onToggleConcluded={(v) => updateItem(monthIndex, section, item.id, 'concluded', v)}
+          onChangeDueDay={(d) => updateItem(monthIndex, section, item.id, 'dueDay', d)}
           onChangeName={(t) => updateItem(monthIndex, section, item.id, 'name', t)}
           onChangeValue={(v) => updateItem(monthIndex, section, item.id, 'value', v)}
           onChangePayment={(p) => handlePayment(item, p)}
