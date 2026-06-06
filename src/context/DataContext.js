@@ -135,6 +135,17 @@ export function DataProvider({ children }) {
     updateMonth(monthIndex, (m) => ({ ...m, completed }));
   };
 
+  // Conclui/reabre TODAS as despesas do mês de uma vez (e o flag do mês).
+  const concludeAllItems = (monthIndex, value) => {
+    updateMonth(monthIndex, (m) => ({
+      ...m,
+      fixed: m.fixed.map((it) => ({ ...it, concluded: value })),
+      variable: m.variable.map((it) => ({ ...it, concluded: value })),
+      contributions: m.contributions.map((it) => ({ ...it, concluded: value })),
+      completed: value,
+    }));
+  };
+
   const importData = async (newData) => {
     if (!newData || !newData.months) {
       throw new Error('Arquivo inválido: estrutura de dados não reconhecida.');
@@ -153,6 +164,7 @@ export function DataProvider({ children }) {
     copyFixedFromPrevious,
     addInstallments,
     setMonthCompleted,
+    concludeAllItems,
     importData,
   };
 

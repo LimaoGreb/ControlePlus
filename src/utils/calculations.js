@@ -38,11 +38,26 @@ export function monthHasData(month) {
   return t.rendaTotal > 0 || t.despesaTotal > 0 || t.contributionsTotal > 0;
 }
 
+// Lista de despesas "concluíveis" (fixas + variáveis + contribuições).
+export function expenseItems(month) {
+  const m = month || {};
+  return [...(m.fixed || []), ...(m.variable || []), ...(m.contributions || [])];
+}
+
+// Quantas despesas concluídas / total.
+export function concludedCount(month) {
+  const items = expenseItems(month);
+  const done = items.filter((it) => it.concluded).length;
+  return { done, total: items.length };
+}
+
 // 3 estados: 'empty' | 'progress' | 'done'.
+// 'done' = tem despesas e TODAS estão concluídas (ou, sem despesas, o flag manual).
 export function monthStatus(month) {
-  if (month && month.completed) return 'done';
-  if (monthHasData(month)) return 'progress';
-  return 'empty';
+  if (!monthHasData(month)) return 'empty';
+  const { done, total } = concludedCount(month);
+  if (total > 0) return done === total ? 'done' : 'progress';
+  return month && month.completed ? 'done' : 'progress';
 }
 
 // Agrupa as despesas (fixas + variáveis) por forma de pagamento.

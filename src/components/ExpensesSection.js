@@ -61,6 +61,8 @@ export default function ExpensesSection({
           accentColor={color}
           showPayment
           paymentMethods={paymentMethods}
+          swipeable
+          onToggleConcluded={(v) => updateItem(monthIndex, section, item.id, 'concluded', v)}
           onChangeName={(t) => updateItem(monthIndex, section, item.id, 'name', t)}
           onChangeValue={(v) => updateItem(monthIndex, section, item.id, 'value', v)}
           onChangePayment={(p) => handlePayment(item, p)}

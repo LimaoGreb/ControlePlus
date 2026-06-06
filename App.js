@@ -1,6 +1,7 @@
 // Raiz do app: providers (SafeArea, Tema, Configurações, Dados) + navegação.
 import React from 'react';
 import { View, ActivityIndicator, StatusBar, Platform, UIManager } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -148,6 +149,7 @@ function Navigation() {
 
 export default function App() {
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <ThemeProvider>
         <SettingsProvider>
@@ -159,5 +161,6 @@ export default function App() {
         </SettingsProvider>
       </ThemeProvider>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
