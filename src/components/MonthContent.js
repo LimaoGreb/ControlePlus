@@ -7,6 +7,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { monthTotals } from '../utils/calculations';
 import MonthlySummaryCard from './MonthlySummaryCard';
+import InsightCards from './InsightCards';
 import MonthCharts from './MonthCharts';
 import IncomeSection from './IncomeSection';
 import FixedExpensesSection from './FixedExpensesSection';
@@ -14,7 +15,7 @@ import VariableExpensesSection from './VariableExpensesSection';
 import ContributionsSection from './ContributionsSection';
 import CompleteMonthButton from './CompleteMonthButton';
 
-export default function MonthContent({ monthIndex, header = null, scrollRef = null }) {
+export default function MonthContent({ monthIndex, header = null, scrollRef = null, hideIncome = false }) {
   const { colors } = useTheme();
   const { data } = useData();
   const { makesContributions, contributionGoalPct } = useSettings();
@@ -42,9 +43,10 @@ export default function MonthContent({ monthIndex, header = null, scrollRef = nu
         {header}
 
         <MonthlySummaryCard totals={totals} />
+        <InsightCards monthIndex={monthIndex} month={month} />
         <MonthCharts month={month} />
 
-        <IncomeSection monthIndex={monthIndex} month={month} />
+        {!hideIncome && <IncomeSection monthIndex={monthIndex} month={month} />}
         <FixedExpensesSection monthIndex={monthIndex} month={month} />
         <VariableExpensesSection monthIndex={monthIndex} month={month} />
         {makesContributions && (

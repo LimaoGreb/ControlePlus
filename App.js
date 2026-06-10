@@ -12,6 +12,9 @@ import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { DataProvider, useData } from './src/context/DataContext';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { InstallmentProvider } from './src/context/InstallmentContext';
+import { SyncProvider } from './src/context/SyncContext';
+import { SharedDataProvider, PartnerDataProvider } from './src/context/SharedDataContext';
+import CasalScreen from './src/screens/CasalScreen';
 
 import HomeScreen from './src/screens/HomeScreen';
 import AllMonthsScreen from './src/screens/AllMonthsScreen';
@@ -23,6 +26,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import FloatingTabBar from './src/components/FloatingTabBar';
 import NotificationsManager from './src/components/NotificationsManager';
+import { useSync } from './src/context/SyncContext';
 import { MONTH_NAMES, YEAR } from './src/data/initialData';
 
 // Habilita animação de layout (accordion) no Android.
@@ -73,11 +77,17 @@ function AllMonthsStack() {
 
 function Tabs() {
   const { colors } = useTheme();
-  const { isInvestor } = useSettings();
+  const { isInvestor, userName } = useSettings();
+  const { coupleCode, activeProfile, switchProfile, partnerPersonalData, partnerName } = useSync();
   const insets = useSafeAreaInsets();
   const currentMonthName = MONTH_NAMES[new Date().getMonth()];
 
-  return (
+  const canSwitchProfile = !!(coupleCode && partnerPersonalData);
+  const isPartnerMode = activeProfile === 'partner' && canSwitchProfile;
+  const myFirst = (userName || 'Você').split(' ')[0];
+  const partnerFirst = (partnerName || 'Parceiro(a)').split(' ')[0];
+
+  const tabNavigator = (
     <Tab.Navigator
       tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={({ route, navigation }) => ({
@@ -91,6 +101,7 @@ function Tabs() {
             Meses: 'calendar-outline',
             Anual: 'stats-chart-outline',
             Investir: 'trending-up-outline',
+            Casal: 'heart-outline',
             Projetos: 'flag-outline',
           };
           return <Ionicons name={icons[route.name]} size={size} color={color} />;
@@ -119,12 +130,81 @@ function Tabs() {
           options={{ title: 'Investimentos', tabBarLabel: 'Investir' }}
         />
       )}
+      {coupleCode && (
+        <Tab.Screen
+          name="Casal"
+          component={CasalScreen}
+          options={{ title: 'Casal', tabBarLabel: 'Casal' }}
+        />
+      )}
       <Tab.Screen
         name="Projetos"
         component={ProjectsScreen}
         options={{ title: 'Projetos', tabBarLabel: 'Projetos' }}
       />
     </Tab.Navigator>
+  );
+
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Banner de modo parceiro — aparece acima de todo o conteúdo */}
+      {isPartnerMode && (
+        <TouchableOpacity
+          onPress={switchProfile}
+          activeOpacity={0.8}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            backgroundColor: '#F5A52420', borderBottomWidth: 1,
+            borderBottomColor: '#F5A52450', paddingVertical: 9, paddingHorizontal: 16,
+          }}
+        >
+          <Ionicons name="eye-outline" size={14} color="#F5A524" />
+          <Text style={{ color: '#F5A524', fontSize: 12, fontWeight: '700', flex: 1 }}>
+            Visualizando dados de {partnerFirst} · somente leitura
+          </Text>
+          <Ionicons name="close-circle" size={17} color="#F5A524" />
+        </TouchableOpacity>
+      )}
+
+      {/* Conteúdo principal — DataContext sobrescrito quando em modo parceiro */}
+      {isPartnerMode ? (
+        <PartnerDataProvider data={partnerPersonalData}>
+          {tabNavigator}
+        </PartnerDataProvider>
+      ) : tabNavigator}
+
+      {/* Pill flutuante de troca de perfil — só aparece quando parceiro compartilhou dados */}
+      {canSwitchProfile && (
+        <TouchableOpacity
+          onPress={switchProfile}
+          activeOpacity={0.85}
+          style={{
+            position: 'absolute',
+            right: 20,
+            bottom: insets.bottom + 82,
+            flexDirection: 'row', alignItems: 'center', gap: 6,
+            backgroundColor: isPartnerMode ? '#F5A524' : colors.card,
+            borderRadius: 20,
+            paddingHorizontal: 12, paddingVertical: 7,
+            borderWidth: 1,
+            borderColor: isPartnerMode ? '#F5A524' : colors.border,
+            elevation: 8,
+            shadowColor: '#000', shadowOpacity: 0.16,
+            shadowRadius: 8, shadowOffset: { width: 0, height: 3 },
+          }}
+        >
+          <Ionicons
+            name={isPartnerMode ? 'person' : 'person-outline'}
+            size={14}
+            color={isPartnerMode ? '#fff' : colors.primary}
+          />
+          <Text style={{ fontSize: 13, fontWeight: '800', color: isPartnerMode ? '#fff' : colors.text }}>
+            {isPartnerMode ? partnerFirst : myFirst}
+          </Text>
+          <Ionicons name="swap-horizontal-outline" size={13} color={isPartnerMode ? '#ffffffaa' : colors.textMuted} />
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -183,10 +263,14 @@ export default function App() {
       <ThemeProvider>
         <SettingsProvider>
           <DataProvider>
+            <SharedDataProvider>
+            <SyncProvider>
             <InstallmentProvider>
               <NotificationsManager />
               <Navigation />
             </InstallmentProvider>
+            </SyncProvider>
+            </SharedDataProvider>
           </DataProvider>
         </SettingsProvider>
       </ThemeProvider>

@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useScrollToTop } from '@react-navigation/native';
@@ -23,6 +24,7 @@ import { contrastText } from '../utils/colorUtils';
 import CollapsibleCard from '../components/CollapsibleCard';
 import AvatarPicker from '../components/AvatarPicker';
 import { YEAR } from '../data/initialData';
+import { useSync } from '../context/SyncContext';
 
 function Card({ title, colors, children }) {
   return (
@@ -51,8 +53,11 @@ export default function SettingsScreen() {
     contributionGoalPct,
     setContributionGoalPct,
   } = useSettings();
+  const { coupleCode, status, lastSync, connect, disconnect, generateCode, sharePersonal, setSharePersonal, partnerName, setPartnerName, FIREBASE_CONFIGURED } = useSync();
   const [busy, setBusy] = useState(false);
   const [newPayment, setNewPayment] = useState('');
+  const [codeInput, setCodeInput] = useState('');
+  const [connecting, setConnecting] = useState(false);
   const scrollRef = useRef(null);
   useScrollToTop(scrollRef);
 
@@ -290,6 +295,144 @@ export default function SettingsScreen() {
         </View>
       </CollapsibleCard>
 
+      {/* Modo Casal */}
+      <CollapsibleCard title="Modo Casal" icon="heart-outline">
+        {!FIREBASE_CONFIGURED ? (
+          <View>
+            <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 10 }]}>
+              Para ativar, configure o Firebase gratuito no arquivo{' '}
+              <Text style={{ fontWeight: '800' }}>src/services/firebase.js</Text>.{'\n\n'}
+              1. Acesse console.firebase.google.com{'\n'}
+              2. Crie um projeto → Realtime Database → "Modo de teste"{'\n'}
+              3. Configurações ⚙️ → Adicionar app Web → copie o firebaseConfig{'\n'}
+              4. Cole no arquivo e reinicie o app
+            </Text>
+          </View>
+        ) : coupleCode ? (
+          <View>
+            <View style={[styles.syncStatusRow, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
+              <View style={[styles.syncDot, { backgroundColor: status === 'synced' ? '#2BB673' : status === 'error' ? '#E5484D' : '#F5A524' }]} />
+              <Text style={[styles.syncStatusText, { color: colors.text }]}>
+                {status === 'synced' ? 'Sincronizado' : status === 'syncing' ? 'Sincronizando…' : status === 'error' ? 'Erro de conexão' : 'Conectando…'}
+                {lastSync && status === 'synced' ? `  ·  ${new Date(lastSync).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+              </Text>
+            </View>
+
+            <Text style={[styles.label, { color: colors.text, marginTop: 14 }]}>Código do casal</Text>
+            <View style={styles.codeDisplayRow}>
+              <Text style={[styles.codeText, { color: colors.primary, borderColor: colors.border, backgroundColor: colors.cardAlt }]}>
+                {coupleCode}
+              </Text>
+              <TouchableOpacity
+                style={[styles.shareCodeBtn, { borderColor: colors.primary }]}
+                onPress={() => Share.share({ message: `Entra no Controle+ e usa este código no Modo Casal: ${coupleCode}` })}
+              >
+                <Ionicons name="share-social-outline" size={18} color={colors.primary} />
+                <Text style={[styles.shareCodeText, { color: colors.primary }]}>Enviar</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.hint, { color: colors.textMuted, marginTop: 6 }]}>
+              Compartilhe este código com seu(ua) parceiro(a). Quando ele(a) entrar com o mesmo código, vocês ficam sincronizados automaticamente.
+            </Text>
+
+            <Text style={[styles.label, { color: colors.text, marginTop: 14 }]}>Nome do(a) parceiro(a)</Text>
+            <TextInput
+              value={partnerName}
+              onChangeText={setPartnerName}
+              placeholder="Nome ou apelido dele(a)"
+              placeholderTextColor={colors.textMuted}
+              style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
+            />
+
+            <View style={[styles.rowBetween, { marginTop: 4, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border }]}>
+              <View style={[styles.rowLeft, { flex: 1, paddingRight: 12 }]}>
+                <Ionicons name="lock-open-outline" size={20} color={colors.primary} />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={[styles.label, { color: colors.text, marginBottom: 2 }]}>Compartilhar dados pessoais</Text>
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>
+                    Permite que seu/sua parceiro(a) veja e edite suas despesas e renda pessoais.
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={sharePersonal}
+                onValueChange={setSharePersonal}
+                trackColor={{ true: colors.primary, false: colors.border }}
+                thumbColor="#fff"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.actionBtnOutline, { borderColor: colors.negative, marginTop: 14 }]}
+              onPress={() => Alert.alert('Desconectar', 'Sair do Modo Casal? Seus dados locais são mantidos.', [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Desconectar', style: 'destructive', onPress: disconnect },
+              ])}
+            >
+              <Ionicons name="unlink-outline" size={20} color={colors.negative} />
+              <Text style={[styles.actionTextOutline, { color: colors.negative }]}>Desconectar do casal</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View>
+            <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 14 }]}>
+              Crie um código ou insira o código do(a) seu/sua parceiro(a) para manter os dados sincronizados em tempo real.
+            </Text>
+
+            <Text style={[styles.label, { color: colors.text }]}>Entrar com código existente</Text>
+            <View style={styles.pmAddRow}>
+              <TextInput
+                value={codeInput}
+                onChangeText={(t) => setCodeInput(t.toUpperCase())}
+                placeholder="Ex.: A3B9-KZ12"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="characters"
+                style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
+              />
+              <TouchableOpacity
+                style={[styles.pmAddBtn, { backgroundColor: colors.primary, opacity: connecting ? 0.6 : 1 }]}
+                disabled={connecting}
+                onPress={async () => {
+                  if (!codeInput.trim()) return;
+                  setConnecting(true);
+                  try {
+                    await connect(codeInput);
+                    setCodeInput('');
+                  } catch (e) {
+                    Alert.alert('Erro', String(e.message || e));
+                  } finally {
+                    setConnecting(false);
+                  }
+                }}
+              >
+                <Ionicons name="link-outline" size={22} color={colors.onPrimary || '#fff'} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.orRow}>
+              <View style={[styles.orLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.orText, { color: colors.textMuted }]}>ou</Text>
+              <View style={[styles.orLine, { backgroundColor: colors.border }]} />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+              onPress={async () => {
+                const code = generateCode();
+                try {
+                  await connect(code);
+                } catch (e) {
+                  Alert.alert('Erro', String(e.message || e));
+                }
+              }}
+            >
+              <Ionicons name="add-circle-outline" size={20} color={colors.onPrimary || '#fff'} />
+              <Text style={[styles.actionText, { color: colors.onPrimary || '#fff' }]}>Gerar novo código</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </CollapsibleCard>
+
       {/* Backup */}
       <CollapsibleCard title="Backup" icon="save-outline">
         <TouchableOpacity
@@ -372,4 +515,15 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   infoLabel: { fontSize: 14 },
   infoValue: { fontSize: 14, fontWeight: '700' },
+  // Modo Casal
+  syncStatusRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
+  syncDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+  syncStatusText: { fontSize: 14, fontWeight: '700' },
+  codeDisplayRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  codeText: { flex: 1, fontSize: 22, fontWeight: '900', letterSpacing: 3, textAlign: 'center', borderWidth: 1.5, borderRadius: 10, paddingVertical: 12 },
+  shareCodeBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, gap: 6 },
+  shareCodeText: { fontSize: 14, fontWeight: '700' },
+  orRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 16, gap: 10 },
+  orLine: { flex: 1, height: 1 },
+  orText: { fontSize: 13, fontWeight: '700' },
 });
