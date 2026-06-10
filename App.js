@@ -1,6 +1,6 @@
 // Raiz do app: providers (SafeArea, Tema, Configurações, Dados) + navegação.
 import React from 'react';
-import { View, ActivityIndicator, StatusBar, Platform, UIManager, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, StatusBar, Platform, UIManager, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
@@ -173,35 +173,28 @@ function Tabs() {
         </PartnerDataProvider>
       ) : tabNavigator}
 
-      {/* Pill flutuante de troca de perfil — só aparece quando parceiro compartilhou dados */}
+      {/* Avatar do parceiro — pequeno, acima do FAB, igual ao Meta AI no WhatsApp */}
       {canSwitchProfile && (
         <TouchableOpacity
           onPress={switchProfile}
-          activeOpacity={0.85}
+          activeOpacity={0.8}
           style={{
             position: 'absolute',
             right: 20,
-            bottom: insets.bottom + 82,
-            flexDirection: 'row', alignItems: 'center', gap: 6,
-            backgroundColor: isPartnerMode ? '#F5A524' : colors.card,
-            borderRadius: 20,
-            paddingHorizontal: 12, paddingVertical: 7,
-            borderWidth: 1,
-            borderColor: isPartnerMode ? '#F5A524' : colors.border,
+            bottom: insets.bottom + 158,
+            width: 40, height: 40, borderRadius: 20,
+            backgroundColor: isPartnerMode ? '#F5A524' : colors.primary,
+            alignItems: 'center', justifyContent: 'center',
+            borderWidth: 2.5,
+            borderColor: isPartnerMode ? '#fff' : colors.card,
             elevation: 8,
-            shadowColor: '#000', shadowOpacity: 0.16,
-            shadowRadius: 8, shadowOffset: { width: 0, height: 3 },
+            shadowColor: '#000', shadowOpacity: 0.22,
+            shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
           }}
         >
-          <Ionicons
-            name={isPartnerMode ? 'person' : 'person-outline'}
-            size={14}
-            color={isPartnerMode ? '#fff' : colors.primary}
-          />
-          <Text style={{ fontSize: 13, fontWeight: '800', color: isPartnerMode ? '#fff' : colors.text }}>
-            {isPartnerMode ? partnerFirst : myFirst}
+          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '900', lineHeight: 18 }}>
+            {partnerFirst[0].toUpperCase()}
           </Text>
-          <Ionicons name="swap-horizontal-outline" size={13} color={isPartnerMode ? '#ffffffaa' : colors.textMuted} />
         </TouchableOpacity>
       )}
     </View>
