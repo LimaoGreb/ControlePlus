@@ -70,10 +70,11 @@ export default function SettingsScreen() {
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SOBRE O APP</Text>
         <Info label="Nome" value="Controle+" colors={colors} />
-        <Info label="Versão" value="1.8.1" colors={colors} />
+        <Info label="Versão" value="2.0.1" colors={colors} />
         <Info label="Ano de controle" value={String(YEAR)} colors={colors} />
         <Info label="Armazenamento" value="Local (AsyncStorage)" colors={colors} />
         <Info label="Plataforma" value={Platform.OS} colors={colors} />
+        <Info label="Desenvolvido por" value="Kowalsky" colors={colors} />
         <Text style={[styles.hint, { color: colors.textMuted, marginTop: 10 }]}>
           Seus dados ficam apenas no aparelho. Faça backups com a exportação.
         </Text>

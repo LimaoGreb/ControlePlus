@@ -6,6 +6,8 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '../theme/ThemeContext';
 import { useData } from '../context/DataContext';
+import { useSettings } from '../context/SettingsContext';
+import { useSync } from '../context/SyncContext';
 import { useGoogleAuth } from '../context/GoogleAuthContext';
 import { uploadToDrive, downloadFromDrive } from '../services/googleDrive';
 import { contrastText } from '../utils/colorUtils';
@@ -14,20 +16,57 @@ import { YEAR } from '../data/initialData';
 const BACKUP_FILENAME = `backup-controle-plus-${YEAR}.json`;
 
 export default function SettingsBackupScreen() {
-  const { colors } = useTheme();
+  const { colors, mode, paletteId, toggleTheme, setPalette } = useTheme();
   const { data, importData } = useData();
+  const {
+    userName, avatar, paymentMethods, isInvestor, investments,
+    projects, makesContributions, contributionGoalPct, importSettings,
+  } = useSettings();
+  const { coupleCode, connect } = useSync();
   const { token, googleUser, signIn, signOut, loading, ready } = useGoogleAuth();
   const [busy, setBusy] = useState(false);
+
+  const buildBackup = () => ({
+    version: '2.0.1',
+    exportedAt: new Date().toISOString(),
+    data,
+    settings: {
+      userName, avatar, paymentMethods, isInvestor, investments,
+      projects, makesContributions, contributionGoalPct,
+    },
+    theme: { mode, paletteId },
+    coupleCode: coupleCode || null,
+  });
+
+  const restoreBackup = async (parsed) => {
+    const financialData = parsed.data ?? parsed;
+    await importData(financialData);
+
+    if (parsed.settings) {
+      await importSettings(parsed.settings);
+    }
+
+    if (parsed.theme) {
+      setPalette(parsed.theme.paletteId);
+      if (parsed.theme.mode && parsed.theme.mode !== mode) {
+        toggleTheme();
+      }
+    }
+
+    if (parsed.coupleCode) {
+      try { await connect(parsed.coupleCode); } catch (_) {}
+    }
+  };
 
   // ── Backup local ──────────────────────────────────────────────────────────────
   const handleExport = async () => {
     try {
       setBusy(true);
-      const json = JSON.stringify(data, null, 2);
+      const json = JSON.stringify(buildBackup(), null, 2);
       const uri = FileSystem.cacheDirectory + BACKUP_FILENAME;
       await FileSystem.writeAsStringAsync(uri, json, { encoding: FileSystem.EncodingType.UTF8 });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Salvar backup das finanças' });
+        await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Salvar backup completo' });
       } else {
         Alert.alert('Backup criado', `Arquivo salvo em:\n${uri}`);
       }
@@ -44,11 +83,13 @@ export default function SettingsBackupScreen() {
       if (res.canceled || !res.assets?.length) return;
       const content = await FileSystem.readAsStringAsync(res.assets[0].uri, { encoding: FileSystem.EncodingType.UTF8 });
       const parsed = JSON.parse(content);
-      Alert.alert('Importar backup', 'Isto vai substituir TODOS os dados atuais. Deseja continuar?', [
+      Alert.alert('Importar backup', 'Isso vai substituir TODOS os dados e configurações atuais. Deseja continuar?', [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Substituir', style: 'destructive', onPress: async () => {
-          try { await importData(parsed); Alert.alert('Pronto', 'Backup importado com sucesso!'); }
-          catch (e) { Alert.alert('Erro', String(e.message || e)); }
+        { text: 'Restaurar', style: 'destructive', onPress: async () => {
+          try {
+            await restoreBackup(parsed);
+            Alert.alert('Pronto', 'Backup restaurado com sucesso!');
+          } catch (e) { Alert.alert('Erro', String(e.message || e)); }
         }},
       ]);
     } catch (err) {
@@ -61,8 +102,8 @@ export default function SettingsBackupScreen() {
     if (!token) { signIn(); return; }
     try {
       setBusy(true);
-      await uploadToDrive(token, BACKUP_FILENAME, data);
-      Alert.alert('Backup salvo no Drive', `Arquivo "${BACKUP_FILENAME}" salvo na sua conta Google Drive.`);
+      await uploadToDrive(token, BACKUP_FILENAME, buildBackup());
+      Alert.alert('Backup salvo no Drive', `"${BACKUP_FILENAME}" salvo na sua conta Google Drive.`);
     } catch (err) {
       if (String(err).includes('401')) {
         signOut();
@@ -82,11 +123,13 @@ export default function SettingsBackupScreen() {
       const result = await downloadFromDrive(token, BACKUP_FILENAME);
       if (!result) { Alert.alert('Não encontrado', `Nenhum arquivo "${BACKUP_FILENAME}" no seu Drive.`); return; }
       const date = new Date(result.modifiedTime).toLocaleString('pt-BR');
-      Alert.alert('Restaurar do Drive', `Backup encontrado (${date}).\nIsso vai substituir TODOS os dados atuais.`, [
+      Alert.alert('Restaurar do Drive', `Backup encontrado (${date}).\nIsso vai substituir TODOS os dados e configurações.`, [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Restaurar', style: 'destructive', onPress: async () => {
-          try { await importData(result.data); Alert.alert('Pronto', 'Dados restaurados do Google Drive!'); }
-          catch (e) { Alert.alert('Erro', String(e.message || e)); }
+          try {
+            await restoreBackup(result.data);
+            Alert.alert('Pronto', 'Dados restaurados do Google Drive!');
+          } catch (e) { Alert.alert('Erro', String(e.message || e)); }
         }},
       ]);
     } catch (err) {
@@ -103,7 +146,7 @@ export default function SettingsBackupScreen() {
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>BACKUP LOCAL</Text>
         <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 14 }]}>
-          Exporta um arquivo JSON pro seu celular. Você escolhe onde salvar.
+          Exporta um arquivo JSON completo: dados financeiros, perfil, cartões, configurações e tema.
         </Text>
         <TouchableOpacity
           style={[styles.btn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
