@@ -49,9 +49,9 @@ export default function AllMonthsScreen({ navigation }) {
   const si = STATUS_MAP[st];
 
   // ── tamanho dos botões de mês ──
-  // SW - 32 (padding horizontal 16×2) - 24 (3 gaps de 8) dividido por 4 colunas
-  const btnW = Math.floor((SW - 32 - 24) / 4);
-  const btnH = Math.round(btnW * 0.78);
+  // SW - 32 (padding horizontal 16×2) - 16 (2 gaps de 8) dividido por 3 colunas
+  const btnW = Math.floor((SW - 32 - 16) / 3);
+  const btnH = Math.round(btnW * 0.62);
 
   const handlePickMonth = (year, mi) => {
     setSelYear(year);

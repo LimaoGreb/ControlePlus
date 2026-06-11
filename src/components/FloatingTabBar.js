@@ -50,12 +50,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }) {
               style={styles.tab}
               activeOpacity={0.7}
             >
-              <View
-                style={[
-                  styles.iconWrap,
-                  focused && { backgroundColor: colors.alpha(colors.primary, 0.16) },
-                ]}
-              >
+              <View style={styles.iconWrap}>
                 {icon}
               </View>
               <Text

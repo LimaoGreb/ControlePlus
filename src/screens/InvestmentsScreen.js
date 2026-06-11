@@ -18,6 +18,7 @@ import { contrastText } from '../utils/colorUtils';
 import { formatBRL, formatPercent } from '../utils/currency';
 import { portfolioTotals, byGroup } from '../utils/investments';
 import { isQuotable, fetchQuote, fetchCurrencies } from '../services/quotes';
+import { fetchIndicadores } from '../services/bacen';
 import InvestmentCard from '../components/InvestmentCard';
 
 // Barra de alocação por classe, clicável (abre os itens daquela classe).
@@ -83,11 +84,13 @@ export default function InvestmentsScreen() {
 
   const [updatingAll, setUpdatingAll] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [currencies, setCurrencies] = useState({ usd: null, eur: null });
+  const [currencies, setCurrencies] = useState({ usd: null, eur: null, gbp: null, btc: null, ars: null });
+  const [indicadores, setIndicadores] = useState({ selic: null, ipca: null, igpm: null });
   const hasQuotable = investments.some((i) => isQuotable(i.typeId) && i.ticker);
 
   useEffect(() => {
     fetchCurrencies().then(setCurrencies);
+    fetchIndicadores().then(setIndicadores);
   }, []);
 
   const updateAllQuotes = async () => {
@@ -104,7 +107,11 @@ export default function InvestmentsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([updateAllQuotes(), fetchCurrencies().then(setCurrencies)]);
+    await Promise.all([
+      updateAllQuotes(),
+      fetchCurrencies().then(setCurrencies),
+      fetchIndicadores().then(setIndicadores),
+    ]);
     setRefreshing(false);
   };
 
@@ -117,27 +124,48 @@ export default function InvestmentsScreen() {
     >
       <Text style={[styles.title, { color: colors.text }]}>Investimentos</Text>
 
-      {/* Mercado hoje: Dólar e Euro */}
-      <View style={[styles.marketCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.marketItem}>
-          <Text style={styles.marketFlag}>🇺🇸</Text>
-          <View>
-            <Text style={[styles.marketLabel, { color: colors.textSecondary }]}>Dólar</Text>
-            <Text style={[styles.marketValue, { color: colors.text }]}>
-              {currencies.usd ? formatBRL(currencies.usd) : '—'}
-            </Text>
-          </View>
+      {/* Câmbio */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, padding: 14 }]}>
+        <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 12 }]}>Câmbio</Text>
+        <View style={styles.marketGrid}>
+          {[
+            { flag: '🇺🇸', label: 'Dólar',   val: currencies.usd },
+            { flag: '🇪🇺', label: 'Euro',    val: currencies.eur },
+            { flag: '🇬🇧', label: 'Libra',   val: currencies.gbp },
+            { flag: '₿',   label: 'Bitcoin', val: currencies.btc },
+            { flag: '🇦🇷', label: 'Peso AR', val: currencies.ars },
+          ].map((item) => (
+            <View key={item.label} style={[styles.marketChip, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
+              <Text style={styles.marketFlag}>{item.flag}</Text>
+              <Text style={[styles.marketLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+              <Text style={[styles.marketValue, { color: colors.text }]}>
+                {item.val != null ? (item.val < 0.01 ? `R$ ${item.val.toFixed(4)}` : formatBRL(item.val)) : '—'}
+              </Text>
+            </View>
+          ))}
         </View>
-        <View style={[styles.marketDivider, { backgroundColor: colors.border }]} />
-        <View style={styles.marketItem}>
-          <Text style={styles.marketFlag}>🇪🇺</Text>
-          <View>
-            <Text style={[styles.marketLabel, { color: colors.textSecondary }]}>Euro</Text>
-            <Text style={[styles.marketValue, { color: colors.text }]}>
-              {currencies.eur ? formatBRL(currencies.eur) : '—'}
-            </Text>
-          </View>
+      </View>
+
+      {/* Indicadores Econômicos — BACEN */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, padding: 14 }]}>
+        <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 12 }]}>Indicadores (BACEN)</Text>
+        <View style={styles.indicGrid}>
+          {[
+            { label: 'SELIC / CDI', val: indicadores.selic, suffix: '% a.a.', color: colors.positive },
+            { label: 'IPCA 12m',    val: indicadores.ipca,  suffix: '%',       color: colors.negative },
+            { label: 'IGP-M 12m',   val: indicadores.igpm,  suffix: '%',       color: colors.variable },
+          ].map((ind) => (
+            <View key={ind.label} style={[styles.indicChip, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
+              <Text style={[styles.indicLabel, { color: colors.textSecondary }]}>{ind.label}</Text>
+              <Text style={[styles.indicValue, { color: ind.color }]}>
+                {ind.val != null ? `${ind.val.toFixed(2)}${ind.suffix}` : '—'}
+              </Text>
+            </View>
+          ))}
         </View>
+        <Text style={[styles.hint, { color: colors.textMuted, marginTop: 8 }]}>
+          Fonte: Banco Central do Brasil · atualizado no pull-to-refresh
+        </Text>
       </View>
 
       {/* Resumo da carteira */}
@@ -252,12 +280,15 @@ const styles = StyleSheet.create({
   rLabel: { fontSize: 13, fontWeight: '600' },
   rValue: { fontSize: 26, fontWeight: '900', marginTop: 2 },
   rPct: { fontSize: 14, fontWeight: '700' },
-  marketCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 14 },
-  marketItem: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  marketFlag: { fontSize: 26, marginRight: 10 },
-  marketLabel: { fontSize: 12, fontWeight: '600' },
-  marketValue: { fontSize: 18, fontWeight: '800' },
-  marketDivider: { width: 1, height: 36, marginHorizontal: 8 },
+  marketGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  marketChip: { width: '47%', flexGrow: 1, borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'flex-start' },
+  marketFlag: { fontSize: 20, marginBottom: 2 },
+  marketLabel: { fontSize: 11, fontWeight: '600', marginBottom: 2 },
+  marketValue: { fontSize: 15, fontWeight: '800' },
+  indicGrid: { flexDirection: 'row', gap: 8 },
+  indicChip: { flex: 1, borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'center' },
+  indicLabel: { fontSize: 10, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
+  indicValue: { fontSize: 15, fontWeight: '900' },
   quoteAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 12, marginBottom: 14 },
   quoteAllText: { fontSize: 14, fontWeight: '800', marginLeft: 8 },
   allocWrap: { marginBottom: 14 },

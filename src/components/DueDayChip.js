@@ -12,6 +12,7 @@ export default function DueDayChip({ dueDay, onChange, color }) {
   const [open, setOpen] = useState(false);
   const accent = color || colors.primary;
   const has = !!dueDay;
+  const today = new Date().getDate();
 
   const choose = (d) => {
     onChange(d);
@@ -39,13 +40,20 @@ export default function DueDayChip({ dueDay, onChange, color }) {
                 <View style={styles.grid}>
                   {DAYS.map((d) => {
                     const sel = dueDay === d;
+                    const isToday = d === today;
                     return (
                       <TouchableOpacity
                         key={d}
                         onPress={() => choose(d)}
-                        style={[styles.day, { borderColor: colors.border }, sel && { backgroundColor: accent, borderColor: accent }]}
+                        style={[
+                          styles.day,
+                          { borderColor: colors.border },
+                          isToday && !sel && { borderColor: accent, borderWidth: 2 },
+                          sel && { backgroundColor: accent, borderColor: accent },
+                        ]}
                       >
-                        <Text style={[styles.dayText, { color: sel ? contrastText(accent) : colors.text }]}>{d}</Text>
+                        <Text style={[styles.dayText, { color: sel ? contrastText(accent) : isToday ? accent : colors.text }]}>{d}</Text>
+                        {isToday && !sel && <View style={[styles.todayDot, { backgroundColor: accent }]} />}
                       </TouchableOpacity>
                     );
                   })}
@@ -73,6 +81,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
   day: { width: 42, height: 42, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', margin: 3 },
   dayText: { fontSize: 15, fontWeight: '700' },
+  todayDot: { width: 4, height: 4, borderRadius: 2, position: 'absolute', bottom: 4 },
   clearBtn: { alignItems: 'center', marginTop: 14, paddingVertical: 6 },
   clearText: { fontSize: 13, fontWeight: '700' },
 });

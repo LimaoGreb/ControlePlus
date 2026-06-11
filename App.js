@@ -13,6 +13,7 @@ import { DataProvider, useData } from './src/context/DataContext';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { InstallmentProvider } from './src/context/InstallmentContext';
 import { SyncProvider } from './src/context/SyncContext';
+import { GoogleAuthProvider } from './src/context/GoogleAuthContext';
 import { SharedDataProvider, PartnerDataProvider } from './src/context/SharedDataContext';
 import CasalScreen from './src/screens/CasalScreen';
 
@@ -23,9 +24,18 @@ import AnnualSummaryScreen from './src/screens/AnnualSummaryScreen';
 import InvestmentsScreen from './src/screens/InvestmentsScreen';
 import ProjectsScreen from './src/screens/ProjectsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import SettingsPerfilScreen from './src/screens/SettingsPerfilScreen';
+import SettingsCartoesScreen from './src/screens/SettingsCartoesScreen';
+import SettingsTemasScreen from './src/screens/SettingsTemasScreen';
+import SettingsCasalScreen from './src/screens/SettingsCasalScreen';
+import SettingsInvestimentosScreen from './src/screens/SettingsInvestimentosScreen';
+import SettingsBackupScreen from './src/screens/SettingsBackupScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import FloatingTabBar from './src/components/FloatingTabBar';
 import NotificationsManager from './src/components/NotificationsManager';
+import Avatar from './src/components/Avatar';
+import HeaderMenu from './src/components/HeaderMenu';
+import WelcomeBack from './src/components/WelcomeBack';
 import { useSync } from './src/context/SyncContext';
 import { MONTH_NAMES, YEAR } from './src/data/initialData';
 
@@ -38,18 +48,6 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 const RootStack = createNativeStackNavigator();
 
-// Botão de engrenagem (Configurações) no topo direito.
-function GearButton({ navigation, color }) {
-  return (
-    <TouchableOpacity
-      onPress={() => navigation.navigate('Settings')}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      style={{ paddingHorizontal: 6 }}
-    >
-      <Ionicons name="settings-outline" size={22} color={color} />
-    </TouchableOpacity>
-  );
-}
 
 function AllMonthsStack() {
   const { colors } = useTheme();
@@ -60,7 +58,7 @@ function AllMonthsStack() {
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '800' },
         contentStyle: { backgroundColor: colors.background },
-        headerRight: () => <GearButton navigation={navigation} color={colors.text} />,
+        headerRight: () => <HeaderMenu />,
       })}
     >
       <Stack.Screen name="AllMonthsList" component={AllMonthsScreen} options={{ title: `Meses de ${YEAR}` }} />
@@ -78,7 +76,7 @@ function AllMonthsStack() {
 function Tabs() {
   const { colors } = useTheme();
   const { isInvestor, userName } = useSettings();
-  const { coupleCode, activeProfile, switchProfile, partnerPersonalData, partnerName } = useSync();
+  const { coupleCode, activeProfile, switchProfile, partnerPersonalData, partnerName, partnerAvatar } = useSync();
   const insets = useSafeAreaInsets();
   const currentMonthName = MONTH_NAMES[new Date().getMonth()];
 
@@ -94,12 +92,12 @@ function Tabs() {
         headerStyle: { backgroundColor: colors.card },
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '800' },
-        headerRight: () => <GearButton navigation={navigation} color={colors.text} />,
+        headerRight: () => <HeaderMenu />,
         tabBarIcon: ({ color, size }) => {
           const icons = {
             Atual: 'today-outline',
             Meses: 'calendar-outline',
-            Anual: 'stats-chart-outline',
+            Controle: 'pie-chart-outline',
             Investir: 'trending-up-outline',
             Casal: 'heart-outline',
             Projetos: 'flag-outline',
@@ -119,9 +117,9 @@ function Tabs() {
         options={{ headerShown: false, tabBarLabel: 'Meses' }}
       />
       <Tab.Screen
-        name="Anual"
+        name="Controle"
         component={AnnualSummaryScreen}
-        options={{ title: 'Resumo Anual', tabBarLabel: 'Anual' }}
+        options={{ title: 'Controle Geral', tabBarLabel: 'Controle' }}
       />
       {isInvestor && (
         <Tab.Screen
@@ -182,19 +180,15 @@ function Tabs() {
             position: 'absolute',
             right: 20,
             bottom: insets.bottom + 158,
-            width: 40, height: 40, borderRadius: 20,
-            backgroundColor: isPartnerMode ? '#F5A524' : colors.primary,
-            alignItems: 'center', justifyContent: 'center',
+            borderRadius: 22,
             borderWidth: 2.5,
-            borderColor: isPartnerMode ? '#fff' : colors.card,
+            borderColor: isPartnerMode ? '#F5A524' : colors.card,
             elevation: 8,
             shadowColor: '#000', shadowOpacity: 0.22,
             shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 15, fontWeight: '900', lineHeight: 18 }}>
-            {partnerFirst[0].toUpperCase()}
-          </Text>
+          <Avatar avatar={partnerAvatar} size={36} />
         </TouchableOpacity>
       )}
     </View>
@@ -244,6 +238,12 @@ function Navigation() {
       >
         <RootStack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
         <RootStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Configurações' }} />
+        <RootStack.Screen name="SettingsPerfil" component={SettingsPerfilScreen} options={{ title: 'Perfil' }} />
+        <RootStack.Screen name="SettingsCartoes" component={SettingsCartoesScreen} options={{ title: 'Formas de Pagamento' }} />
+        <RootStack.Screen name="SettingsTemas" component={SettingsTemasScreen} options={{ title: 'Temas' }} />
+        <RootStack.Screen name="SettingsCasal" component={SettingsCasalScreen} options={{ title: 'Modo Casal' }} />
+        <RootStack.Screen name="SettingsInvestimentos" component={SettingsInvestimentosScreen} options={{ title: 'Investimentos' }} />
+        <RootStack.Screen name="SettingsBackup" component={SettingsBackupScreen} options={{ title: 'Backup' }} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
@@ -258,10 +258,13 @@ export default function App() {
           <DataProvider>
             <SharedDataProvider>
             <SyncProvider>
+            <GoogleAuthProvider>
             <InstallmentProvider>
               <NotificationsManager />
+              <WelcomeBack />
               <Navigation />
             </InstallmentProvider>
+            </GoogleAuthProvider>
             </SyncProvider>
             </SharedDataProvider>
           </DataProvider>

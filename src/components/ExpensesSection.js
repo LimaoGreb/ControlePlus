@@ -20,6 +20,7 @@ export default function ExpensesSection({
   total,
   addLabel,
   extraButton,
+  forceOpen = false,
 }) {
   const { colors } = useTheme();
   const { addItem, removeItem, updateItem } = useData();
@@ -46,7 +47,7 @@ export default function ExpensesSection({
   };
 
   return (
-    <Collapsible icon={icon} title={title} total={total} color={color} count={items.length}>
+    <Collapsible icon={icon} title={title} total={total} color={color} count={items.length} forceOpen={forceOpen}>
       {items.length === 0 && (
         <Text style={[styles.empty, { color: colors.textMuted }]}>
           Nenhum item ainda. Toque em "{addLabel}".

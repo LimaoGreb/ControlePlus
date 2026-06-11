@@ -1,17 +1,35 @@
 // Sincronização Firebase: gerencia código do casal, status de conexão e
-// sync dos dados COMPARTILHADOS. Dados pessoais só sincronizam se a
-// permissão "Compartilhar dados pessoais" estiver ativada.
+// sync dos dados COMPARTILHADOS. Dados pessoais ficam em nodes separados
+// por dispositivo (couples_personal/{code}_{deviceId}), evitando sobrescrita mútua.
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import { useData } from './DataContext';
 import { useSharedData } from './SharedDataContext';
-import { pushCouple, fetchCouple, listenCouple, FIREBASE_CONFIGURED } from '../services/firebase';
+import { useSettings } from './SettingsContext';
+import {
+  pushCouple, fetchCouple, listenCouple,
+  pushPersonalData, fetchPersonalData, listenPersonalData,
+  FIREBASE_CONFIGURED,
+} from '../services/firebase';
 
 const SyncContext = createContext(null);
 
 const CODE_KEY = '@casal:code';
 const SHARE_PERSONAL_KEY = '@casal:sharePersonal';
 const PARTNER_NAME_KEY = '@casal:partnerName';
+const DEVICE_ID_KEY = '@casal:deviceId';
+const PARTNER_PERSONAL_KEY = '@casal:partnerPersonal';
+const PARTNER_DEVICE_ID_KEY = '@casal:partnerDeviceId';
+const PARTNER_AVATAR_KEY = '@casal:partnerAvatar';
+const LOCAL_TS_KEY = '@casal:localTs';
+
+function makeDeviceId() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  for (let i = 0; i < 16; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
 
 function makeCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -23,8 +41,23 @@ function makeCode() {
   return c;
 }
 
+// Converte foto local para base64 antes de sincronizar (URIs são específicos do dispositivo).
+async function serializeAvatarForSync(avatar) {
+  if (!avatar) return null;
+  if (avatar.kind === 'emoji') return avatar;
+  if (avatar.kind === 'photo' && avatar.value) {
+    if (avatar.value.startsWith('data:')) return avatar;
+    try {
+      const b64 = await FileSystem.readAsStringAsync(avatar.value, { encoding: FileSystem.EncodingType.Base64 });
+      return { kind: 'photo', value: `data:image/jpeg;base64,${b64}` };
+    } catch { return null; }
+  }
+  return null;
+}
+
 export function SyncProvider({ children }) {
-  const { data: personalData, importData: importPersonalData } = useData();
+  const { data: personalData } = useData();
+  const { avatar } = useSettings();
   const { data: sharedData, importSharedData } = useSharedData();
 
   const [coupleCode, setCoupleCode] = useState(null);
@@ -34,47 +67,95 @@ export function SyncProvider({ children }) {
   const [partnerName, setPartnerNameRaw] = useState('');
   const [lastPartnerActivity, setLastPartnerActivity] = useState(null);
   const [partnerPersonalData, setPartnerPersonalData] = useState(null);
+  const [partnerAvatar, setPartnerAvatar] = useState(null);
   const [activeProfile, setActiveProfile] = useState('mine');
+  const [deviceId, setDeviceId] = useState(null);
+  const [partnerDeviceId, setPartnerDeviceId] = useState(null);
   const [ready, setReady] = useState(false);
 
   const localTs = useRef(0);
   const ignoreNextSharedPush = useRef(false);
-  const ignoreNextPersonalPush = useRef(false);
   const pushTimer = useRef(null);
+  const personalPushTimer = useRef(null);
   const stopListen = useRef(null);
+  const stopListenPersonal = useRef(null);
 
-  // Carrega configurações salvas.
+  // Persiste o ts local para sobreviver reinicializações e evitar aceitar dados antigos.
+  const saveLocalTs = useCallback((ts) => {
+    localTs.current = ts;
+    AsyncStorage.setItem(LOCAL_TS_KEY, String(ts)).catch(() => {});
+  }, []);
+
+  // Persiste os dados pessoais e o avatar do(a) parceiro(a) localmente (cache entre sessões).
+  const updatePartnerPersonal = useCallback((rawData) => {
+    if (!rawData) return;
+    const { _avatar, ...pureData } = rawData;
+    setPartnerPersonalData(pureData);
+    AsyncStorage.setItem(PARTNER_PERSONAL_KEY, JSON.stringify(pureData)).catch(() => {});
+    if (_avatar) {
+      setPartnerAvatar(_avatar);
+      AsyncStorage.setItem(PARTNER_AVATAR_KEY, JSON.stringify(_avatar)).catch(() => {});
+    }
+  }, []);
+
+  // Persiste o deviceId do(a) parceiro(a) para restabelecer o listener após restart.
+  const updatePartnerDeviceId = useCallback((id) => {
+    setPartnerDeviceId(id);
+    AsyncStorage.setItem(PARTNER_DEVICE_ID_KEY, id).catch(() => {});
+  }, []);
+
+  // Carrega todas as configurações salvas na inicialização.
   useEffect(() => {
     Promise.all([
       AsyncStorage.getItem(CODE_KEY),
       AsyncStorage.getItem(SHARE_PERSONAL_KEY),
       AsyncStorage.getItem(PARTNER_NAME_KEY),
-    ]).then(([code, shareStr, pName]) => {
+      AsyncStorage.getItem(DEVICE_ID_KEY),
+      AsyncStorage.getItem(PARTNER_PERSONAL_KEY),
+      AsyncStorage.getItem(PARTNER_DEVICE_ID_KEY),
+      AsyncStorage.getItem(LOCAL_TS_KEY),
+      AsyncStorage.getItem(PARTNER_AVATAR_KEY),
+    ]).then(([code, shareStr, pName, dId, partnerPersonalStr, pDevId, tsStr, partnerAvatarStr]) => {
       if (code) setCoupleCode(code);
       setSharePersonalRaw(shareStr === 'true');
       if (pName) setPartnerNameRaw(pName);
+
+      let myId = dId;
+      if (!myId) {
+        myId = makeDeviceId();
+        AsyncStorage.setItem(DEVICE_ID_KEY, myId).catch(() => {});
+      }
+      setDeviceId(myId);
+
+      if (pDevId) setPartnerDeviceId(pDevId);
+
+      if (partnerPersonalStr) {
+        try { setPartnerPersonalData(JSON.parse(partnerPersonalStr)); } catch {}
+      }
+
+      if (partnerAvatarStr) {
+        try { setPartnerAvatar(JSON.parse(partnerAvatarStr)); } catch {}
+      }
+
+      // Restaura o ts para não re-aceitar dados que já foram processados
+      if (tsStr) localTs.current = parseInt(tsStr, 10) || 0;
+
       setReady(true);
     });
   }, []);
 
-  const buildPayload = useCallback((ts) => {
-    const payload = { shared: sharedData, ts };
-    if (sharePersonal && personalData) payload.personal = personalData;
-    return payload;
-  }, [sharedData, personalData, sharePersonal]);
-
-  // Conecta/reconecta quando o código ou a flag de ready mudam.
+  // Listener de dados compartilhados — também descobre o deviceId do(a) parceiro(a).
   useEffect(() => {
-    if (!ready || !coupleCode || !FIREBASE_CONFIGURED) return;
+    if (!ready || !coupleCode || !FIREBASE_CONFIGURED || !deviceId) return;
 
     setStatus('syncing');
     fetchCouple(coupleCode)
       .then((remote) => {
         if (remote && remote.ts > localTs.current) {
-          localTs.current = remote.ts;
+          saveLocalTs(remote.ts);
           setLastPartnerActivity(Date.now());
           if (remote.shared) { ignoreNextSharedPush.current = true; importSharedData(remote.shared); }
-          if (remote.personal) { setPartnerPersonalData(remote.personal); }
+          if (remote.deviceId && remote.deviceId !== deviceId) { updatePartnerDeviceId(remote.deviceId); }
         }
         setStatus('synced');
         setLastSync(Date.now());
@@ -83,17 +164,35 @@ export function SyncProvider({ children }) {
 
     stopListen.current = listenCouple(coupleCode, (remote) => {
       if (remote.ts > localTs.current) {
-        localTs.current = remote.ts;
+        saveLocalTs(remote.ts);
         setLastPartnerActivity(Date.now());
         if (remote.shared) { ignoreNextSharedPush.current = true; importSharedData(remote.shared); }
-        if (remote.personal) { setPartnerPersonalData(remote.personal); }
+        if (remote.deviceId && remote.deviceId !== deviceId) { updatePartnerDeviceId(remote.deviceId); }
         setStatus('synced');
         setLastSync(Date.now());
       }
     });
 
     return () => { if (stopListen.current) stopListen.current(); };
-  }, [coupleCode, ready]);
+  }, [coupleCode, ready, deviceId]);
+
+  // Listener de dados pessoais do(a) parceiro(a) — node exclusivo deles, sem risco de sobrescrita.
+  useEffect(() => {
+    if (!coupleCode || !partnerDeviceId || !FIREBASE_CONFIGURED) return;
+
+    fetchPersonalData(coupleCode, partnerDeviceId).then((data) => {
+      if (data) updatePartnerPersonal(data);
+    });
+
+    stopListenPersonal.current = listenPersonalData(coupleCode, partnerDeviceId, (data) => {
+      if (data) {
+        updatePartnerPersonal(data);
+        setLastPartnerActivity(Date.now());
+      }
+    });
+
+    return () => { if (stopListenPersonal.current) stopListenPersonal.current(); };
+  }, [coupleCode, partnerDeviceId]);
 
   // Dados compartilhados mudaram → push com debounce.
   useEffect(() => {
@@ -102,26 +201,40 @@ export function SyncProvider({ children }) {
     debouncedPush();
   }, [sharedData, coupleCode, ready]);
 
-  // Dados pessoais mudaram → push apenas se sharePersonal estiver ativo.
+  // Dados pessoais mudaram → push separado para o node próprio.
   useEffect(() => {
-    if (!coupleCode || !personalData || !ready || !FIREBASE_CONFIGURED || !sharePersonal) return;
-    if (ignoreNextPersonalPush.current) { ignoreNextPersonalPush.current = false; return; }
-    debouncedPush();
-  }, [personalData, coupleCode, ready, sharePersonal]);
+    if (!coupleCode || !personalData || !ready || !FIREBASE_CONFIGURED || !sharePersonal || !deviceId) return;
+    debouncedPersonalPush();
+  }, [personalData, coupleCode, ready, sharePersonal, deviceId]);
 
+  // Push de dados compartilhados — inclui deviceId para o(a) parceiro(a) aprender quem somos.
   const debouncedPush = useCallback(() => {
     if (pushTimer.current) clearTimeout(pushTimer.current);
-    pushTimer.current = setTimeout(() => {
+    pushTimer.current = setTimeout(async () => {
       const ts = Date.now();
-      localTs.current = ts;
+      saveLocalTs(ts);
       setStatus('syncing');
-      const payload = { shared: sharedData, ts };
-      if (sharePersonal && personalData) payload.personal = personalData;
-      pushCouple(coupleCode, payload)
-        .then(() => { setStatus('synced'); setLastSync(Date.now()); })
-        .catch(() => setStatus('error'));
+      try {
+        await pushCouple(coupleCode, { shared: sharedData, ts, deviceId });
+        setStatus('synced');
+        setLastSync(Date.now());
+      } catch { setStatus('error'); }
     }, 2000);
-  }, [sharedData, personalData, sharePersonal, coupleCode]);
+  }, [sharedData, coupleCode, deviceId, saveLocalTs]);
+
+  // Push de dados pessoais — node exclusivo, não afeta dados do(a) parceiro(a).
+  // Inclui o avatar serializado (foto → base64, emoji → objeto direto).
+  const debouncedPersonalPush = useCallback(() => {
+    if (personalPushTimer.current) clearTimeout(personalPushTimer.current);
+    personalPushTimer.current = setTimeout(async () => {
+      try {
+        const serializedAvatar = await serializeAvatarForSync(avatar);
+        const payload = { ...personalData };
+        if (serializedAvatar) payload._avatar = serializedAvatar;
+        await pushPersonalData(coupleCode, deviceId, payload);
+      } catch {}
+    }, 2000);
+  }, [personalData, avatar, coupleCode, deviceId]);
 
   const connect = useCallback(async (code) => {
     const clean = code.trim().toUpperCase();
@@ -132,12 +245,22 @@ export function SyncProvider({ children }) {
 
   const disconnect = useCallback(async () => {
     if (pushTimer.current) clearTimeout(pushTimer.current);
+    if (personalPushTimer.current) clearTimeout(personalPushTimer.current);
     if (stopListen.current) stopListen.current();
-    await AsyncStorage.removeItem(CODE_KEY);
+    if (stopListenPersonal.current) stopListenPersonal.current();
+    await Promise.all([
+      AsyncStorage.removeItem(CODE_KEY),
+      AsyncStorage.removeItem(PARTNER_PERSONAL_KEY),
+      AsyncStorage.removeItem(PARTNER_DEVICE_ID_KEY),
+      AsyncStorage.removeItem(PARTNER_AVATAR_KEY),
+      AsyncStorage.removeItem(LOCAL_TS_KEY),
+    ]);
     setCoupleCode(null);
+    setPartnerDeviceId(null);
     setStatus('idle');
     setLastSync(null);
     setPartnerPersonalData(null);
+    setPartnerAvatar(null);
     setActiveProfile('mine');
     localTs.current = 0;
   }, []);
@@ -163,7 +286,7 @@ export function SyncProvider({ children }) {
       coupleCode, status, lastSync,
       sharePersonal, setSharePersonal,
       partnerName, setPartnerName,
-      lastPartnerActivity, partnerPersonalData,
+      lastPartnerActivity, partnerPersonalData, partnerAvatar,
       activeProfile, switchProfile,
       connect, disconnect, generateCode,
       FIREBASE_CONFIGURED,

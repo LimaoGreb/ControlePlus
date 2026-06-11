@@ -22,7 +22,7 @@ function confirmAction(title, message, confirmLabel, onConfirm) {
 
 export default function CompleteMonthButton({ monthIndex, month }) {
   const { colors } = useTheme();
-  const { concludeAllItems } = useData();
+  const { concludeAllItems, clearMonth } = useData();
   const status = monthStatus(month);
   const { done, total } = concludedCount(month);
   const label = `${MONTH_NAMES[monthIndex]} ${YEAR}`;
@@ -65,6 +65,22 @@ export default function CompleteMonthButton({ monthIndex, month }) {
         <Ionicons name="checkmark-done-outline" size={18} color={colors.textSecondary} />
         <Text style={[styles.btnText, { color: colors.textSecondary }]}>Concluir mês inteiro</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.btn, styles.clearBtn, { borderColor: colors.negative }]}
+        activeOpacity={0.7}
+        onPress={() =>
+          confirmAction(
+            'Apagar dados do mês',
+            `Apagar todos os lançamentos de ${label}? Renda, gastos fixos e variáveis serão removidos. Essa ação não pode ser desfeita.`,
+            'Apagar tudo',
+            () => clearMonth(monthIndex)
+          )
+        }
+      >
+        <Ionicons name="trash-outline" size={18} color={colors.negative} />
+        <Text style={[styles.btnText, { color: colors.negative }]}>Apagar dados do mês</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -82,6 +98,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   btnText: { fontSize: 13, fontWeight: '600', marginLeft: 6 },
+  clearBtn: { marginTop: 8 },
   doneWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 6 },
   doneText: { fontSize: 14, fontWeight: '800', marginLeft: 6 },
   hint: { fontSize: 11, marginLeft: 6 },

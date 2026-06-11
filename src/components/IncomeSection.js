@@ -1,6 +1,6 @@
 // Seção de Renda (Entradas) — até 4 fontes com nome editável. Colapsável.
 import React from 'react';
-import { Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Alert, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../theme/ThemeContext';
@@ -12,9 +12,21 @@ const MAX_INCOMES = 4;
 
 export default function IncomeSection({ monthIndex, month }) {
   const { colors } = useTheme();
-  const { addItem, removeItem, updateItem } = useData();
+  const { addItem, removeItem, updateItem, replicateIncomeToAllMonths } = useData();
   const totals = monthTotals(month);
   const incomes = month.incomes || [];
+  const hasValues = incomes.some((it) => it.value > 0);
+
+  const handleReplicate = () => {
+    Alert.alert(
+      'Replicar renda',
+      'Copiar estas fontes de renda para todos os outros meses? Rendas com o mesmo nome serão atualizadas; as exclusivas de cada mês serão mantidas.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Replicar em todos', onPress: () => replicateIncomeToAllMonths(monthIndex, incomes) },
+      ]
+    );
+  };
 
   return (
     <Collapsible
@@ -33,6 +45,10 @@ export default function IncomeSection({ monthIndex, month }) {
           onChangeName={(t) => updateItem(monthIndex, 'incomes', item.id, 'name', t)}
           onChangeValue={(v) => updateItem(monthIndex, 'incomes', item.id, 'value', v)}
           onRemove={() => removeItem(monthIndex, 'incomes', item.id)}
+          swipeable
+          onToggleConcluded={(receiving) => updateItem(monthIndex, 'incomes', item.id, 'concluded', receiving)}
+          concludeLabel="Recebido"
+          reopenLabel="Desfazer"
         />
       ))}
 
@@ -48,6 +64,16 @@ export default function IncomeSection({ monthIndex, month }) {
         <Text style={[styles.limit, { color: colors.textMuted }]}>
           Limite de {MAX_INCOMES} fontes de renda atingido.
         </Text>
+      )}
+
+      {hasValues && (
+        <TouchableOpacity
+          style={[styles.replicateBtn, { borderColor: colors.income }]}
+          onPress={handleReplicate}
+        >
+          <Ionicons name="calendar-outline" size={17} color={colors.income} />
+          <Text style={[styles.replicateText, { color: colors.income }]}>Replicar em todos os meses</Text>
+        </TouchableOpacity>
       )}
     </Collapsible>
   );
@@ -66,4 +92,6 @@ const styles = StyleSheet.create({
   },
   addText: { fontSize: 15, fontWeight: '700', marginLeft: 6 },
   limit: { fontSize: 12, textAlign: 'center', marginTop: 4 },
+  replicateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 10, marginTop: 8, gap: 6 },
+  replicateText: { fontSize: 14, fontWeight: '700' },
 });

@@ -1,7 +1,7 @@
 // Linha editável de um item: nome + valor + (forma de pagamento) + remover.
-// Para despesas, é "arrastável": arrasta pra DIREITA conclui, pra ESQUERDA reabre.
+// Para despesas/rendas, é "arrastável": arrasta pra DIREITA conclui, pra ESQUERDA reabre.
 import React, { useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
@@ -20,10 +20,12 @@ export default function ItemRow({
   showPayment = false,
   paymentMethods = [],
   onChangePayment,
-  // Conclusão por arraste (apenas despesas):
+  // Conclusão por arraste (despesas e rendas):
   swipeable = false,
   onToggleConcluded,
   onChangeDueDay,
+  concludeLabel = 'Concluir',
+  reopenLabel = 'Reabrir',
 }) {
   const { colors } = useTheme();
   const accent = accentColor || colors.primary;
@@ -66,7 +68,7 @@ export default function ItemRow({
         )}
       </View>
 
-      {(swipeable || (showPayment && paymentMethods.length > 0)) && (
+      {((swipeable && onChangeDueDay) || (showPayment && paymentMethods.length > 0)) && (
         <View style={styles.chipsRow}>
           {swipeable && onChangeDueDay && (
             <DueDayChip dueDay={item.dueDay} onChange={onChangeDueDay} color={accent} />
@@ -94,26 +96,39 @@ export default function ItemRow({
 
   if (!swipeable) return rowContent;
 
-  const leftAction = (
-    <View style={[styles.action, { backgroundColor: colors.positive, alignItems: 'flex-start' }]}>
-      <Ionicons name="checkmark-circle" size={22} color="#fff" />
-      <Text style={styles.actionText}>Concluir</Text>
-    </View>
-  );
-  const rightAction = (
-    <View style={[styles.action, { backgroundColor: colors.textMuted, alignItems: 'flex-end' }]}>
-      <Ionicons name="arrow-undo" size={20} color="#fff" />
-      <Text style={styles.actionText}>Reabrir</Text>
-    </View>
-  );
+  const renderLeft = (progress) => {
+    const opacity = progress.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0.8, 1], extrapolate: 'clamp' });
+    const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1], extrapolate: 'clamp' });
+    return (
+      <Animated.View style={[styles.action, { backgroundColor: colors.positive, alignItems: 'flex-start', opacity }]}>
+        <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+          <Ionicons name="checkmark-circle" size={22} color="#fff" />
+          <Text style={styles.actionText}>{concludeLabel}</Text>
+        </Animated.View>
+      </Animated.View>
+    );
+  };
+
+  const renderRight = (progress) => {
+    const opacity = progress.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0.8, 1], extrapolate: 'clamp' });
+    const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1], extrapolate: 'clamp' });
+    return (
+      <Animated.View style={[styles.action, { backgroundColor: colors.textMuted, alignItems: 'flex-end', opacity }]}>
+        <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+          <Ionicons name="arrow-undo" size={20} color="#fff" />
+          <Text style={styles.actionText}>{reopenLabel}</Text>
+        </Animated.View>
+      </Animated.View>
+    );
+  };
 
   return (
     <Swipeable
       ref={swipeRef}
-      renderLeftActions={() => leftAction}
-      renderRightActions={() => rightAction}
-      leftThreshold={48}
-      rightThreshold={48}
+      renderLeftActions={renderLeft}
+      renderRightActions={renderRight}
+      leftThreshold={80}
+      rightThreshold={80}
       onSwipeableOpen={(direction) => {
         const concluding = direction === 'left';
         if (concluding) hapticSuccess();

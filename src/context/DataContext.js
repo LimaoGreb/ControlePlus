@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { loadData, saveData, replaceData } from '../services/storage';
 
-const DataContext = createContext(null);
+export const DataContext = createContext(null);
 
 let idCounter = 0;
 function uid(prefix) {
@@ -86,16 +86,17 @@ export function DataProvider({ children }) {
     if (monthIndex <= 0) return false;
     const prevMonth = ensureMonth(data.months[monthIndex - 1]);
     if (!prevMonth.fixed.length) return false;
-    updateMonth(monthIndex, (m) => ({
-      ...m,
-      fixed: prevMonth.fixed.map((it) => ({
-        id: uid('fixed'),
-        name: it.name,
-        value: it.value,
-        payment: it.payment || null,
-      })),
-    }));
-    return true;
+    let added = 0;
+    updateMonth(monthIndex, (m) => {
+      const existingNames = new Set(m.fixed.map((it) => it.name.toLowerCase().trim()));
+      const toAdd = prevMonth.fixed
+        .filter((it) => !existingNames.has(it.name.toLowerCase().trim()))
+        .map((it) => ({ id: uid('fixed'), name: it.name, value: it.value, payment: it.payment || null }));
+      added = toAdd.length;
+      if (!toAdd.length) return m;
+      return { ...m, fixed: [...m.fixed, ...toAdd] };
+    });
+    return added;
   };
 
   // Adiciona uma compra parcelada: cria N Gastos Fixos nos meses SEGUINTES
@@ -146,6 +147,45 @@ export function DataProvider({ children }) {
     }));
   };
 
+  // Replica as fontes de renda passadas para os outros 11 meses.
+  // Se o mês destino já tem uma renda com o mesmo nome → atualiza o valor.
+  // Se não tem → adiciona. Não apaga rendas exclusivas do mês destino.
+  const replicateIncomeToAllMonths = (monthIndex, sourceIncomes) => {
+    const toReplicate = (sourceIncomes || []).filter((it) => it.value > 0);
+    if (!toReplicate.length) return 0;
+    setData((prev) => {
+      const months = { ...prev.months };
+      for (let mi = 0; mi < 12; mi++) {
+        if (mi === monthIndex) continue;
+        const m = ensureMonth(months[mi]);
+        let updated = [...m.incomes];
+        toReplicate.forEach((src) => {
+          const key = src.name.toLowerCase().trim();
+          const idx = updated.findIndex((it) => it.name.toLowerCase().trim() === key);
+          if (idx >= 0) {
+            updated[idx] = { ...updated[idx], value: src.value };
+          } else {
+            updated.push({ id: uid('incomes'), name: src.name, value: src.value, payment: null });
+          }
+        });
+        months[mi] = { ...m, incomes: updated };
+      }
+      return { ...prev, months };
+    });
+    return toReplicate.length;
+  };
+
+  // Apaga todos os lançamentos de um mês (renda, fixos e variáveis).
+  const clearMonth = (monthIndex) => {
+    updateMonth(monthIndex, () => ({
+      incomes: [],
+      fixed: [],
+      variable: [],
+      contributions: [],
+      completed: false,
+    }));
+  };
+
   const importData = async (newData) => {
     if (!newData || !newData.months) {
       throw new Error('Arquivo inválido: estrutura de dados não reconhecida.');
@@ -165,6 +205,8 @@ export function DataProvider({ children }) {
     addInstallments,
     setMonthCompleted,
     concludeAllItems,
+    replicateIncomeToAllMonths,
+    clearMonth,
     importData,
   };
 

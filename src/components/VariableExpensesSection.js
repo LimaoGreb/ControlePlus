@@ -4,7 +4,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { monthTotals } from '../utils/calculations';
 import ExpensesSection from './ExpensesSection';
 
-export default function VariableExpensesSection({ monthIndex, month }) {
+export default function VariableExpensesSection({ monthIndex, month, forceOpen = false }) {
   const { colors } = useTheme();
   const totals = monthTotals(month);
 
@@ -18,6 +18,7 @@ export default function VariableExpensesSection({ monthIndex, month }) {
       color={colors.variable}
       total={totals.variableTotal}
       addLabel="Adicionar despesa variável"
+      forceOpen={forceOpen}
     />
   );
 }

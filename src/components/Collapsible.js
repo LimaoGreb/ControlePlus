@@ -1,5 +1,5 @@
 // Seção colapsável (accordion) com animação suave (LayoutAnimation).
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
@@ -12,10 +12,18 @@ export default function Collapsible({
   color,
   count,
   defaultOpen = false,
+  forceOpen = false,
   children,
 }) {
   const { colors } = useTheme();
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(defaultOpen || forceOpen);
+
+  useEffect(() => {
+    if (forceOpen && !open) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setOpen(true);
+    }
+  }, [forceOpen]);
 
   const toggle = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);

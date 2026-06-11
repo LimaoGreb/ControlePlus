@@ -1,6 +1,6 @@
 // Tela de boas-vindas — aparece APENAS no primeiro acesso (quando não há nome).
 // Visual colorido com gradiente da paleta, logo em destaque e textos grandes.
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,15 +24,84 @@ export default function OnboardingScreen() {
   const { setUserName } = useSettings();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [finalName, setFinalName] = useState('');
   const canStart = name.trim().length > 0;
+
+  // Animated values para a tela de boas-vindas
+  const screenOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const textTranslateY = useRef(new Animated.Value(24)).current;
+  const subtitleOpacity = useRef(new Animated.Value(0)).current;
 
   const start = () => {
     if (!canStart) return;
-    setUserName(name.trim()); // ao salvar o nome, o app entra automaticamente
+    const trimmed = name.trim();
+    setFinalName(trimmed);
+    setShowWelcome(true);
   };
 
-  // Gradiente colorido com as cores mais vivas da paleta.
+  useEffect(() => {
+    if (!showWelcome) return;
+
+    screenOpacity.setValue(0);
+    logoScale.setValue(0);
+    textOpacity.setValue(0);
+    textTranslateY.setValue(24);
+    subtitleOpacity.setValue(0);
+
+    Animated.sequence([
+      Animated.timing(screenOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, friction: 4, tension: 70, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.timing(textOpacity, { toValue: 1, duration: 380, useNativeDriver: true }),
+        Animated.timing(textTranslateY, { toValue: 0, duration: 380, useNativeDriver: true }),
+      ]),
+      Animated.timing(subtitleOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.delay(1100),
+      Animated.timing(screenOpacity, { toValue: 0, duration: 450, useNativeDriver: true }),
+    ]).start(() => {
+      setUserName(finalName);
+    });
+  }, [showWelcome]);
+
   const gradient = [colors.primary, colors.accent, colors.variable];
+
+  if (showWelcome) {
+    return (
+      <Animated.View style={{ flex: 1, opacity: screenOpacity }}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+        <LinearGradient
+          colors={gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.welcomeContainer}
+        >
+          <Animated.View style={[styles.logoCircle, { transform: [{ scale: logoScale }] }]}>
+            <Image
+              source={require('../../assets/android-icon-foreground.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </Animated.View>
+
+          <Animated.Text
+            style={[
+              styles.welcomeGreeting,
+              { opacity: textOpacity, transform: [{ translateY: textTranslateY }] },
+            ]}
+          >
+            Olá, {finalName}! 🎉
+          </Animated.Text>
+
+          <Animated.Text style={[styles.welcomeSubtitle, { opacity: subtitleOpacity }]}>
+            Agora o controle é seu 💪
+          </Animated.Text>
+        </LinearGradient>
+      </Animated.View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -151,4 +221,27 @@ const styles = StyleSheet.create({
   button: { height: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   buttonText: { fontSize: 18, fontWeight: '800' },
   note: { fontSize: 12, textAlign: 'center', marginTop: 16 },
+  welcomeContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  welcomeGreeting: {
+    fontSize: 34,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginTop: 28,
+    textShadowColor: 'rgba(0,0,0,0.15)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  welcomeSubtitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.88)',
+    marginTop: 12,
+    textAlign: 'center',
+  },
 });
