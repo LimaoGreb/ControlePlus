@@ -147,6 +147,16 @@ async function dispatchIntent(chatId, session, classified) {
 async function handleCollecting(chatId, text, session) {
   const lower = text.toLowerCase().trim();
 
+  // Escape: se parece consulta ou comando (sem número), abandona o fluxo atual
+  const QUERY_ESCAPE = /\b(quanto|gastos?|resumo|investimento|projeto|exporta|exportar|parcela|vencimento|maior|menor)\b/i;
+  if (QUERY_ESCAPE.test(lower) && !/\d/.test(text)) {
+    session.step = 'idle';
+    session.data = {};
+    const classified = await classifyIntent(text);
+    await dispatchIntent(chatId, session, classified);
+    return;
+  }
+
   if (session.askingFor === 'value') {
     const val = await extractField('value', text);
     if (!val) {

@@ -75,7 +75,8 @@ export async function parseExpenseMessage(text) {
   const hasKeyword = expenseKeywords.some(k => lower.includes(k));
   const hasNumber = /\d+/.test(text);
 
-  if (!hasKeyword && !hasNumber) return { isExpense: false };
+  // Exige keyword E número — só keyword sem valor é consulta ("quanto gastei?")
+  if (!hasKeyword || !hasNumber) return { isExpense: false };
 
   return {
     isExpense: true,
