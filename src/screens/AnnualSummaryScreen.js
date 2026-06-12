@@ -182,11 +182,20 @@ function categorize(months) {
   };
 }
 
+// Escala de saúde: A (verde) → F (vermelho), cores claramente distintas entre si
+const HEALTH_SCALE = [
+  {grade:'A', color:'#2ECC71', label:'Excelente'},
+  {grade:'B', color:'#A8D060', label:'Ótimo'},
+  {grade:'C', color:'#F5C518', label:'Regular'},
+  {grade:'D', color:'#F39C12', label:'Atenção'},
+  {grade:'F', color:'#E74C3C', label:'Crítico'},
+];
+
 function getHealth(rate) {
   if (rate>=30) return {grade:'A',label:'Excelente',color:'#2ECC71',tip:'Você guarda mais de 30% da renda. Nível máster! 🏆'};
-  if (rate>=20) return {grade:'B',label:'Ótimo',    color:'#27AE60',tip:'Mais de 20% poupado. Quase no nível A!'};
-  if (rate>=10) return {grade:'C',label:'Regular',  color:'#F39C12',tip:'Poupando, mas dá pra melhorar. Corte um gasto variável.'};
-  if (rate>= 0) return {grade:'D',label:'Atenção',  color:'#E67E22',tip:'Sobra muito pouco. Reveja as despesas variáveis.'};
+  if (rate>=20) return {grade:'B',label:'Ótimo',    color:'#A8D060',tip:'Mais de 20% poupado. Continue assim!'};
+  if (rate>=10) return {grade:'C',label:'Regular',  color:'#F5C518',tip:'Poupando, mas dá pra melhorar. Corte um gasto variável.'};
+  if (rate>= 0) return {grade:'D',label:'Atenção',  color:'#F39C12',tip:'Sobra muito pouco. Reveja as despesas variáveis.'};
   return             {grade:'F',label:'Crítico',   color:'#E74C3C',tip:'Gastos maiores que a renda. Ação urgente!'};
 }
 
@@ -777,6 +786,17 @@ export default function AnnualSummaryScreen() {
               </View>
               <Text style={[s.heroMonthPct,{textAlign:'center',marginTop:4}]}>{monthHealth.tip}</Text>
             </>}
+            {/* Escala de cores A→F */}
+            <View style={s.gradeLegend}>
+              {HEALTH_SCALE.map(h=>(
+                <View key={h.grade} style={[s.gradePill,
+                  {backgroundColor:monthHealth.grade===h.grade?h.color+'EE':'rgba(255,255,255,0.12)',
+                   borderColor:monthHealth.grade===h.grade?'rgba(255,255,255,0.6)':'transparent',
+                   borderWidth:monthHealth.grade===h.grade?1.5:0}]}>
+                  <Text style={[s.gradePillTxt,{color:monthHealth.grade===h.grade?'#fff':'rgba(255,255,255,0.55)'}]}>{h.grade}</Text>
+                </View>
+              ))}
+            </View>
             <CarouselDots page={heroPage}/>
           </LinearGradient>
 
@@ -798,6 +818,17 @@ export default function AnnualSummaryScreen() {
                   {posMonths>0&&<><View style={s.heroDiv}/><View><Text style={s.heroML}>Meses +</Text><Text style={s.heroMV}>{posMonths}/12</Text></View></>}
                 </View>
               </View>
+            </View>
+            {/* Escala de cores A→F */}
+            <View style={s.gradeLegend}>
+              {HEALTH_SCALE.map(h=>(
+                <View key={h.grade} style={[s.gradePill,
+                  {backgroundColor:health.grade===h.grade?h.color+'EE':'rgba(255,255,255,0.12)',
+                   borderColor:health.grade===h.grade?'rgba(255,255,255,0.6)':'transparent',
+                   borderWidth:health.grade===h.grade?1.5:0}]}>
+                  <Text style={[s.gradePillTxt,{color:health.grade===h.grade?'#fff':'rgba(255,255,255,0.55)'}]}>{h.grade}</Text>
+                </View>
+              ))}
             </View>
             <CarouselDots page={heroPage}/>
           </LinearGradient>
@@ -1002,6 +1033,9 @@ const s = StyleSheet.create({
   peekOnCard:   {alignItems:'center',justifyContent:'center',zIndex:9999,borderRadius:16},
   donutDots:    {flexDirection:'row',justifyContent:'center',alignItems:'center',gap:6,marginTop:10},
   dotIndicator: {width:8,height:8,borderRadius:4},
+  gradeLegend:  {flexDirection:'row',justifyContent:'center',alignItems:'center',gap:6,marginTop:12,marginBottom:4},
+  gradePill:    {width:34,height:28,borderRadius:8,alignItems:'center',justifyContent:'center'},
+  gradePillTxt: {fontSize:13,fontWeight:'900'},
   secTitle:     {fontSize:17,fontWeight:'900',marginBottom:4,marginTop:4},
   secSub:       {fontSize:12,marginBottom:10},
   hlRow:        {flexDirection:'row',gap:10,marginBottom:10},

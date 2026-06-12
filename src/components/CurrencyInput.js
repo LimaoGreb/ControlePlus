@@ -16,7 +16,7 @@ function fmtDigits(digits) {
   return `${rStr},${String(c).padStart(2, '0')}`;
 }
 
-export default function CurrencyInput({ value, onChangeValue, style }) {
+export default function CurrencyInput({ value, onChangeValue, editable = true, style }) {
   const { colors } = useTheme();
   const [rawDigits, setRawDigits] = useState('');
   const [focused, setFocused] = useState(false);
@@ -58,12 +58,17 @@ export default function CurrencyInput({ value, onChangeValue, style }) {
       onChangeText={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
+      editable={editable}
       keyboardType="number-pad"
       placeholder="0,00"
       placeholderTextColor={colors.textMuted}
       style={[
         styles.input,
-        { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border },
+        {
+          backgroundColor: editable ? colors.inputBg : 'transparent',
+          color: editable ? colors.text : colors.textMuted,
+          borderColor: editable ? colors.border : 'transparent',
+        },
         style,
       ]}
     />

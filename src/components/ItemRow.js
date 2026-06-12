@@ -56,17 +56,18 @@ export default function ItemRow({
           onChangeText={onChangeName}
           placeholder={namePlaceholder}
           placeholderTextColor={colors.textMuted}
+          editable={!concluded}
           style={[
             styles.nameInput,
             {
-              backgroundColor: colors.inputBg,
+              backgroundColor: concluded ? 'transparent' : colors.inputBg,
               color: concluded ? colors.textMuted : colors.text,
-              borderColor: colors.border,
+              borderColor: concluded ? 'transparent' : colors.border,
               textDecorationLine: concluded ? 'line-through' : 'none',
             },
           ]}
         />
-        <CurrencyInput value={item.value} onChangeValue={onChangeValue} style={styles.value} />
+        <CurrencyInput value={item.value} onChangeValue={onChangeValue} editable={!concluded} style={styles.value} />
         {onRemove && (
           <TouchableOpacity onPress={onRemove} style={styles.trash} hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}>
             <Ionicons name="trash-outline" size={22} color={colors.negative} />
