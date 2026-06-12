@@ -78,24 +78,36 @@ export default function ItemRow({
           {swipeable && onChangeDueDay && (
             <DueDayChip dueDay={item.dueDay} onChange={onChangeDueDay} color={accent} />
           )}
-          {showPayment && paymentMethods.map((pm) => {
-            const selected = item.payment === pm.name;
-            const bank = pm.bank ? getBankById(pm.bank) : null;
-            const chipColor = selected ? (bank?.color || accent) : 'transparent';
-            const borderColor = selected ? (bank?.color || accent) : (bank?.color ? bank.color + '55' : colors.border);
-            const textColor = selected ? '#fff' : (bank?.color || colors.textSecondary);
-            return (
-              <TouchableOpacity
-                key={pm.id}
-                onPress={() => onChangePayment(selected ? null : pm.name)}
-                style={[styles.chip, { backgroundColor: chipColor, borderColor }]}
-              >
-                {bank && !selected && <BankBadge bank={bank} size={22} />}
-                {selected && <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 3 }} />}
-                <Text style={[styles.chipText, { color: textColor }]}>{pm.name}</Text>
-              </TouchableOpacity>
-            );
-          })}
+          {showPayment && concluded
+            ? (() => {
+                const sel = paymentMethods.find((pm) => pm.name === item.payment);
+                if (!sel) return null;
+                const bank = sel.bank ? getBankById(sel.bank) : null;
+                return (
+                  <View style={[styles.chip, { backgroundColor: bank?.color || accent, borderColor: bank?.color || accent }]}>
+                    {bank && <BankBadge bank={bank} size={18} />}
+                    <Text style={[styles.chipText, { color: '#fff', marginLeft: bank ? 5 : 0 }]}>{sel.name}</Text>
+                  </View>
+                );
+              })()
+            : showPayment && paymentMethods.map((pm) => {
+                const selected = item.payment === pm.name;
+                const bank = pm.bank ? getBankById(pm.bank) : null;
+                const chipColor = selected ? (bank?.color || accent) : 'transparent';
+                const borderColor = selected ? (bank?.color || accent) : (bank?.color ? bank.color + '55' : colors.border);
+                const textColor = selected ? '#fff' : (bank?.color || colors.textSecondary);
+                return (
+                  <TouchableOpacity
+                    key={pm.id}
+                    onPress={() => onChangePayment(selected ? null : pm.name)}
+                    style={[styles.chip, { backgroundColor: chipColor, borderColor }]}
+                  >
+                    {bank && !selected && <BankBadge bank={bank} size={22} />}
+                    {selected && <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 3 }} />}
+                    <Text style={[styles.chipText, { color: textColor }]}>{pm.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
         </View>
       )}
     </View>
