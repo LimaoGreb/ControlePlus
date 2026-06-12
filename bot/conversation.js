@@ -3,7 +3,7 @@ import { parseExpenseMessage, extractField } from './claudeClient.js';
 import { classifyIntent } from './geminiClient.js';
 import { answerQuery } from './queryHandler.js';
 import { generateCSV } from './exportHandler.js';
-import { addPendingExpense, readUserSnapshot, writeCommand, pollCommandResult } from './firebaseWriter.js';
+import { addPendingExpense, readUserSnapshot, writeCommand, pollCommandResult, writeSessionContext, readSessionContext } from './firebaseWriter.js';
 import { sendMessage, sendTyping, sendDocument } from './telegramApi.js';
 
 const MONTH_NAMES = [
@@ -12,12 +12,14 @@ const MONTH_NAMES = [
 ];
 const MONTH_PT = MONTH_NAMES.map(m => m.toLowerCase());
 
-// { [chatId]: { step, data, askingFor, firstName, snapshot, pendingCmd, lastQuery } }
+// { [chatId]: { step, data, askingFor, firstName, snapshot, pendingCmd, lastQuery, lastActivity, _contextLoaded } }
 const sessions = new Map();
+const SESSION_STEP_TTL = 5 * 60 * 1000; // 5 min — expira estados ativos (confirming/collecting)
+const ACTIVE_STEPS = new Set(['confirming', 'confirming_cmd', 'collecting', 'collecting_cmd']);
 
 function getSession(chatId, firstName) {
   if (!sessions.has(chatId)) {
-    sessions.set(chatId, { step: 'idle', data: {}, firstName: firstName || 'você' });
+    sessions.set(chatId, { step: 'idle', data: {}, firstName: firstName || 'você', lastActivity: Date.now() });
   }
   return sessions.get(chatId);
 }
@@ -83,6 +85,22 @@ function detectFollowUp(text, lastQuery) {
 
 export async function handleMessage(chatId, text, firstName) {
   const session = getSession(chatId, firstName);
+
+  // Expira estados ativos após 5 min de silêncio
+  if (ACTIVE_STEPS.has(session.step) && Date.now() - (session.lastActivity || 0) > SESSION_STEP_TTL) {
+    session.step = 'idle';
+    session.data = {};
+    session.pendingCmd = null;
+  }
+  session.lastActivity = Date.now();
+
+  // Recupera contexto do Firebase ao criar sessão nova (bot restart)
+  if (!session._contextLoaded) {
+    session._contextLoaded = true;
+    const ctx = await readSessionContext(chatId);
+    if (ctx?.lastQuery) session.lastQuery = ctx.lastQuery;
+  }
+
   await sendTyping(chatId);
 
   if (session.step === 'confirming') { await handleConfirmingExpense(chatId, text, session); return; }
@@ -127,8 +145,10 @@ async function dispatchIntent(chatId, session, classified) {
   if (intent === 'query') {
     const snapshot = await readUserSnapshot(chatId);
     await sendMessage(chatId, answerQuery(snapshot, params));
-    session.lastQuery = { ...params }; // salva contexto para follow-ups
+    session.lastQuery = { ...params };
     session.step = 'done';
+    // Persiste contexto no Firebase para sobreviver a restarts do bot
+    writeSessionContext(chatId, { lastQuery: session.lastQuery }).catch(() => {});
     return;
   }
 

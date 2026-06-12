@@ -2,6 +2,35 @@
 
 ---
 
+## Jarvis — Sessão 2026-06-12 (pós v2.1.0)
+
+### Classificador local — 80/80 seeds (100%)
+**`bot/geminiClient.js`**
+- Fix `financ(iar|iamento)` — "financeiramente" não dispara mais `add_installments`.
+- Fix `metas?\b` — "metas" agora bate em projetos.
+- Fix `\btop\b` e `pior(es)?` — "top gastos" e "pior gasto" batem em biggest.
+- Fix compare: `diferen[çc]a` (sem exigir "entre").
+- Comparativo movido ANTES de biggest (evita roubo de intent).
+- `cardMatch` aceita sem `hasQuery` se mês presente ou msg < 28 chars.
+- `hasQuery` expandido: `estou`, `financeiramente`, `tô bem`, `o que`, `paguei`, `saiu`, `histórico`.
+- Fallback: msg curta com mês (≤30 chars) → summary ou by_name.
+- `parseMonthRange`: adicionado "últimos meses" (sem número → 3 meses).
+- `hist[oó]rico` em texto → força by_name_range.
+- `extractNameFilter` noise: `bem`, `mal`, `bom`, `boa`, `ruim`, `meses`.
+- Projects: extrai filtro de nome (`"projeto em casa"` → filter="casa").
+- conclude_expense: remove "a minha despesa" do nome extraído.
+
+**`bot/queryHandler.js`**
+- projects subtype: filtro por nome aplicado (`filter` param).
+
+**`bot/conversation.js`**
+- Fix crítico: `yes/no` trocados de `lower.includes(w)` para `\bword\b` regex — "junho" não dispara mais `no = true` (tinha 'n' dentro da palavra).
+
+### Teste automatizado
+**`bot/test-classifier.js`** — script que gera variações via Gemini e mede % de acerto do classificador local. `node test-classifier.js` dentro de `bot/`.
+
+---
+
 ## v2.1.0 — 2026-06-12
 
 ### Fixes — Formas de Pagamento

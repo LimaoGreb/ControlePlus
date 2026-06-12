@@ -74,6 +74,24 @@ export async function writeCommand(chatId, type, params) {
   return id;
 }
 
+export async function writeSessionContext(chatId, context) {
+  try {
+    await getDb().ref(`jarvis/${chatId}/session`).set({ ...context, ts: new Date().toISOString() });
+  } catch (e) {
+    console.warn('[Firebase] writeSessionContext error:', e.message);
+  }
+}
+
+export async function readSessionContext(chatId) {
+  try {
+    const snap = await getDb().ref(`jarvis/${chatId}/session`).once('value');
+    return snap.exists() ? snap.val() : null;
+  } catch (e) {
+    console.warn('[Firebase] readSessionContext error:', e.message);
+    return null;
+  }
+}
+
 export async function pollCommandResult(chatId, cmdId, timeoutMs = 25000) {
   return new Promise((resolve) => {
     const dbRef = getDb().ref(`jarvis/${chatId}/commands/${cmdId}`);

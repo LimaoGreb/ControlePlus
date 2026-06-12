@@ -11,8 +11,13 @@ function parseNum(s) {
 // Detecta range de meses → { from, to } (índices 0–11) ou null
 function parseMonthRange(t) {
   const now = new Date().getMonth();
-  if (/desde\s*(o\s*)?in[íi]cio\s*(do\s*ano)?|desde\s*janeiro|do\s*in[íi]cio\s*do\s*ano/i.test(t))
+  if (/desde\s*(o\s*)?in[íi]cio\s*(do\s*ano)?|desde\s*janeiro|do\s*in[íi]cio\s*do\s*ano|a\s*partir\s*de\s*janeiro/i.test(t))
     return { from: 0, to: now };
+  const apartirMatch = t.match(/a\s*partir\s*de\s+(\w+)/i);
+  if (apartirMatch) {
+    const mi = MONTH_PT.findIndex(m => apartirMatch[1].toLowerCase().startsWith(m.substring(0, 3)));
+    if (mi >= 0) return { from: mi, to: now };
+  }
   if (/ano\s*(completo|inteiro|todo)|o\s*ano\s*inteiro/i.test(t))
     return { from: 0, to: 11 };
   if (/esse\s*ano\b|este\s*ano\b|nesse\s*ano\b|neste\s*ano\b/i.test(t))
@@ -51,6 +56,10 @@ function extractNameFilter(t) {
     'desse','deste','total','totais','geral','resumo','saldo','balanço','balanco',
     'tenho','tem','teve','tive','tinha','teria','fui','fiz',
     'bem','mal','bom','boa','ruim','caro','barato','meses',
+    'queria','quer','quero','ver','veja','mostra','fala','diz','anda','passa',
+    'traz','diga','extrato','semanais','semanal','pfv','pf','me','mim','minhas',
+    'show','summary','financeiro','corrente','vigente','gostaria','olha','apura',
+    'atuais','atual','detail','detalhes','detalhe','informa','informar',
     ...MONTH_PT,
   ];
   const re = new RegExp(`\\b(${noise.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
@@ -75,7 +84,7 @@ function localClassify(t) {
     return { intent: 'update_due_date', params: {} };
 
   // ── Investimentos ─────────────────────────────────────────────────────────
-  if (/investimento|carteira|rendimento|aporte|aplica[çc][aã]o|quanto\s*(eu\s*)?investi|investid[ao]\b|tenho\s*investid|minha\s*carteira|a[çc][oõ]es?\b|fii\b|tesouro\b|cdb\b|lci\b|lca\b|cripto|bitcoin|btc\b/.test(t))
+  if (/investimento|carteira|rendimento|aporte|aplica[çc][aã]o|quanto\s*(eu\s*)?investi|investid[ao]\b|tenho\s*investid|minha\s*carteira|\ba[çc][oõ]es?\b|fii\b|tesouro\b|cdb\b|lci\b|lca\b|cripto|bitcoin|btc\b|portf[oó]lio|holdings?\b|\binvest\b/.test(t))
     return { intent: 'query', params: { subtype: 'investments', month } };
 
   // ── Projetos ──────────────────────────────────────────────────────────────
@@ -101,7 +110,7 @@ function localClassify(t) {
 
   // ── Análise / feedback multi-mês ─────────────────────────────────────────
   const hasSingleMonth = /esse\s*m[eê]s|este\s*m[eê]s|m[eê]s\s*(atual|corrente|de\s*hoje)/i.test(t);
-  const hasRange = /desde|primeiros?|[uú]ltimos?\s+(\d|tr[eê]s|dois?|quatro|meses)|ano\s*(completo|inteiro|todo)|o\s*ano|esse\s*ano|este\s*ano|hist[oó]rico/i.test(t);
+  const hasRange = /desde|a\s*partir\s*de|primeiros?|[uú]ltimos?\s+(\d|tr[eê]s|dois?|quatro|meses)|ano\s*(completo|inteiro|todo)|o\s*ano|esse\s*ano|este\s*ano|desse\s*ano|hist[oó]rico/i.test(t);
   if (!hasSingleMonth && /\bfeedback\b|an[aá]lise|analisa(r|me)?|como\s+(foi(ram)?|est[aá])\s+(o\s*)?(ano|meses|per[ií]odo)|resumo\s+(do\s+)?(ano|per[ií]odo|trim|primeiros?|[uú]ltimos?)|per[ií]odo|primeiros?\s+\d+\s*mes|[uú]ltimos?\s+\d+\s*mes|primeiros?\s+(tr[eê]s|dois?|quatro)|[uú]ltimos?\s+(tr[eê]s|dois?|quatro)/i.test(t)) {
     const range = hasRange ? parseMonthRange(t) : null;
     if (range || /ano|primeiros?|[uú]ltimos?|desde|per[ií]odo/i.test(t)) {
@@ -112,13 +121,14 @@ function localClassify(t) {
   }
 
   // ── Por semana ────────────────────────────────────────────────────────────
-  if (/\bsemana\b/.test(t))
+  if (/\bsemana\b|semanais?\b/.test(t))
     return { intent: 'query', params: { subtype: 'by_week', month: null } };
 
   // ── Comparativo (ANTES de biggest — "gastei mais no X vs mês passado" é compare) ─
   const CARD_RE = /nubank|nu\b|c6\s*bank|c6\b|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will\s*bank|will\b|pix|d[eé]bito|cr[eé]dito/;
-  if (/comparativo|comparar|compar[ae]\b|\bvs\.?\b|\bversus\b|diferen[çc]a|compara[çc][aã]o|evolu[ií]\b|evoluiu/i.test(t) ||
-      (/mais\b/.test(t) && /anterior|passado/.test(t) && CARD_RE.test(t))) {
+  if (/comparativo|comparar|compar[aeo]\w*|\bvs\.?\b|\bversus\b|diferen[çc]a|\bdif\b|compara[çc][aã]o|evolu[çcií]\w*|evoluiu|\bcontra\b|m[eê]s\s*a\s*m[eê]s/i.test(t) ||
+      (/mais\b/.test(t) && /anterior|passado/.test(t) && CARD_RE.test(t)) ||
+      (/gastei\b/.test(t) && /m[eê]s\s*(passado|anterior)/.test(t) && /esse\s*m[eê]s|m[eê]s\s*atual|agora/.test(t))) {
     const now = new Date().getMonth();
     const months = [];
     MONTH_PT.forEach((m, i) => { if (t.includes(m)) months.push(i); });
@@ -133,10 +143,10 @@ function localClassify(t) {
   }
 
   // ── Maiores gastos ────────────────────────────────────────────────────────
-  if (/maior(es)?|\btop\b|pior(es)?\s*gasto|mais\s*caro|mais\s*cara|o\s*que\s*(mais\s*)?(gast|custou)|gastei?\s*mais\b|mais\s*pesado|saiu\s*mais\b|custou\s*mais/.test(t))
+  if (/maior(es)?|\btop\b|pior(es)?\s*gasto|mais\s*(caro|cara|altos?|elevados?|significativos?|pesados?|expressivos?)|o\s*que\s+mais\s*(gast|custou|tirou|levou|consumiu)|gastei?\s*mais\b|mais\s*pesado|saiu\s*mais\b|custou\s*mais|m[aá]ximo\b|principais?\s*(gasto|despesa)|apertou|me\s*apertou/.test(t))
     return { intent: 'query', params: { subtype: 'biggest', month } };
 
-  const hasQuery = /quanto|qto\b|gast|resumo|total|como\s*(t[aá]|foi|est[aá]|estou)|estou\s*(bem|mal)\b|t[aá]\s*(o\s*m[eê]s|bem\b|bom\b)|t[oô]\s*bem\b|financeiramente\b|saldo|sobr[ao]u|sobr\b|sobrando|balanç|balanco|situac|dinheiro|fechamento|mensal|o\s+que\b|oq\b|paguei\b|saiu\b|foi\s*(pro|pra|para)\b|hist[oó]rico|desde\b|nos\s+[uú]ltimos/.test(t);
+  const hasQuery = /quanto|qto\b|gast|resumo|total|como\s*(t[aá]|foi|est[aá]|estou|anda\b)|estou\s*(bem|mal)\b|t[aá]\s*(o\s*m[eê]s|bem\b|bom\b)|t[oô]\s*bem\b|financeiramente\b|financ\w*|queria\s*(ver|saber)|me\s*(fala|mostra|diz|passa|traz)\b|saldo|sobr[ao]u|sobr\b|sobrando|balanç|balanco|situac|dinheiro|fechamento|mensal|o\s+que\b|oq\b|paguei\b|saiu\b|foi\s*(pro|pra|para)\b|hist[oó]rico|desde\b|nos\s+[uú]ltimos|extrato\b|despesas?\b/.test(t);
 
   // ── Por cartão / forma de pagamento ──────────────────────────────────────
   const cardMatch = t.match(CARD_RE);
@@ -166,7 +176,7 @@ function localClassify(t) {
   // ── Fallback: mensagem curta com mês → tenta extrair nome ou retorna summary ─
   if (month && t.length <= 30) {
     const nameFilter = extractNameFilter(t);
-    const genericTerms = ['tudo','mes','geral','resumo','total','saldo','gastos','despesas','quanto','qto','dinheiro'];
+    const genericTerms = ['tudo','mes','geral','resumo','total','saldo','gastos','despesas','quanto','qto','dinheiro','extrato','resumao','fala','mostra','diz','ver','anda'];
     const isGeneric = !nameFilter || nameFilter.length < 2
       || genericTerms.some(g => nameFilter === g || nameFilter.startsWith(g + ' ') || nameFilter.endsWith(' ' + g));
     if (!isGeneric)
