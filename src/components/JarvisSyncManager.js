@@ -94,6 +94,27 @@ export default function JarvisSyncManager() {
 }
 
 async function executeCommand(cmd, data, addItem, updateItem, addInstallments) {
+  if (cmd.type === 'REOPEN_EXPENSE') {
+    const { expense_name, monthIndex, all } = cmd.params;
+    const months = data?.months || {};
+    let reopened = 0;
+    const startMi = monthIndex != null ? monthIndex : 0;
+    const endMi = monthIndex != null ? monthIndex : 11;
+    for (let mi = startMi; mi <= endMi; mi++) {
+      for (const section of ['fixed', 'variable']) {
+        for (const item of (months[mi]?.[section] || [])) {
+          const nameMatch = all || (item.name || '').toLowerCase().includes((expense_name || '').toLowerCase());
+          if (nameMatch && item.concluded) {
+            updateItem(mi, section, item.id, 'concluded', false);
+            reopened++;
+          }
+        }
+      }
+    }
+    if (reopened === 0) throw new Error(`Nenhuma despesa concluída encontrada com "${expense_name}"`);
+    return { reopened, expense_name };
+  }
+
   if (cmd.type === 'ADD_INCOME') {
     const { name, value, monthIndex } = cmd.params;
     addItem(monthIndex, 'incomes', name, value, null);

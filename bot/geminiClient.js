@@ -117,6 +117,16 @@ function localClassify(t) {
     return { intent: 'query', params: { subtype: 'projects', month, filter: pFilter } };
   }
 
+  // ── Reabrir / desconcluir despesa ─────────────────────────────────────────
+  if (/reabr[ae]|reabertur|desconclui|desmarqu?e?|reabrir|volta\s*(ao\s*)?aberto|n[aã]o\s*(est[aá]|foi)\s*pag|desfa[çz]/i.test(t)) {
+    const nameRaw = t
+      .replace(/\b(reabr[ae]|reabertur\w*|desconclui[rr]?|desmarqu?e?|reabrir|volta\s*(?:ao\s*)?aberto|desfa[çz]\w*)\b/gi, '')
+      .replace(/\b(a\s+minha\s+despesa\b|minha\s+despesa\b|a\s+despesa\s+d[ao]?|todas?\s+(?:as\s+)?minhas?\s+despesas?|todas?\s+(?:as\s+)?despesas?|todas?)\b/gi, '')
+      .replace(/[?,!]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const isAll = /\b(todas?|tudo|all)\b/.test(t);
+    return { intent: 'reopen_expense', params: { expense_name: nameRaw.length >= 2 ? nameRaw : null, all: isAll } };
+  }
+
   // ── Concluir / marcar como pago ───────────────────────────────────────────
   if (/conclu[ií]|conclua|concluir|\bmarqu?e?\b.*\b(pago|paga)\b|quitar?|quit[ae]|paguei\s*(o|a)\b|j[aá]\s*paguei|liquidar|liquidei|j[aá]\s*(t[aá]|foi)\s*pago/.test(t)) {
     if (!/quanto|total|saldo|resumo/.test(t)) {

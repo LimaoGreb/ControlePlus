@@ -223,6 +223,73 @@ async function dispatchIntent(chatId, session, classified) {
     return;
   }
 
+  if (intent === 'reopen_expense') {
+    const { expense_name, all } = params || {};
+    const snapshot = await readUserSnapshot(chatId);
+    const months = snapshot?.months || {};
+    const mi = new Date().getMonth();
+
+    if (all) {
+      // Reabrir TODAS as despesas do mês atual
+      const concluded = [];
+      for (const section of ['fixed', 'variable']) {
+        for (const item of (months[mi]?.[section] || [])) {
+          if (item.concluded) concluded.push({ mi, section, item });
+        }
+      }
+      if (concluded.length === 0) {
+        await sendMessage(chatId, `✅ Não há despesas concluídas em ${MONTH_NAMES[mi]} pra reabrir.`);
+        session.step = 'done';
+        return;
+      }
+      const label = concluded.map(m => `• *${m.item.name}* — R$ ${(m.item.value||0).toFixed(2)}`).join('\n');
+      session.step = 'confirming_cmd';
+      session.pendingCmd = {
+        type: 'REOPEN_EXPENSE',
+        params: { expense_name: null, monthIndex: mi, all: true },
+        label: `🔓 Reabrir *${concluded.length} despesa(s)* de ${MONTH_NAMES[mi]}:\n${label}`,
+      };
+      await sendMessage(chatId, `${session.pendingCmd.label}\n\nConfirma? _(sim/não)_`);
+      return;
+    }
+
+    if (!expense_name || expense_name.length < 2) {
+      await sendMessage(chatId, `Qual despesa quer reabrir? Ex: _"reabra a Netflix"_ ou _"reabra todas"_`);
+      return;
+    }
+
+    const query = expense_name.toLowerCase();
+    const matches = [];
+    for (let m = 0; m < 12; m++) {
+      for (const section of ['fixed', 'variable']) {
+        for (const item of (months[m]?.[section] || [])) {
+          if ((item.name || '').toLowerCase().includes(query) && item.concluded) {
+            matches.push({ mi: m, section, item });
+          }
+        }
+      }
+    }
+    if (matches.length === 0) {
+      await sendMessage(chatId, `❌ Não encontrei despesas concluídas com *"${expense_name}"*.`);
+      session.step = 'done';
+      return;
+    }
+    const R = (v) => `R$ ${(v||0).toFixed(2)}`;
+    if (matches.length === 1) {
+      const m = matches[0];
+      const label = `🔓 *${m.item.name}* — ${R(m.item.value)} · ${MONTH_NAMES[m.mi]}`;
+      session.step = 'confirming_cmd';
+      session.pendingCmd = { type: 'REOPEN_EXPENSE', params: { expense_name: query, monthIndex: m.mi }, label };
+      await sendMessage(chatId, `${label}\n\nReabrir esta despesa? _(sim/não)_`);
+      return;
+    }
+    const list = matches.map((m, i) => `${i+1}. *${m.item.name}* — ${R(m.item.value)} · ${MONTH_NAMES[m.mi]}`).join('\n');
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'REOPEN_EXPENSE', params: { expense_name: query }, label: list, multiSelect: true, matches };
+    await sendMessage(chatId, `🔓 Encontrei *${matches.length}* despesas concluídas:\n\n${list}\n\nQual reabrir? Número, _"todos"_ ou _"não"_`);
+    return;
+  }
+
   if (intent === 'conclude_expense') {
     const expenseName = (params?.expense_name || '').trim();
     if (!expenseName || expenseName.length < 2) {
@@ -647,6 +714,8 @@ async function handleConfirmingCommand(chatId, text, session) {
       await sendMessage(chatId, `✅ *Despesa(s) concluída(s)!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 🚀`);
     } else if (cmd.type === 'ADD_INCOME') {
       await sendMessage(chatId, `✅ *Renda adicionada!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 🚀`);
+    } else if (cmd.type === 'REOPEN_EXPENSE') {
+      await sendMessage(chatId, `🔓 *Despesa(s) reabertas!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 🚀`);
     }
   } catch (e) {
     console.error('[Jarvis] comando error:', e.message);
