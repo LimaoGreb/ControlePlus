@@ -1,6 +1,6 @@
 // Hub de configurações — cada seção navega para uma tela própria.
-import React from 'react';
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Platform, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
@@ -27,8 +27,9 @@ function Info({ label, value, colors }) {
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const navigation = useNavigation();
-  const { paymentMethods } = useSettings();
+  const { paymentMethods, telegramChatId, setTelegramChatId } = useSettings();
   const { coupleCode, status } = useSync();
+  const [tgInput, setTgInput] = useState(telegramChatId || '');
 
   function badge(key) {
     if (key === 'SettingsCartoes') return paymentMethods.length ? `${paymentMethods.length}` : null;
@@ -67,6 +68,38 @@ export default function SettingsScreen() {
         })}
       </View>
 
+      {/* Card Jarvis */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 }}>
+          <View style={[styles.iconWrap, { backgroundColor: '#F5A52418' }]}>
+            <Ionicons name="logo-telegram" size={20} color="#F5A524" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.rowLabel, { color: colors.text }]}>Jarvis — ID do Telegram</Text>
+            <Text style={[styles.rowDesc, { color: colors.textMuted }]}>Cole seu chatId para receber despesas pelo bot</Text>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 14 }}>
+          <TextInput
+            style={[styles.tgInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+            placeholder="Ex: 8750225106"
+            placeholderTextColor={colors.textMuted}
+            value={tgInput}
+            onChangeText={setTgInput}
+            keyboardType="numeric"
+          />
+          <TouchableOpacity
+            style={[styles.tgBtn, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              setTelegramChatId(tgInput);
+              Alert.alert('Jarvis vinculado!', 'Despesas enviadas pelo bot vão aparecer no app automaticamente.');
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Salvar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SOBRE O APP</Text>
         <Info label="Nome" value="Controle+" colors={colors} />
@@ -99,4 +132,6 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 14 },
   infoValue: { fontSize: 14, fontWeight: '700' },
   hint: { fontSize: 12, lineHeight: 18, paddingHorizontal: 16, paddingBottom: 14 },
+  tgInput: { flex: 1, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 15 },
+  tgBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
 });
