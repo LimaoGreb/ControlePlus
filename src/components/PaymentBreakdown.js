@@ -7,7 +7,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { expensesByPayment } from '../utils/calculations';
 import { formatBRL, formatPercent } from '../utils/currency';
-import { getBankById } from '../data/banks';
+import { getBankForPayment } from '../data/banks';
 import BankBadge from './BankBadge';
 
 function PaymentBar({ entry, color, bank }) {
@@ -90,7 +90,7 @@ export default function PaymentBreakdown({ month }) {
       </Text>
       {list.map((entry, idx) => {
         const pm = pmByName[entry.name];
-        const bank = pm?.bank ? getBankById(pm.bank) : null;
+        const bank = getBankForPayment(pm);
         return (
           <PaymentBar key={entry.name} entry={entry} color={bank?.color || colors.chart[idx % colors.chart.length]} bank={bank} />
         );

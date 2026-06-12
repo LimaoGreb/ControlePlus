@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { contrastText } from '../utils/colorUtils';
 import { hapticTap, hapticSuccess } from '../utils/haptics';
-import { getBankById } from '../data/banks';
+import { getBankForPayment } from '../data/banks';
 import CurrencyInput from './CurrencyInput';
 import DueDayChip from './DueDayChip';
 import BankBadge from './BankBadge';
@@ -37,7 +37,7 @@ export default function ItemRow({
 
   const rowContent = (
     <View style={[styles.wrapper, { borderColor: isOverdue ? '#CC0000' : colors.border, borderWidth: isOverdue ? 2 : 1, backgroundColor: colors.card, borderRadius: 12, overflow: 'hidden' }]}>
-      {isOverdue && <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(220,0,0,0.38)', zIndex: 1 }} />}
+      {isOverdue && <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(220,0,0,0.22)', zIndex: 1 }} />}
       <View style={styles.row}>
         {swipeable ? (
           <Ionicons
@@ -82,7 +82,7 @@ export default function ItemRow({
             ? (() => {
                 const sel = paymentMethods.find((pm) => pm.name === item.payment);
                 if (!sel) return null;
-                const bank = sel.bank ? getBankById(sel.bank) : null;
+                const bank = getBankForPayment(sel);
                 return (
                   <View style={[styles.chip, { backgroundColor: bank?.color || accent, borderColor: bank?.color || accent }]}>
                     {bank && <BankBadge bank={bank} size={18} />}
@@ -92,7 +92,7 @@ export default function ItemRow({
               })()
             : showPayment && paymentMethods.map((pm) => {
                 const selected = item.payment === pm.name;
-                const bank = pm.bank ? getBankById(pm.bank) : null;
+                const bank = getBankForPayment(pm);
                 const chipColor = selected ? (bank?.color || accent) : 'transparent';
                 const borderColor = selected ? (bank?.color || accent) : (bank?.color ? bank.color + '55' : colors.border);
                 const textColor = selected ? '#fff' : (bank?.color || colors.textSecondary);

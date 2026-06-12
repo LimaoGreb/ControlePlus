@@ -4,7 +4,7 @@ const path = require('path');
 const BANKS_DIR = path.join(__dirname, '../assets/banks');
 const OUTPUT = path.join(__dirname, '../src/data/bankLogos.js');
 
-const BANK_IDS = ['nubank','c6','inter','picpay','itau','bradesco','santander','bb','caixa','neon','next','pagbank','mercadopago','sicoob','recargapay'];
+const BANK_IDS = ['nubank','c6','inter','picpay','itau','bradesco','santander','bb','caixa','neon','next','pagbank','mercadopago','sicoob','recargapay','pix','debito'];
 
 function cleanSvg(raw) {
   return raw

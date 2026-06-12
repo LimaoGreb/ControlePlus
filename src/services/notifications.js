@@ -113,8 +113,9 @@ async function send(when, title, body) {
         color: NOTIF_COLOR,
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: new Date(when),
-        ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
+        channelId: Platform.OS === 'android' ? CHANNEL_ID : undefined,
       },
     });
   } catch (e) {

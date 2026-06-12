@@ -14,10 +14,21 @@ export const BANKS = [
   { id: 'next',        name: 'Next',            abbr: 'NX', color: '#00D45E' },
   { id: 'pagbank',     name: 'PagBank',         abbr: 'PG', color: '#00A859' },
   { id: 'mercadopago', name: 'Mercado Pago',    abbr: 'MP', color: '#009EE3' },
-  { id: 'will',        name: 'Will Bank',       abbr: 'WB', color: '#430091' },
-  { id: 'outro',       name: 'Outro',           abbr: '??', color: '#888888' },
+  { id: 'will',        name: 'Will Bank',       abbr: 'WB',  color: '#430091' },
+  { id: 'outro',       name: 'Outro',           abbr: '??',  color: '#888888' },
+  { id: 'pix',         name: 'PIX',             abbr: 'PIX', color: '#32BCAD' },
+  { id: 'debito',      name: 'Débito',          abbr: 'DB',  color: '#1E3A5F' },
 ];
 
 export function getBankById(id) {
   return BANKS.find(b => b.id === id) || null;
+}
+
+export function getBankForPayment(pm) {
+  if (!pm) return null;
+  if (pm.bank) return getBankById(pm.bank);
+  const n = (pm.name || '').toLowerCase().trim();
+  if (n === 'pix') return getBankById('pix');
+  if (n === 'débito' || n === 'debito') return getBankById('debito');
+  return null;
 }

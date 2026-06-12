@@ -14,6 +14,7 @@ export default function SettingsPerfilScreen() {
     isInvestor, setIsInvestor,
     makesContributions, setMakesContributions,
     contributionGoalPct, setContributionGoalPct,
+    telegramChatId, setTelegramChatId,
   } = useSettings();
   const {
     coupleCode, status, lastSync,
@@ -24,6 +25,7 @@ export default function SettingsPerfilScreen() {
   } = useSync();
   const { token, googleUser, signIn, signOut, loading: googleLoading, ready } = useGoogleAuth();
   const [codeInput, setCodeInput] = useState('');
+  const [tgInput, setTgInput] = useState(telegramChatId || '');
   const [connecting, setConnecting] = useState(false);
 
   return (
@@ -207,6 +209,39 @@ export default function SettingsPerfilScreen() {
         )}
       </View>
 
+      {/* Jarvis — Telegram */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>JARVIS</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          <View style={styles.jarvisIcon}>
+            <Ionicons name="logo-telegram" size={22} color="#F5A524" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.label, { color: colors.text, marginBottom: 0 }]}>Jarvis — Telegram</Text>
+            <Text style={[styles.hint, { color: colors.textMuted }]}>Cole seu chatId para receber despesas pelo bot</Text>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TextInput
+            style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
+            placeholder="Ex: 8750225106"
+            placeholderTextColor={colors.textMuted}
+            value={tgInput}
+            onChangeText={setTgInput}
+            keyboardType="numeric"
+          />
+          <TouchableOpacity
+            style={[styles.tgBtn, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              setTelegramChatId(tgInput);
+              Alert.alert('Jarvis vinculado!', 'Despesas enviadas pelo bot vão aparecer no app automaticamente.');
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Salvar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Google */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>CONTA GOOGLE</Text>
@@ -298,4 +333,6 @@ const styles = StyleSheet.create({
   googleSignInBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1.5, paddingVertical: 14, gap: 10 },
   googleG: { fontSize: 18, fontWeight: '900', color: '#1a73e8' },
   googleSignInText: { fontSize: 15, fontWeight: '700' },
+  jarvisIcon: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5A52418' },
+  tgBtn: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10 },
 });

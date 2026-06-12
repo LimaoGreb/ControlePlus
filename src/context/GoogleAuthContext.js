@@ -8,8 +8,9 @@ import { fetchGoogleUserInfo } from '../services/googleDrive';
 // Necessário para fechar o browser após redirect de volta ao app.
 WebBrowser.maybeCompleteAuthSession();
 
-const ANDROID_CLIENT_ID = '198101730282-r33arkuqt67oqg5ptn47lttjcckvnt66.apps.googleusercontent.com';
-const WEB_CLIENT_ID    = '198101730282-n2koduek4n5msnmva0t8i0o5l0t6kqtl.apps.googleusercontent.com';
+const ANDROID_CLIENT_ID    = '198101730282-r33arkuqt67oqg5ptn47lttjcckvnt66.apps.googleusercontent.com';
+const WEB_CLIENT_ID        = '198101730282-n2koduek4n5msnmva0t8i0o5l0t6kqtl.apps.googleusercontent.com';
+const ANDROID_REDIRECT_URI = 'com.googleusercontent.apps.198101730282-r33arkuqt67oqg5ptn47lttjcckvnt66:/oauth2redirect/google';
 
 const TOKEN_KEY = '@google:token';
 const USER_KEY  = '@google:user';
@@ -23,6 +24,7 @@ export function GoogleAuthProvider({ children }) {
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: ANDROID_CLIENT_ID,
+    redirectUri: Platform.OS === 'android' ? ANDROID_REDIRECT_URI : undefined,
     scopes: [
       'profile',
       'email',

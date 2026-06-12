@@ -2,6 +2,39 @@
 
 ---
 
+## v2.0.9 — 2026-06-12
+
+### Correções Críticas
+
+**Notificações (`src/services/notifications.js`)**
+- Fix: trigger agora usa `SchedulableTriggerInputTypes.DATE` explícito (expo-notifications v0.29 requer o campo `type`, sem ele o trigger era ignorado e as notificações disparavam imediatamente).
+
+**Google OAuth (`src/context/GoogleAuthContext.js`)**
+- Fix: adicionado `redirectUri: ANDROID_REDIRECT_URI` explícito no `useAuthRequest`. O expo-auth-session calculava o redirect para o scheme do app (`com.mautic.financeapp://`) mas o Android OAuth client do Google exige o formato `com.googleusercontent.apps.<id>:/oauth2redirect/google`.
+
+### Logos PIX e Débito
+
+**`src/data/banks.js`**
+- Adicionados `{ id: 'pix', color: '#32BCAD' }` e `{ id: 'debito', color: '#1E3A5F' }`.
+- Nova função `getBankForPayment(pm)`: auto-detecta PIX/Débito pelo nome quando `pm.bank` não está definido. Centraliza a lógica que estava duplicada em ItemRow e PaymentBreakdown.
+
+**`src/data/bankLogos.js`**
+- Adicionados exports `pix` (ícone quadrado extraído do SVG oficial, viewBox recortado ao símbolo) e `debito` (card icon minimalista).
+
+**`assets/banks/pix.svg`** + **`assets/banks/debito.svg`** — novos arquivos de origem para o script de geração.
+
+**`scripts/generate-bank-logos.js`** — adicionados `'pix'` e `'debito'` em `BANK_IDS`.
+
+### ItemRow + PaymentBreakdown
+- Substituído `getBankById(pm.bank)` por `getBankForPayment(pm)` em `ItemRow.js` e `PaymentBreakdown.js` — PIX e Débito agora mostram logo/cor mesmo quando vinculados pelo nome.
+- Overlay vermelho em despesas vencidas: opacidade reduzida de `0.38` → `0.22`.
+
+### Jarvis — movido para Perfil
+- `SettingsScreen.js`: card Jarvis removido. Imports `useState`, `TextInput`, `Alert` limpados.
+- `SettingsPerfilScreen.js`: seção "JARVIS" adicionada abaixo de Modo Casal, com ícone Telegram dourado e label "Jarvis — Telegram".
+
+---
+
 ## v2.0.5 — 2026-06-12
 
 ### Infraestrutura / Build
