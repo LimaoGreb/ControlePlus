@@ -16,7 +16,7 @@ function fmtDigits(digits) {
   return `${rStr},${String(c).padStart(2, '0')}`;
 }
 
-export default function CurrencyInput({ value, onChangeValue, editable = true, style }) {
+export default function CurrencyInput({ value, onChangeValue, editable = true, overdue = false, style }) {
   const { colors } = useTheme();
   const [rawDigits, setRawDigits] = useState('');
   const [focused, setFocused] = useState(false);
@@ -65,9 +65,9 @@ export default function CurrencyInput({ value, onChangeValue, editable = true, s
       style={[
         styles.input,
         {
-          backgroundColor: editable ? colors.inputBg : 'transparent',
-          color: editable ? colors.text : colors.textMuted,
-          borderColor: editable ? colors.border : 'transparent',
+          backgroundColor: !editable ? 'transparent' : overdue ? 'rgba(255,59,48,0.14)' : colors.inputBg,
+          color: !editable ? colors.textMuted : colors.text,
+          borderColor: !editable ? 'transparent' : overdue ? 'rgba(255,59,48,0.4)' : colors.border,
         },
         style,
       ]}

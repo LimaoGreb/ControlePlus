@@ -9,19 +9,22 @@ export default function NotificationsManager() {
   const { data, ready } = useData();
   const granted = useRef(false);
   const timer = useRef(null);
+  const lastScheduled = useRef(0);
 
   useEffect(() => {
-    ensurePermission().then((g) => {
-      granted.current = g;
-      if (g && data) rescheduleDueReminders(data, YEAR);
-    });
-  }, []); // eslint-disable-line
+    ensurePermission().then((g) => { granted.current = g; });
+  }, []);
 
   useEffect(() => {
     if (!ready || !data) return;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      if (granted.current) rescheduleDueReminders(data, YEAR);
+      if (!granted.current) return;
+      // cooldown de 15s: evita múltiplos reagendamentos em sequência rápida
+      const now = Date.now();
+      if (now - lastScheduled.current < 15000) return;
+      lastScheduled.current = now;
+      rescheduleDueReminders(data, YEAR);
     }, 3000);
     return () => timer.current && clearTimeout(timer.current);
   }, [data, ready]);

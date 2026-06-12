@@ -38,8 +38,7 @@ export default function ItemRow({
   const rowContent = (
     <View style={[
       styles.wrapper,
-      { borderColor: colors.border, backgroundColor: colors.card },
-      isOverdue && styles.overdueWrapper,
+      { borderColor: isOverdue ? '#FF3B30' : colors.border, backgroundColor: isOverdue ? 'rgba(255,59,48,0.18)' : colors.card },
     ]}>
       <View style={styles.row}>
         {swipeable ? (
@@ -61,14 +60,14 @@ export default function ItemRow({
           style={[
             styles.nameInput,
             {
-              backgroundColor: concluded ? 'transparent' : colors.inputBg,
+              backgroundColor: concluded ? 'transparent' : isOverdue ? 'rgba(255,59,48,0.14)' : colors.inputBg,
               color: concluded ? colors.textMuted : colors.text,
-              borderColor: concluded ? 'transparent' : colors.border,
+              borderColor: concluded ? 'transparent' : isOverdue ? 'rgba(255,59,48,0.4)' : colors.border,
               textDecorationLine: concluded ? 'line-through' : 'none',
             },
           ]}
         />
-        <CurrencyInput value={item.value} onChangeValue={onChangeValue} editable={!concluded} style={styles.value} />
+        <CurrencyInput value={item.value} onChangeValue={onChangeValue} editable={!concluded} overdue={isOverdue} style={styles.value} />
         {onRemove && (
           <TouchableOpacity onPress={onRemove} style={styles.trash} hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}>
             <Ionicons name="trash-outline" size={22} color={colors.negative} />
@@ -156,7 +155,7 @@ export default function ItemRow({
 
 const styles = StyleSheet.create({
   wrapper: { borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 10, marginBottom: 10 },
-  overdueWrapper: { borderLeftWidth: 3, borderLeftColor: '#FF3B30', backgroundColor: 'rgba(255,59,48,0.11)' },
+  overdueWrapper: {},
   row: { flexDirection: 'row', alignItems: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
   nameInput: { flex: 1, height: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, marginRight: 8 },
