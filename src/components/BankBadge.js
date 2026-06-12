@@ -1,55 +1,9 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 
-let LOGOS = {};
-try {
-  LOGOS = {
-    nubank:      require('../../assets/banks/nubank.svg'),
-    c6:          require('../../assets/banks/c6.svg'),
-    inter:       require('../../assets/banks/inter.svg'),
-    picpay:      require('../../assets/banks/picpay.svg'),
-    itau:        require('../../assets/banks/itau.svg'),
-    bradesco:    require('../../assets/banks/bradesco.svg'),
-    santander:   require('../../assets/banks/santander.svg'),
-    bb:          require('../../assets/banks/bb.svg'),
-    caixa:       require('../../assets/banks/caixa.svg'),
-    neon:        require('../../assets/banks/neon.svg'),
-    next:        require('../../assets/banks/next.svg'),
-    pagbank:     require('../../assets/banks/pagbank.svg'),
-    mercadopago: require('../../assets/banks/mercadopago.svg'),
-    sicoob:      require('../../assets/banks/sicoob.svg'),
-    recargapay:  require('../../assets/banks/recargapay.svg'),
-  };
-} catch (e) {
-  console.warn('[BankBadge] erro ao carregar SVGs:', e.message);
-}
-
 export default function BankBadge({ bank, size = 28 }) {
   if (!bank) return null;
-
-  const Logo = LOGOS[bank.id];
   const radius = Math.round(size * 0.28);
-
-  if (Logo) {
-    try {
-      return (
-        <View style={{
-          width: size,
-          height: size,
-          borderRadius: radius,
-          overflow: 'hidden',
-          backgroundColor: bank.color,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <Logo width={size} height={size} />
-        </View>
-      );
-    } catch (e) {
-      console.warn('[BankBadge] erro ao renderizar SVG:', e.message);
-    }
-  }
-
   return (
     <View style={{
       width: size,
@@ -61,10 +15,9 @@ export default function BankBadge({ bank, size = 28 }) {
     }}>
       <Text style={{
         color: '#fff',
-        fontSize: Math.round(size * 0.4),
+        fontSize: Math.round(size * 0.38),
         fontWeight: '900',
         letterSpacing: -0.5,
-        lineHeight: size,
       }}>
         {bank.abbr}
       </Text>

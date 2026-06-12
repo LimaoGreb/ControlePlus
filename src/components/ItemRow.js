@@ -38,7 +38,7 @@ export default function ItemRow({
   const rowContent = (
     <View style={[
       styles.wrapper,
-      { borderColor: isOverdue ? '#FF3B30' : colors.border, backgroundColor: isOverdue ? 'rgba(255,59,48,0.18)' : colors.card },
+      { borderColor: isOverdue ? '#CC0000' : colors.border, backgroundColor: isOverdue ? 'rgba(220,0,0,0.22)' : colors.card },
     ]}>
       <View style={styles.row}>
         {swipeable ? (
@@ -60,9 +60,9 @@ export default function ItemRow({
           style={[
             styles.nameInput,
             {
-              backgroundColor: concluded ? 'transparent' : isOverdue ? 'rgba(255,59,48,0.14)' : colors.inputBg,
-              color: concluded ? colors.textMuted : colors.text,
-              borderColor: concluded ? 'transparent' : isOverdue ? 'rgba(255,59,48,0.4)' : colors.border,
+              backgroundColor: concluded ? 'transparent' : isOverdue ? 'rgba(200,0,0,0.18)' : colors.inputBg,
+              color: concluded ? colors.textMuted : isOverdue ? '#FF4444' : colors.text,
+              borderColor: concluded ? 'transparent' : isOverdue ? '#CC0000' : colors.border,
               textDecorationLine: concluded ? 'line-through' : 'none',
             },
           ]}

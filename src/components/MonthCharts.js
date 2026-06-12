@@ -1,34 +1,28 @@
-// Carrossel de gráficos do mês — loop infinito (esquerda/direita).
-// Páginas: Despesas → Por Pagamento → Por Banco → (volta pro início)
+// Carrossel de gráficos do mês — 2 páginas: Despesas e Por Pagamento
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import ExpensesBreakdown from './ExpensesBreakdown';
 import PaymentBreakdown from './PaymentBreakdown';
-import BankBreakdown from './BankBreakdown';
 
-// Índice virtual → índice real (0=cats, 1=pay, 2=bank)
-// Layout: [bank(clone), cats, pay, bank, cats(clone)]
-//          vi=0         vi=1  vi=2  vi=3  vi=4
-const REAL = [2, 0, 1, 2, 0];
-const NUM_REAL = 3;
+// Virtual: [pay-clone, cats, pay, cats-clone]
+//           vi=0       vi=1  vi=2  vi=3
+const REAL = [1, 0, 1, 0];
 
 export default function MonthCharts({ month }) {
   const { colors } = useTheme();
-  const [page, setPage] = useState(0);       // índice real 0-2
+  const [page, setPage] = useState(0);
   const [pageW, setPageW] = useState(0);
-  const [heights, setHeights] = useState([0, 0, 0]); // altura por índice real
+  const [heights, setHeights] = useState([0, 0]);
   const scrollRef = useRef(null);
   const isJumping = useRef(false);
 
   const realPages = [
-    { key: 'cats', label: 'Despesas',      icon: 'pie-chart-outline',  render: <ExpensesBreakdown month={month} /> },
-    { key: 'pay',  label: 'Por Pagamento', icon: 'card-outline',        render: <PaymentBreakdown month={month} /> },
-    { key: 'bank', label: 'Por Banco',     icon: 'business-outline',    render: <BankBreakdown month={month} /> },
+    { key: 'cats', label: 'Despesas',      icon: 'pie-chart-outline', render: <ExpensesBreakdown month={month} /> },
+    { key: 'pay',  label: 'Por Pagamento', icon: 'card-outline',       render: <PaymentBreakdown month={month} /> },
   ];
 
-  // Ao montar (ou quando pageW fica disponível), posiciona no vi=1 sem animação
   useEffect(() => {
     if (scrollRef.current && pageW > 0) {
       scrollRef.current.scrollTo({ x: pageW, animated: false });
@@ -38,23 +32,18 @@ export default function MonthCharts({ month }) {
   const setH = (realIdx, h) =>
     setHeights((prev) => {
       if (Math.abs((prev[realIdx] || 0) - h) < 1) return prev;
-      const n = [...prev];
-      n[realIdx] = h;
-      return n;
+      const n = [...prev]; n[realIdx] = h; return n;
     });
 
   const onScrollEnd = (e) => {
     if (!pageW || isJumping.current) return;
     const vi = Math.round(e.nativeEvent.contentOffset.x / pageW);
-
     if (vi === 0) {
-      // Chegou no clone do banco (esquerda) → pula pro banco real (vi=3)
       isJumping.current = true;
-      scrollRef.current.scrollTo({ x: 3 * pageW, animated: false });
-      setPage(2);
+      scrollRef.current.scrollTo({ x: 2 * pageW, animated: false });
+      setPage(1);
       setTimeout(() => { isJumping.current = false; }, 50);
-    } else if (vi === 4) {
-      // Chegou no clone do cats (direita) → pula pro cats real (vi=1)
+    } else if (vi === 3) {
       isJumping.current = true;
       scrollRef.current.scrollTo({ x: pageW, animated: false });
       setPage(0);
@@ -66,20 +55,17 @@ export default function MonthCharts({ month }) {
 
   const goTo = (realIdx) => {
     setPage(realIdx);
-    if (scrollRef.current && pageW) {
+    if (scrollRef.current && pageW)
       scrollRef.current.scrollTo({ x: (realIdx + 1) * pageW, animated: true });
-    }
   };
 
   const activeH = (heights[page] || 0) > 0 ? heights[page] : undefined;
 
-  // As 5 páginas virtuais que o ScrollView renderiza
   const virtualItems = [
-    { key: 'bank-pre', realIdx: 2 },
-    { key: 'cats',     realIdx: 0 },
-    { key: 'pay',      realIdx: 1 },
-    { key: 'bank',     realIdx: 2 },
-    { key: 'cats-post',realIdx: 0 },
+    { key: 'pay-pre',   realIdx: 1 },
+    { key: 'cats',      realIdx: 0 },
+    { key: 'pay',       realIdx: 1 },
+    { key: 'cats-post', realIdx: 0 },
   ];
 
   return (
