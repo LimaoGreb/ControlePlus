@@ -469,7 +469,7 @@ async function dispatchIntent(chatId, session, classified) {
 
   // Chat — greeting mostra menu completo; mensagem não-entendida recebe resposta curta
   const lower2 = (typeof text === 'string' ? text : '').toLowerCase().trim();
-  const isGreeting = /^(oi\b|ol[aá]\b|e\s*a[ií]\b|bom\s*dia|boa\s*tarde|boa\s*noite|hey\b|opa\b|salve\b|tudo\s*bem|help\b|ajuda\b|\/start|inicio\b)/.test(lower2);
+  const isGreeting = /^(jarvis\b|oi\b|ol[aá]\b|e\s*a[ií]\b|bom\s*dia|boa\s*tarde|boa\s*noite|hey\b|opa\b|salve\b|tudo\s*bem|help\b|ajuda\b|\/start|inicio\b)/.test(lower2);
   if (!isGreeting) {
     await sendMessage(chatId, `Hmm, não entendi 🤔 Pode reformular?\n\nExemplos:\n• _"como tá o mês?"_\n• _"quanto gastei no ifood esse mês?"_\n• _"conclua a Netflix"_`);
     session.step = 'done';
@@ -917,7 +917,12 @@ async function handleConfirmingCommand(chatId, text, session) {
       return;
     }
     if (result.status === 'error') {
-      await sendMessage(chatId, `⚠️ ${result.error || 'Ocorreu um erro. Tente novamente.'}`);
+      const errMsg = result.error || '';
+      if (errMsg.includes('Comando desconhecido') || errMsg.includes('não disponível')) {
+        await sendMessage(chatId, `📱 Este comando requer a versão mais recente do Controle\\+!\n\nBaixe o APK atualizado para usar esta função.`);
+      } else {
+        await sendMessage(chatId, `⚠️ ${errMsg || 'Ocorreu um erro. Tente novamente.'}`);
+      }
       return;
     }
     if (cmd.type === 'ADD_INSTALLMENTS') {

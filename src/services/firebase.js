@@ -30,8 +30,9 @@ function getDb() {
 
 // Sobe os dados compartilhados do casal (sem dados pessoais).
 // payload: { shared, ts, deviceId }
+// Usa update() para preservar deviceIds ao sincronizar.
 export async function pushCouple(code, payload) {
-  await set(ref(getDb(), `couples/${code}`), payload);
+  await update(ref(getDb(), `couples/${code}`), payload);
 }
 
 // Lê os dados compartilhados (uma única vez).
@@ -47,10 +48,10 @@ export function listenCouple(code, callback) {
   return () => off(r);
 }
 
-// Anuncia apenas o deviceId (partial update) — sem tocar em shared/ts.
-// Garante que o(a) parceiro(a) aprenda o path pessoal ao conectar.
+// Anuncia o deviceId em sub-path exclusivo — preservado pelo update() do pushCouple.
+// Ambos os dispositivos ficam registrados em deviceIds/{id}: true.
 export async function announceDeviceId(code, deviceId) {
-  await update(ref(getDb(), `couples/${code}`), { deviceId });
+  await set(ref(getDb(), `couples/${code}/deviceIds/${deviceId}`), true);
 }
 
 // Dados pessoais — cada dispositivo tem seu próprio node, sem risco de sobrescrita mútua.

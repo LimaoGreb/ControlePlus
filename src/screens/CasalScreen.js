@@ -7,7 +7,8 @@ import { useTheme } from '../theme/ThemeContext';
 import { useSync } from '../context/SyncContext';
 import { useSettings } from '../context/SettingsContext';
 import { useData } from '../context/DataContext';
-import { SharedMonthData } from '../context/SharedDataContext';
+import { SharedMonthData, PartnerDataProvider } from '../context/SharedDataContext';
+import Avatar from '../components/Avatar';
 import MonthContent from '../components/MonthContent';
 import { monthTotals } from '../utils/calculations';
 import { formatBRL } from '../utils/currency';
@@ -26,7 +27,7 @@ function timeAgo(ts) {
 
 export default function CasalScreen({ navigation }) {
   const { colors } = useTheme();
-  const { coupleCode, status, lastSync, partnerName, lastPartnerActivity, partnerPersonalData, sharePersonal } = useSync();
+  const { coupleCode, status, lastSync, partnerName, lastPartnerActivity, partnerPersonalData, sharePersonal, partnerAvatar, activeProfile, switchProfile } = useSync();
   const { userName } = useSettings();
   const { data: personalData } = useData();
   const [monthIndex, setMonthIndex] = useState(CURRENT_MONTH);
@@ -186,15 +187,80 @@ export default function CasalScreen({ navigation }) {
     </View>
   );
 
+  // Header para o modo parceiro (read-only, dados pessoais)
+  const partnerHeader = (
+    <View style={styles.headerWrap}>
+      <View style={styles.topRow}>
+        <View style={styles.namesRow}>
+          <Avatar avatar={partnerAvatar} size={22} style={{ marginRight: 6 }} />
+          <Text style={[styles.coupleNames, { color: colors.text }]}>
+            Finanças de {theirName}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.backBtn, { borderColor: colors.border }]}
+          onPress={switchProfile}
+        >
+          <Ionicons name="chevron-back" size={14} color={colors.primary} />
+          <Text style={[styles.backBtnText, { color: colors.primary }]}>Casal</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={[styles.monthNav, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
+        <TouchableOpacity onPress={goBack} disabled={monthIndex === 0} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.navArrow}>
+          <Ionicons name="chevron-back" size={20} color={monthIndex === 0 ? colors.border : colors.primary} />
+        </TouchableOpacity>
+        <View style={styles.monthCenter}>
+          <Text style={[styles.monthName, { color: colors.text }]}>
+            {MONTH_NAMES[monthIndex]}
+            <Text style={[styles.monthYear, { color: colors.textMuted }]}> {YEAR}</Text>
+          </Text>
+          {isCurrentMonth && (
+            <View style={[styles.currentBadge, { backgroundColor: colors.primary + '22' }]}>
+              <Text style={[styles.currentBadgeText, { color: colors.primary }]}>atual</Text>
+            </View>
+          )}
+        </View>
+        <TouchableOpacity onPress={goNext} disabled={monthIndex === 11} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.navArrow}>
+          <Ionicons name="chevron-forward" size={20} color={monthIndex === 11 ? colors.border : colors.primary} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  if (activeProfile === 'partner' && partnerPersonalData) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <PartnerDataProvider data={partnerPersonalData}>
+          <MonthContent
+            monthIndex={monthIndex}
+            scrollRef={scrollRef}
+            header={partnerHeader}
+          />
+        </PartnerDataProvider>
+      </View>
+    );
+  }
+
   return (
-    <SharedMonthData>
-      <MonthContent
-        monthIndex={monthIndex}
-        scrollRef={scrollRef}
-        header={header}
-        hideIncome
-      />
-    </SharedMonthData>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <SharedMonthData>
+        <MonthContent
+          monthIndex={monthIndex}
+          scrollRef={scrollRef}
+          header={header}
+          hideIncome
+        />
+      </SharedMonthData>
+      {partnerPersonalData && (
+        <TouchableOpacity
+          style={[styles.partnerFab, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={switchProfile}
+        >
+          <Avatar avatar={partnerAvatar} size={36} />
+          <Text style={[styles.partnerFabLabel, { color: colors.textMuted }]}>{theirName}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -244,4 +310,33 @@ const styles = StyleSheet.create({
   monthYear: { fontSize: 13, fontWeight: '500' },
   currentBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
   currentBadgeText: { fontSize: 11, fontWeight: '700' },
+
+  partnerFab: {
+    position: 'absolute',
+    bottom: 90,
+    right: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    gap: 4,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  partnerFabLabel: { fontSize: 10, fontWeight: '700' },
+
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  backBtnText: { fontSize: 13, fontWeight: '700' },
 });

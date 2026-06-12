@@ -150,6 +150,18 @@ export function SyncProvider({ children }) {
     announceDeviceId(coupleCode, deviceId).catch(() => {});
   }, [ready, coupleCode, deviceId]);
 
+  // Descobre o deviceId do(a) parceiro(a) — suporta formato novo (deviceIds dict) e legado.
+  const extractPartnerDeviceId = useCallback((remote, myId) => {
+    // Novo formato: deviceIds é um dict { id: true } com ambos os dispositivos
+    if (remote?.deviceIds && typeof remote.deviceIds === 'object') {
+      const found = Object.keys(remote.deviceIds).find(id => id !== myId);
+      if (found) return found;
+    }
+    // Legado: campo deviceId com o id do último a anunciar
+    if (remote?.deviceId && remote.deviceId !== myId) return remote.deviceId;
+    return null;
+  }, []);
+
   // Listener de dados compartilhados — também descobre o deviceId do(a) parceiro(a).
   useEffect(() => {
     if (!ready || !coupleCode || !FIREBASE_CONFIGURED || !deviceId) return;
@@ -157,10 +169,8 @@ export function SyncProvider({ children }) {
     setStatus('syncing');
     fetchCouple(coupleCode)
       .then((remote) => {
-        // Sempre extrai deviceId — independente do ts
-        if (remote?.deviceId && remote.deviceId !== deviceId) {
-          updatePartnerDeviceId(remote.deviceId);
-        }
+        const partnerId = extractPartnerDeviceId(remote, deviceId);
+        if (partnerId) updatePartnerDeviceId(partnerId);
         if (remote && remote.ts > localTs.current) {
           saveLocalTs(remote.ts);
           setLastPartnerActivity(Date.now());
@@ -172,10 +182,8 @@ export function SyncProvider({ children }) {
       .catch(() => setStatus('error'));
 
     stopListen.current = listenCouple(coupleCode, (remote) => {
-      // Sempre extrai deviceId — independente do ts (evita bug de first-connect)
-      if (remote.deviceId && remote.deviceId !== deviceId) {
-        updatePartnerDeviceId(remote.deviceId);
-      }
+      const partnerId = extractPartnerDeviceId(remote, deviceId);
+      if (partnerId) updatePartnerDeviceId(partnerId);
       if (remote.ts > localTs.current) {
         saveLocalTs(remote.ts);
         setLastPartnerActivity(Date.now());
