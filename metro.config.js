@@ -1,17 +1,17 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const { mergeConfig } = require('@react-native/metro-config');
 
-const config = getDefaultConfig(__dirname);
+const defaultConfig = getDefaultConfig(__dirname);
+const { assetExts, sourceExts } = defaultConfig.resolver;
 
-// Habilita importação de SVGs como componentes React
-config.transformer = {
-  ...config.transformer,
-  babelTransformerPath: require.resolve('react-native-svg-transformer'),
+const svgConfig = {
+  transformer: {
+    babelTransformerPath: require.resolve('react-native-svg-transformer/expo'),
+  },
+  resolver: {
+    assetExts: assetExts.filter(ext => ext !== 'svg'),
+    sourceExts: [...sourceExts, 'svg'],
+  },
 };
 
-config.resolver = {
-  ...config.resolver,
-  assetExts: config.resolver.assetExts.filter(ext => ext !== 'svg'),
-  sourceExts: [...config.resolver.sourceExts, 'svg'],
-};
-
-module.exports = config;
+module.exports = mergeConfig(defaultConfig, svgConfig);
