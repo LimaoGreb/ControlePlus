@@ -92,6 +92,43 @@ function localClassify(t) {
     return { intent: 'income', params: { name, value, month } };
   }
 
+  // ── Limite de cartão ─────────────────────────────────────────────────────
+  if (/\blimite\b.{0,35}(cart[aã]o|cr[eé]dito|card)|(cart[aã]o|cr[eé]dito).{0,35}\blimite\b/i.test(t) ||
+      /\b(define|coloca|adiciona|ajusta|muda|atualiza)\b.{0,20}\blimite\b/i.test(t)) {
+    const numMatch = t.match(/\d+(?:[.,]\d{1,2})?/);
+    const limit = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
+    const CARD_RE2 = /nubank|nu\b|c6|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will/;
+    const cardMatch = t.match(CARD_RE2);
+    return { intent: 'set_credit_limit', params: { card_name: cardMatch?.[0]?.trim() || null, limit } };
+  }
+
+  // ── Nome do usuário ──────────────────────────────────────────────────────
+  if (/\b(meu\s*nome\s*(é|eh|ser[aá]|vai\s*ser)|(me\s*chamo|pode\s*me\s*chamar)|(muda|troca|atualiza|coloca)\b.{0,15}\bnome\b)/i.test(t)) {
+    const nameMatch = t.match(/(?:(?:meu\s*nome\s*(?:é|eh|será|vai\s*ser)\s*)|(?:me\s*chamo\s*)|(?:pode\s*me\s*chamar\s*de\s*)|(?:(?:muda|troca|atualiza|coloca)\b.{0,15}(?:nome|pra|para)\s*))(\w+)/i);
+    return { intent: 'set_user_name', params: { name: nameMatch?.[1] || null } };
+  }
+
+  // ── Meta de contribuição / dízimo ───────────────────────────────────────
+  if (/\b(contribui[çc][aã]o|d[íi]zimo|doa[çc][aã]o)\b.{0,30}(\d+\s*%|porcent|percent)/i.test(t) ||
+      /\d+\s*%\s*.{0,15}\b(contribui[çc][aã]o|d[íi]zimo)\b/i.test(t)) {
+    const pctMatch = t.match(/(\d+(?:[.,]\d{1,2})?)\s*%?/);
+    const pct = pctMatch ? parseFloat(pctMatch[1].replace(',', '.')) : null;
+    return { intent: 'set_contribution_pct', params: { pct } };
+  }
+
+  // ── Guardado em projeto (atualiza savings) ────────────────────────────────
+  if (/\b(guardei|guarde?|poupei|poupeie?|economizei|economiz|coloque[ií]|adicionei|deposite[ií]|coloca[nd]?o)\b.{0,30}\b(projeto|meta|poupan[çc]a|reserva|viagem|carro|casa|fundo)\b|\b(guardei|poupei|economizei)\b.{0,10}\b(pra|pro|para)\b/i.test(t)) {
+    const numMatch = t.match(/\d+(?:[.,]\d{1,2})?/);
+    const amount = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
+    const stripped = t
+      .replace(/\b(guardei|guarde?|poupei|poupeie?|economizei|economiz|coloque[ií]|adicionei|deposite[ií]|no|na|no\s*projeto|no\s*fundo|pra|pro|para|do|da|de|projeto|meta|poupan[çc]a|reserva|r\$|reais|mensais?)\b/gi, ' ')
+      .replace(/\d+(?:[.,]\d+)?/g, ' ').replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim();
+    return { intent: 'update_project_saved', params: {
+      project_name: stripped.length >= 2 ? stripped : null,
+      amount, mode: 'add'
+    }};
+  }
+
   // ── Toggle settings (investidor / contribuições) ──────────────────────────
   if (/\b(ativa|ative|ativar|liga|ligar|habilita|habilitar|desativa|desative|desativar|desliga|desligar|desabilita|desabilitar)\b/i.test(t)) {
     const isOn = !/\b(desativ|deslig|desabilit)\b/i.test(t);
@@ -280,6 +317,18 @@ INTENÇÕES:
 "set_avatar" — usuário quer trocar foto de perfil
   {}
 
+"set_credit_limit" — definir limite de crédito num cartão
+  card_name (ex: "nubank", "next"), limit (número)
+
+"set_user_name" — mudar o nome do usuário no app
+  name (string)
+
+"set_contribution_pct" — definir percentual de contribuição/dízimo
+  pct (número de 0 a 100)
+
+"update_project_saved" — atualizar quanto já foi guardado num projeto
+  project_name (nome do projeto), amount (número), mode: "add"|"set"
+
 "export" — exportar dados em CSV
   {}
 
@@ -312,6 +361,21 @@ EXEMPLOS:
 "desativa dízimo" → {"intent":"toggle_setting","params":{"key":"makesContributions","value":false}}
 "muda minha foto de perfil" → {"intent":"set_avatar","params":{}}
 "quero trocar meu avatar" → {"intent":"set_avatar","params":{}}
+"exporta meus dados" → {"intent":"export","params":{}}
+"ativa modo investidor" → {"intent":"toggle_setting","params":{"key":"isInvestor","value":true}}
+"desativa contribuições" → {"intent":"toggle_setting","params":{"key":"makesContributions","value":false}}
+"muda minha foto de perfil" → {"intent":"set_avatar","params":{}}
+"define limite de 600 no next" → {"intent":"set_credit_limit","params":{"card_name":"next","limit":600}}
+"adiciona limite de 2000 no nubank" → {"intent":"set_credit_limit","params":{"card_name":"nubank","limit":2000}}
+"cartão c6 com limite de 3000" → {"intent":"set_credit_limit","params":{"card_name":"c6","limit":3000}}
+"meu nome é Gabriel" → {"intent":"set_user_name","params":{"name":"Gabriel"}}
+"me chamo Gabi" → {"intent":"set_user_name","params":{"name":"Gabi"}}
+"muda meu nome para João" → {"intent":"set_user_name","params":{"name":"João"}}
+"define contribuição para 10%" → {"intent":"set_contribution_pct","params":{"pct":10}}
+"dízimo de 15%" → {"intent":"set_contribution_pct","params":{"pct":15}}
+"guardei 300 no projeto viagem" → {"intent":"update_project_saved","params":{"project_name":"viagem","amount":300,"mode":"add"}}
+"economizei 500 pra reserva" → {"intent":"update_project_saved","params":{"project_name":"reserva","amount":500,"mode":"add"}}
+"já guardei 1500 na meta carro" → {"intent":"update_project_saved","params":{"project_name":"carro","amount":1500,"mode":"set"}}
 "exporta meus dados" → {"intent":"export","params":{}}
 "oi jarvis" → {"intent":"chat","params":{}}
 "ajuda" → {"intent":"chat","params":{}}

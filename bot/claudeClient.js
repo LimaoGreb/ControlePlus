@@ -93,6 +93,15 @@ export async function parseExpenseMessage(text) {
   const isIncome = /\b(renda|salário|salario|receita|recebi|entrada|ganho|ganhei|proventos|faturei|faturamento|lucro|recebimento)\b/i.test(lower);
   if (isIncome) return { isExpense: false };
 
+  // Operações de configurações — nunca são despesas
+  const isSettingChange =
+    /\blimite\b.{0,35}(cart[aã]o|cr[eé]dito|card)|(cart[aã]o|cr[eé]dito).{0,35}\blimite\b/i.test(lower) ||
+    /\b(meu\s*nome|me\s*chamo)\b/i.test(lower) ||
+    /\b(nome\s*(para?|pra|é|eh)\s+\w)|(muda|atualiza|troca)\b.{0,10}\bnome\b/i.test(lower) ||
+    /\b(contribui[çc][aã]o|d[íi]zimo|doa[çc][aã]o)\b.{0,20}\d+\s*%/i.test(lower) ||
+    /\b(projeto|meta|poupan[çc]a)\b.{0,10}\blimite\b/i.test(lower);
+  if (isSettingChange) return { isExpense: false };
+
   if (hasAddVerb) {
     return { isExpense: true, name: extractName(text), value: extractValue(text), payment: extractPayment(text), monthIndex: extractMonthIndex(text) };
   }

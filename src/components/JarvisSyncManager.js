@@ -23,7 +23,7 @@ function getDb() {
 
 export default function JarvisSyncManager() {
   const { data, addItem, updateItem, addInstallments } = useData();
-  const { telegramChatId, investments, projects, userName, paymentMethods, setIsInvestor, setMakesContributions, addProjectFull, setAvatar } = useSettings();
+  const { telegramChatId, investments, projects, userName, paymentMethods, setIsInvestor, setMakesContributions, addProjectFull, setAvatar, setPaymentLimit, setUserName, setContributionGoalPct, updateProject } = useSettings();
 
   const dataRef = useRef(data);
   const addItemRef = useRef(addItem);
@@ -34,7 +34,7 @@ export default function JarvisSyncManager() {
   addItemRef.current = addItem;
   updateItemRef.current = updateItem;
   addInstallmentsRef.current = addInstallments;
-  settingsOpsRef.current = { setIsInvestor, setMakesContributions, addProjectFull, setAvatar };
+  settingsOpsRef.current = { setIsInvestor, setMakesContributions, addProjectFull, setAvatar, setPaymentLimit, setUserName, setContributionGoalPct, updateProject, paymentMethods, projects };
 
   const snapshotTimer = useRef(null);
 
@@ -166,6 +166,39 @@ async function executeCommand(cmd, data, addItem, updateItem, addInstallments, s
     }
     if (concluded === 0) throw new Error(`Nenhuma despesa encontrada com "${expense_name}"`);
     return { concluded, expense_name };
+  }
+
+  if (cmd.type === 'SET_PAYMENT_LIMIT') {
+    const { card_name, limit } = cmd.params;
+    const query = (card_name || '').toLowerCase();
+    const pm = (settings.paymentMethods || []).find(p => p.name.toLowerCase().includes(query) || query.includes(p.name.toLowerCase()));
+    if (!pm) throw new Error(`Cartão "${card_name}" não encontrado. Verifique o nome no app.`);
+    settings.setPaymentLimit(pm.id, limit);
+    return { cardName: pm.name, limit };
+  }
+
+  if (cmd.type === 'SET_USER_NAME') {
+    const { name } = cmd.params;
+    if (!name) throw new Error('Nome não informado');
+    settings.setUserName(name);
+    return { name };
+  }
+
+  if (cmd.type === 'SET_CONTRIBUTION_PCT') {
+    const { pct } = cmd.params;
+    if (pct == null) throw new Error('Percentual não informado');
+    settings.setContributionGoalPct(pct);
+    return { pct };
+  }
+
+  if (cmd.type === 'UPDATE_PROJECT_SAVED') {
+    const { project_name, amount, mode } = cmd.params;
+    const query = (project_name || '').toLowerCase();
+    const proj = (settings.projects || []).find(p => p.name.toLowerCase().includes(query) || query.includes(p.name.toLowerCase()));
+    if (!proj) throw new Error(`Projeto "${project_name}" não encontrado. Verifique o nome no app.`);
+    const newSaved = mode === 'set' ? amount : (proj.saved || 0) + amount;
+    settings.updateProject(proj.id, 'saved', newSaved);
+    return { projectName: proj.name, newSaved };
   }
 
   if (cmd.type === 'TOGGLE_SETTING') {

@@ -179,6 +179,67 @@ async function dispatchIntent(chatId, session, classified) {
     return;
   }
 
+  if (intent === 'set_credit_limit') {
+    const { card_name, limit } = params || {};
+    if (!card_name) {
+      await sendMessage(chatId, `💳 Qual cartão você quer definir o limite?\nEx: _"define limite de 2000 no Nubank"_`);
+      return;
+    }
+    if (!limit) {
+      await sendMessage(chatId, `💳 Qual o limite do *${card_name}*? _(ex: "2000")_`);
+      return;
+    }
+    const label = `💳 Limite de *${card_name}* → R$ ${limit.toFixed(2)}`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'SET_PAYMENT_LIMIT', params: { card_name, limit }, label };
+    await sendMessage(chatId, `${label}\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
+  if (intent === 'set_user_name') {
+    const { name } = params || {};
+    if (!name || name.length < 2) {
+      await sendMessage(chatId, `✏️ Qual o nome que você quer usar no Controle+?`);
+      return;
+    }
+    const label = `✏️ Seu nome no app: *${name}*`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'SET_USER_NAME', params: { name }, label };
+    await sendMessage(chatId, `${label}\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
+  if (intent === 'set_contribution_pct') {
+    const { pct } = params || {};
+    if (!pct || pct < 0 || pct > 100) {
+      await sendMessage(chatId, `💜 Qual o percentual de contribuição/dízimo? _(ex: "10%")_`);
+      return;
+    }
+    const label = `💜 Meta de contribuição: *${pct}%*`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'SET_CONTRIBUTION_PCT', params: { pct }, label };
+    await sendMessage(chatId, `${label}\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
+  if (intent === 'update_project_saved') {
+    const { project_name, amount, mode } = params || {};
+    if (!project_name || project_name.length < 2) {
+      await sendMessage(chatId, `🎯 Qual projeto você guardou dinheiro?\nEx: _"guardei 300 no projeto viagem"_`);
+      return;
+    }
+    if (!amount || amount <= 0) {
+      await sendMessage(chatId, `🎯 Qual o valor guardado no projeto *${project_name}*?`);
+      return;
+    }
+    const modeLabel = mode === 'set' ? `Definir guardado` : `Adicionar`;
+    const label = `🎯 *${project_name}* — ${modeLabel} R$ ${amount.toFixed(2)}`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'UPDATE_PROJECT_SAVED', params: { project_name, amount, mode: mode || 'add' }, label };
+    await sendMessage(chatId, `${label}\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
   if (intent === 'toggle_setting') {
     const { key, value } = params || {};
     const labels = {
@@ -875,6 +936,14 @@ async function handleConfirmingCommand(chatId, text, session) {
       await sendMessage(chatId, `✅ *Configuração atualizada!*\n\n${cmd.label}\n\n_Aplicado no Controle+_ ✅`);
     } else if (cmd.type === 'SET_AVATAR') {
       await sendMessage(chatId, `✅ *Foto atualizada!*\n\nSua nova foto de perfil já está no Controle+ 📸`);
+    } else if (cmd.type === 'SET_PAYMENT_LIMIT') {
+      await sendMessage(chatId, `✅ *Limite atualizado!*\n\n${cmd.label}\n\n_Aplicado no Controle+_ 💳`);
+    } else if (cmd.type === 'SET_USER_NAME') {
+      await sendMessage(chatId, `✅ *Nome atualizado!*\n\n${cmd.label}\n\n_Aplicado no Controle+_ ✏️`);
+    } else if (cmd.type === 'SET_CONTRIBUTION_PCT') {
+      await sendMessage(chatId, `✅ *Meta de contribuição atualizada!*\n\n${cmd.label}\n\n_Aplicado no Controle+_ 💜`);
+    } else if (cmd.type === 'UPDATE_PROJECT_SAVED') {
+      await sendMessage(chatId, `✅ *Projeto atualizado!*\n\n${cmd.label}\n\n_Guardado atualizado no Controle+_ 🎯`);
     }
   } catch (e) {
     console.error('[Jarvis] comando error:', e.message);
