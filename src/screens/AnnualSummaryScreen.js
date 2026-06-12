@@ -231,62 +231,139 @@ function ScoreRing({rate,grade,size=108}) {
 }
 
 // ─── PeekCard (press & hold → futuristic floating card) ───────────────────────
+const MEDAL = ['🥇','🥈','🥉','🏅','🎖️'];
 function PeekCard({cat,anim}) {
   if (!cat) return null;
-  const topItems=cat.topItems?.slice(0,3)||[];
+  const topItems = cat.topItems?.slice(0,5) || [];
+  const peakM = cat.monthlyData?.length > 0
+    ? cat.monthlyData.reduce((a,b) => b.total > a.total ? b : a, cat.monthlyData[0])
+    : null;
+  const avgPerMonth = cat.monthlyData?.length > 0 ? cat.total / cat.monthlyData.length : cat.total;
+  const totalOccurrences = topItems.reduce((s,it) => s + (it.count || 0), 0);
+
   return (
     <Animated.View style={[pk.card,{
-      borderColor:cat.color+'55',
-      opacity:anim,
+      borderColor: cat.color + '66',
+      opacity: anim,
       transform:[
-        {translateY:anim.interpolate({inputRange:[0,1],outputRange:[32,0]})},
-        {scale:anim.interpolate({inputRange:[0,1],outputRange:[0.86,1]})},
+        {translateY: anim.interpolate({inputRange:[0,1],outputRange:[28,0]})},
+        {scale: anim.interpolate({inputRange:[0,1],outputRange:[0.88,1]})},
       ],
     }]}>
-      <View style={[pk.accentBar,{backgroundColor:cat.color}]}/>
-      <Text style={pk.emoji}>{CAT_EMOJI[cat.id]||'🔮'}</Text>
-      <Text style={pk.catName}>{cat.label}</Text>
-      <Text style={[pk.total,{color:cat.color}]}>{formatBRL(cat.total)}</Text>
-      <Text style={pk.pctTxt}>{formatPercent(cat.percent)} dos gastos anuais</Text>
-      <View style={[pk.bar,{backgroundColor:'rgba(255,255,255,0.12)'}]}>
+      {/* Glow bar superior */}
+      <View style={[pk.glowBar,{backgroundColor:cat.color}]}/>
+
+      {/* Cabeçalho */}
+      <View style={pk.head}>
+        <View style={[pk.emojiRing,{borderColor:cat.color+'55',backgroundColor:cat.color+'18'}]}>
+          <Text style={pk.emoji}>{CAT_EMOJI[cat.id]||'💰'}</Text>
+        </View>
+        <View style={pk.headRight}>
+          <Text style={pk.catName}>{cat.label}</Text>
+          <Text style={[pk.total,{color:cat.color}]}>{formatBRL(cat.total)}</Text>
+          <View style={[pk.pctBadge,{backgroundColor:cat.color+'22'}]}>
+            <Text style={[pk.pctTxt,{color:cat.color}]}>{formatPercent(cat.percent)} dos gastos</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Barra de progresso */}
+      <View style={[pk.bar,{backgroundColor:'rgba(255,255,255,0.08)'}]}>
         <View style={[pk.barFill,{width:`${Math.min(100,cat.percent)}%`,backgroundColor:cat.color}]}/>
       </View>
+
+      {/* Stats em linha */}
+      <View style={pk.statsRow}>
+        {peakM&&(
+          <View style={pk.statPill}>
+            <Text style={pk.statIcon}>📈</Text>
+            <View>
+              <Text style={pk.statLabel}>Pico</Text>
+              <Text style={[pk.statVal,{color:cat.color}]}>{MONTH_NAMES[peakM.monthIndex].slice(0,3)}</Text>
+            </View>
+          </View>
+        )}
+        <View style={pk.statPill}>
+          <Text style={pk.statIcon}>📊</Text>
+          <View>
+            <Text style={pk.statLabel}>Méd/mês</Text>
+            <Text style={[pk.statVal,{color:cat.color}]}>{formatBRL(avgPerMonth)}</Text>
+          </View>
+        </View>
+        {totalOccurrences > 0&&(
+          <View style={pk.statPill}>
+            <Text style={pk.statIcon}>🔢</Text>
+            <View>
+              <Text style={pk.statLabel}>Lançamentos</Text>
+              <Text style={[pk.statVal,{color:cat.color}]}>{totalOccurrences}</Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Divisória */}
+      {topItems.length>0&&<View style={[pk.divider,{backgroundColor:cat.color+'33'}]}/>}
+
+      {/* Top itens */}
       {topItems.length>0&&(
         <View style={pk.items}>
+          <Text style={pk.itemsTitle}>TOP GASTOS</Text>
           {topItems.map((it,i)=>(
             <View key={i} style={pk.item}>
-              <Text style={pk.itemIcon}>{['🥇','🥈','🥉'][i]||'▸'}</Text>
+              <Text style={pk.medal}>{MEDAL[i]}</Text>
               <Text style={pk.itemName} numberOfLines={1}>{it.name}</Text>
+              {it.count>1&&<View style={[pk.countBadge,{backgroundColor:cat.color+'22'}]}>
+                <Text style={[pk.countTxt,{color:cat.color}]}>×{it.count}</Text>
+              </View>}
               <Text style={[pk.itemAmt,{color:cat.color}]}>{formatBRL(it.total)}</Text>
             </View>
           ))}
         </View>
       )}
-      <Text style={pk.hint}>↓ Toque em "Ver detalhes completos"</Text>
+
+      <View style={pk.hintRow}>
+        <Text style={pk.hint}>Segure para detalhes completos</Text>
+        <Text style={pk.hintArrow}>↗</Text>
+      </View>
     </Animated.View>
   );
 }
 const pk = StyleSheet.create({
   card:{
-    backgroundColor:'rgba(8,10,22,0.96)',
-    borderWidth:1.5,borderRadius:28,padding:24,
-    alignItems:'center',overflow:'hidden',
-    shadowColor:'#000',shadowOffset:{width:0,height:18},
-    shadowOpacity:0.7,shadowRadius:30,elevation:32,
+    backgroundColor:'rgba(6,8,20,0.97)',
+    borderWidth:1.5,borderRadius:24,padding:20,width:280,
+    overflow:'hidden',
+    shadowColor:'#000',shadowOffset:{width:0,height:20},
+    shadowOpacity:0.75,shadowRadius:32,elevation:36,
   },
-  accentBar:{position:'absolute',top:0,left:0,right:0,height:4},
-  emoji:{fontSize:46,marginTop:4,marginBottom:6},
-  catName:{fontSize:18,fontWeight:'900',color:'#fff',marginBottom:4},
-  total:{fontSize:28,fontWeight:'900',marginBottom:2},
-  pctTxt:{fontSize:12,color:'rgba(255,255,255,0.55)',marginBottom:12},
-  bar:{height:8,borderRadius:5,width:'100%',overflow:'hidden',marginBottom:16},
-  barFill:{height:'100%',borderRadius:5},
-  items:{width:'100%',gap:8,marginBottom:14},
+  glowBar:{position:'absolute',top:0,left:0,right:0,height:3},
+  head:{flexDirection:'row',alignItems:'center',gap:14,marginBottom:14},
+  emojiRing:{width:56,height:56,borderRadius:18,borderWidth:1.5,alignItems:'center',justifyContent:'center'},
+  emoji:{fontSize:30},
+  headRight:{flex:1},
+  catName:{fontSize:15,fontWeight:'900',color:'#fff',marginBottom:2},
+  total:{fontSize:22,fontWeight:'900',marginBottom:4},
+  pctBadge:{borderRadius:8,paddingHorizontal:8,paddingVertical:3,alignSelf:'flex-start'},
+  pctTxt:{fontSize:11,fontWeight:'800'},
+  bar:{height:6,borderRadius:4,width:'100%',overflow:'hidden',marginBottom:14},
+  barFill:{height:'100%',borderRadius:4},
+  statsRow:{flexDirection:'row',gap:8,marginBottom:14},
+  statPill:{flex:1,flexDirection:'row',alignItems:'center',gap:6,backgroundColor:'rgba(255,255,255,0.06)',borderRadius:12,padding:8},
+  statIcon:{fontSize:14},
+  statLabel:{fontSize:9,color:'rgba(255,255,255,0.45)',fontWeight:'700',textTransform:'uppercase',letterSpacing:0.3},
+  statVal:{fontSize:12,fontWeight:'900'},
+  divider:{height:1,marginBottom:12},
+  items:{gap:8,marginBottom:12},
+  itemsTitle:{fontSize:9,fontWeight:'800',color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:0.8,marginBottom:4},
   item:{flexDirection:'row',alignItems:'center',gap:8},
-  itemIcon:{fontSize:14,width:22},
-  itemName:{flex:1,fontSize:13,fontWeight:'700',color:'rgba(255,255,255,0.85)'},
+  medal:{fontSize:13,width:20},
+  itemName:{flex:1,fontSize:12,fontWeight:'700',color:'rgba(255,255,255,0.88)'},
+  countBadge:{borderRadius:6,paddingHorizontal:5,paddingVertical:1},
+  countTxt:{fontSize:10,fontWeight:'800'},
   itemAmt:{fontSize:13,fontWeight:'900'},
-  hint:{fontSize:11,color:'rgba(255,255,255,0.3)',marginTop:4},
+  hintRow:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4},
+  hint:{fontSize:10,color:'rgba(255,255,255,0.28)'},
+  hintArrow:{fontSize:10,color:'rgba(255,255,255,0.28)'},
 });
 
 // ─── CategoryDetailPanel ──────────────────────────────────────────────────────
@@ -596,8 +673,9 @@ export default function AnnualSummaryScreen() {
 
   const rate=totals.rendaTotal>0?(totals.sobraTotal/totals.rendaTotal)*100:0;
   const health=getHealth(rate);
-  const mwd=totals.perMonth.filter(m=>m.renda>0||m.despesa>0);
-  const posMonths=totals.perMonth.filter(m=>m.sobra>0).length;
+  // Destaques do Ano: somente meses já concluídos pelo usuário
+  const mwd=totals.perMonth.filter(m=>(data.months[m.index]?.completed)&&(m.renda>0||m.despesa>0));
+  const posMonths=totals.perMonth.filter(m=>(data.months[m.index]?.completed)&&m.sobra>0).length;
   const bestM=mwd.length>0?mwd.reduce((a,b)=>b.sobra>a.sobra?b:a,mwd[0]):null;
   const worstM=mwd.length>0?mwd.reduce((a,b)=>b.despesa>a.despesa?b:a,mwd[0]):null;
 

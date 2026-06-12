@@ -48,6 +48,16 @@ function localClassify(t) {
   if (/projeto|meta|objetivo|poupando|guardando|economiz/.test(t))
     return { intent: 'query', params: { subtype: 'projects', month } };
 
+  // ── Concluir / marcar como pago ───────────────────────────────────────────
+  if (/conclu[ií]|conclua|concluir|marqu?e?\s*(como\s*)?(pago|paga)|marca\s*(como\s*)?(pago|paga)|quitar?|quit[ae]|j[aá]\s*paguei\s*(o|a)\b/.test(t)) {
+    const nameRaw = t
+      .replace(/\b(conclua|concluir|conclu[ií]|marque?|marca|quitar?|quit[ae]|j[aá]\s*paguei)\b/gi, '')
+      .replace(/\b(a\s+despesa\s+d[ao]?|o\s+gasto\s+d[ao]?|despesa\s+d[ao]?|a\s+conta\s+d[ao]?|como\s+pag[ao]|pra\s+mim|para\s+mim|jarvis)\b/gi, '')
+      .replace(/[?,!]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (nameRaw.length >= 2)
+      return { intent: 'conclude_expense', params: { expense_name: nameRaw } };
+  }
+
   // ── Por semana ────────────────────────────────────────────────────────────
   if (/essa\s*semana|esta\s*semana|semana\s*(passada|atual|que\s*vem)|nessa\s*semana|nesta\s*semana/.test(t))
     return { intent: 'query', params: { subtype: 'by_week', month: null } };

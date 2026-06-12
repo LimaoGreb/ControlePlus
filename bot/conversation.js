@@ -126,12 +126,55 @@ async function dispatchIntent(chatId, session, classified) {
     return;
   }
 
+  if (intent === 'conclude_expense') {
+    const expenseName = (params?.expense_name || '').trim();
+    if (!expenseName || expenseName.length < 2) {
+      await sendMessage(chatId, `Qual despesa quer concluir? Ex: _"conclua a Netflix"_`);
+      return;
+    }
+    const snapshot = await readUserSnapshot(chatId);
+    session.snapshot = snapshot;
+    const query = expenseName.toLowerCase();
+    const months = snapshot?.months || {};
+    const matches = [];
+    for (let mi = 0; mi < 12; mi++) {
+      for (const section of ['fixed', 'variable']) {
+        for (const item of (months[mi]?.[section] || [])) {
+          if ((item.name || '').toLowerCase().includes(query) && !item.concluded) {
+            matches.push({ mi, section, item });
+          }
+        }
+      }
+    }
+    if (matches.length === 0) {
+      await sendMessage(chatId, `❌ Não encontrei despesas com *"${expenseName}"* em aberto.`);
+      session.step = 'done';
+      return;
+    }
+    const R = (v) => `R$ ${(v || 0).toFixed(2)}`;
+    const list = matches.map(m =>
+      `• *${m.item.name}* — ${R(m.item.value)} · ${m.section === 'fixed' ? 'Fixo' : 'Variável'} · ${MONTH_NAMES[m.mi]}`
+    ).join('\n');
+    session.step = 'confirming_cmd';
+    session.pendingCmd = {
+      type: 'CONCLUDE_EXPENSE',
+      params: { expense_name: query },
+      label: list,
+    };
+    const header = matches.length === 1
+      ? `📝 Encontrei esta despesa:`
+      : `📝 Encontrei *${matches.length} despesas* com _"${expenseName}"_:`;
+    await sendMessage(chatId, `${header}\n\n${list}\n\nMarcar como pago? _(sim/não)_`);
+    return;
+  }
+
   // Chat / help
   await sendMessage(chatId,
     `Oi ${session.firstName}! 👋 O que posso fazer:\n\n` +
     `💸 *Adicionar despesa:* _"gastei 50 no mercado no pix"_\n` +
     `📦 *Parcelar compra:* _"parcelei a TV 1200 em 6x no crédito"_\n` +
     `📅 *Mudar vencimento:* _"vencimento da Netflix para dia 15"_\n` +
+    `✅ *Concluir despesa:* _"conclua a despesa do Carteiro"_\n` +
     `📊 *Resumo do mês:* _"como tá o mês?"_\n` +
     `💳 *Por cartão:* _"quanto gastei no Nubank?"_\n` +
     `🏆 *Maiores gastos:* _"maiores gastos de junho"_\n` +
@@ -411,6 +454,8 @@ async function handleConfirmingCommand(chatId, text, session) {
       await sendMessage(chatId, `✅ *Parcelamento adicionado!*\n\n${cmd.label}\n\n_Meses atualizados no Controle+_ 🚀`);
     } else if (cmd.type === 'UPDATE_DUE_DATE') {
       await sendMessage(chatId, `✅ *Vencimento atualizado!*\n\n${cmd.label}\n\n_Notificações reagendadas_ ✅`);
+    } else if (cmd.type === 'CONCLUDE_EXPENSE') {
+      await sendMessage(chatId, `✅ *Despesa(s) concluída(s)!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 🚀`);
     }
   } catch (e) {
     console.error('[Jarvis] comando error:', e.message);

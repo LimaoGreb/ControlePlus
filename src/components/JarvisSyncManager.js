@@ -118,5 +118,24 @@ async function executeCommand(cmd, data, addItem, updateItem, addInstallments) {
     return { updated, expense_name, new_day };
   }
 
+  if (cmd.type === 'CONCLUDE_EXPENSE') {
+    const { expense_name } = cmd.params;
+    const query = (expense_name || '').toLowerCase();
+    const months = data?.months || {};
+    let concluded = 0;
+    for (let mi = 0; mi < 12; mi++) {
+      for (const section of ['fixed', 'variable']) {
+        for (const item of (months[mi]?.[section] || [])) {
+          if ((item.name || '').toLowerCase().includes(query) && !item.concluded) {
+            updateItem(mi, section, item.id, 'concluded', true);
+            concluded++;
+          }
+        }
+      }
+    }
+    if (concluded === 0) throw new Error(`Nenhuma despesa encontrada com "${expense_name}"`);
+    return { concluded, expense_name };
+  }
+
   throw new Error(`Comando desconhecido: ${cmd.type}`);
 }
