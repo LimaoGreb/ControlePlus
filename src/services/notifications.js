@@ -103,21 +103,23 @@ function buildBody(urgency, count, total, nameList, day) {
 }
 
 async function send(when, title, body) {
-  const secondsFromNow = Math.round((when - Date.now()) / 1000);
-  if (secondsFromNow < 5) return; // ignora se já passou ou falta menos de 5s
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      sound: 'default',
-      color: NOTIF_COLOR,
-    },
-    trigger: {
-      seconds: secondsFromNow,
-      repeats: false,
-      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
-    },
-  });
+  if (when <= Date.now() + 5000) return; // ignora passado ou menos de 5s no futuro
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: 'default',
+        color: NOTIF_COLOR,
+      },
+      trigger: {
+        date: new Date(when),
+        ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
+      },
+    });
+  } catch (e) {
+    console.warn('[notif] schedule error:', title, e?.message);
+  }
 }
 
 // Mutex: impede execuções concorrentes que causam duplicação de notificações.
