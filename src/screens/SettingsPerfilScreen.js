@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ScrollView, View, Text, TextInput, Switch, TouchableOpacity, StyleSheet, Alert, Share, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SvgXml } from 'react-native-svg';
+import { telegram } from '../data/bankLogos';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { useSync } from '../context/SyncContext';
@@ -213,9 +215,7 @@ export default function SettingsPerfilScreen() {
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>JARVIS</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-          <View style={styles.jarvisIcon}>
-            <Ionicons name="logo-telegram" size={22} color="#F5A524" />
-          </View>
+          <SvgXml xml={telegram} width={38} height={38} style={{ borderRadius: 10 }} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={[styles.label, { color: colors.text, marginBottom: 0 }]}>Jarvis — Telegram</Text>
             <Text style={[styles.hint, { color: colors.textMuted }]}>Cole seu chatId para receber despesas pelo bot</Text>

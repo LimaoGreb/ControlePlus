@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { contrastText } from '../utils/colorUtils';
-import { BANKS, getBankById } from '../data/banks';
+import { BANKS, getBankForPayment } from '../data/banks';
 import BankBadge from '../components/BankBadge';
 import { formatBRL } from '../utils/currency';
 
@@ -23,6 +23,16 @@ export default function SettingsCartoesScreen() {
   const [expandedId, setExpandedId] = useState(null);
   const [bankSearch, setBankSearch] = useState({});
 
+  // PIX e Débito nunca são crédito — limpa estado ruim ao montar
+  useEffect(() => {
+    paymentMethods.forEach(pm => {
+      const b = getBankForPayment(pm);
+      if ((b?.id === 'pix' || b?.id === 'debito') && pm.isCredit) {
+        setPaymentCredit(pm.id, false);
+      }
+    });
+  }, []);
+
   const handleAdd = () => { if (addPaymentMethod(newPayment)) setNewPayment(''); };
 
   return (
@@ -35,7 +45,8 @@ export default function SettingsCartoesScreen() {
         )}
 
         {paymentMethods.map((pm) => {
-          const bank = getBankById(pm.bank);
+          const bank = getBankForPayment(pm);
+          const isNonCredit = bank?.id === 'pix' || bank?.id === 'debito';
           const isExpanded = expandedId === pm.id;
 
           return (
@@ -53,18 +64,20 @@ export default function SettingsCartoesScreen() {
                   placeholderTextColor={colors.textMuted}
                   style={[styles.pmNameInput, { color: colors.text }]}
                 />
-                <TouchableOpacity
-                  onPress={() => setPaymentCredit(pm.id, !pm.isCredit)}
-                  style={[styles.chip, {
-                    backgroundColor: pm.isCredit ? colors.primary : 'transparent',
-                    borderColor: pm.isCredit ? colors.primary : colors.border,
-                  }]}
-                >
-                  <Text style={[styles.chipText, { color: pm.isCredit ? contrastText(colors.primary) : colors.textMuted }]}>
-                    Crédito
-                  </Text>
-                </TouchableOpacity>
-                {pm.isCredit && (
+                {!isNonCredit && (
+                  <TouchableOpacity
+                    onPress={() => setPaymentCredit(pm.id, !pm.isCredit)}
+                    style={[styles.chip, {
+                      backgroundColor: pm.isCredit ? colors.primary : 'transparent',
+                      borderColor: pm.isCredit ? colors.primary : colors.border,
+                    }]}
+                  >
+                    <Text style={[styles.chipText, { color: pm.isCredit ? contrastText(colors.primary) : colors.textMuted }]}>
+                      Crédito
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {pm.isCredit && !isNonCredit && (
                   <TouchableOpacity
                     onPress={() => setExpandedId(isExpanded ? null : pm.id)}
                     hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}

@@ -121,6 +121,44 @@ export function answerQuery(snapshot, params) {
     return `📊 *Análise ${label}*\n\n${details}\n\n━━━━━━━━━━━━━\n💰 Renda total: ${R(totalInc)}\n💸 Gastos total: ${R(totalExp)}\n${totalBal >= 0 ? '✅' : '⚠️'} Saldo do período: ${R(totalBal)}\n📈 Taxa de poupança: ${rate.toFixed(1)}% — Nota ${grade}\n\n🏆 Melhor mês: *${best.name}* (${R(best.bal)})\n⚠️ Pior mês: *${worst.name}* (${R(worst.bal)})`;
   }
 
+  if (subtype === 'compare') {
+    const now = new Date().getMonth();
+    const m1i = params.month1 ?? ((now - 1 + 12) % 12);
+    const m2i = params.month2 ?? now;
+    const f = (params.filter || '').toLowerCase();
+
+    function getMonthTotals(mi) {
+      const mm = (snapshot.months || {})[mi] || {};
+      const items = [...(mm.fixed || []), ...(mm.variable || [])];
+      const filtered = f ? items.filter(i => (i.payment || '').toLowerCase().includes(f) || (i.name || '').toLowerCase().includes(f)) : items;
+      const total = filtered.reduce((s, i) => s + (i.value || 0), 0);
+      return { total, items: filtered };
+    }
+
+    const d1 = getMonthTotals(m1i);
+    const d2 = getMonthTotals(m2i);
+    const diff = d2.total - d1.total;
+    const pct = d1.total > 0 ? Math.abs((diff / d1.total) * 100).toFixed(1) : null;
+    const arrow = diff > 0 ? '📈' : diff < 0 ? '📉' : '↔️';
+    const filterLabel = params.filter ? ` — ${params.filter}` : '';
+
+    const lines = [`${arrow} *Comparativo${filterLabel}*\n`];
+    lines.push(`📅 *${MN[m1i]}:* ${R(d1.total)}`);
+    if (f && d1.items.length) d1.items.slice(0, 8).forEach(i => lines.push(`  · ${i.name}: ${R(i.value)}`));
+    lines.push('');
+    lines.push(`📅 *${MN[m2i]}:* ${R(d2.total)}`);
+    if (f && d2.items.length) d2.items.slice(0, 8).forEach(i => lines.push(`  · ${i.name}: ${R(i.value)}`));
+    lines.push('\n━━━━━━━━━━━━━');
+    if (diff > 0)
+      lines.push(`⬆️ +${R(diff)} a mais em ${MN[m2i]}${pct ? ` (+${pct}%)` : ''}`);
+    else if (diff < 0)
+      lines.push(`⬇️ ${R(Math.abs(diff))} a menos em ${MN[m2i]}${pct ? ` (-${pct}%)` : ''}`);
+    else
+      lines.push('↔️ Mesmo valor nos dois meses');
+
+    return lines.join('\n');
+  }
+
   // summary / total_month (default)
   const tInc = incomes.reduce((s, i) => s + (i.value || 0), 0);
   const tFix = fixed.reduce((s, i) => s + (i.value || 0), 0);

@@ -2,6 +2,35 @@
 
 ---
 
+## v2.1.0 — 2026-06-12
+
+### Fixes — Formas de Pagamento
+**`src/screens/SettingsCartoesScreen.js`**
+- Substituído `getBankById(pm.bank)` por `getBankForPayment(pm)` → Débito agora exibe badge corretamente (auto-detectado pelo nome).
+- PIX e Débito não exibem o chip "Crédito" (`isNonCredit` flag).
+- `useEffect` no mount limpa `isCredit: true` em entradas PIX/Débito que existiam por engano.
+
+### Telegram Logo no Jarvis
+**`src/data/bankLogos.js`**
+- Adicionado `export const telegram` com SVG oficial do Telegram (gradiente azul, avião branco).
+**`assets/banks/telegram.svg`** — cópia de `telegram_logo.svg` para compatibilidade com o script de geração.
+**`scripts/generate-bank-logos.js`** — adicionado `'telegram'` ao BANK_IDS.
+**`src/screens/SettingsPerfilScreen.js`**
+- Ícone Jarvis: substituído `<Ionicons name="logo-telegram">` (renderizava "?") por `<SvgXml xml={telegram}>` com o SVG real.
+
+### Jarvis — Comparativo entre meses
+**`bot/queryHandler.js`**
+- Novo subtype `compare`: recebe `month1`, `month2`, `filter` (opcional).
+- Mostra totais dos dois meses lado a lado, lista items se filtrado, calcula diferença em R$ e % com seta de tendência.
+**`bot/geminiClient.js`**
+- Novo bloco de detecção: "comparativo", "comparar", "vs", "versus", "diferença entre" → `{ subtype: 'compare', month1, month2, filter }`.
+- Auto-resolve "mês passado e esse mês" para índices corretos.
+- Prompt Gemini atualizado com subtype `compare`, `month1`, `month2`.
+**`bot/conversation.js`**
+- Help message atualizado com exemplo do comparativo.
+
+---
+
 ## v2.0.9 — 2026-06-12
 
 ### Correções Críticas

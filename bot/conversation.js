@@ -182,7 +182,8 @@ async function dispatchIntent(chatId, session, classified) {
     `🎯 *Projetos:* _"status dos projetos"_\n` +
     `📁 *Exportar CSV:* _"exporta meus dados"_\n\n` +
     `🔍 *Busca multi-mês:* _"quanto gastei em ifood desde janeiro?"_\n` +
-    `📋 *Análise do período:* _"feedback dos primeiros 3 meses"_`
+    `📋 *Análise do período:* _"feedback dos primeiros 3 meses"_\n` +
+    `📊 *Comparativo:* _"comparativo do nubank mês passado vs esse mês"_`
   );
   session.step = 'done';
 }

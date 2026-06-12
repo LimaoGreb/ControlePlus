@@ -100,6 +100,21 @@ function localClassify(t) {
 
   const hasQuery = /quanto|gast|resumo|total|como\s*(t[aá]|foi|est[aá])|saldo|sobr[ao]u|sobr|sobrando|balanç|fiz|gastamos|dispend/.test(t);
 
+  // ── Comparativo entre dois meses ─────────────────────────────────────────
+  if (/comparativo|comparar|compar[ae]\b|\bvs\.?\s|\bversus\b|diferen[çc]a\s*entre|compara[çc][aã]o/i.test(t)) {
+    const now = new Date().getMonth();
+    const months = [];
+    MONTH_PT.forEach((m, i) => { if (t.includes(m)) months.push(i); });
+    if (/m[eê]s\s*(passado|anterior|[uú]ltimo)|[uú]ltimo\s*m[eê]s/i.test(t))
+      months.unshift(((now - 1) + 12) % 12);
+    if (/esse\s*m[eê]s|este\s*m[eê]s|m[eê]s\s*(atual|corrente)/i.test(t))
+      if (!months.includes(now)) months.push(now);
+    const cardMatchC = t.match(/nubank|c6\s*bank|c6|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|pix|d[eé]bito|cr[eé]dito/);
+    const month1 = months[0] ?? ((now - 1 + 12) % 12);
+    const month2 = months[1] !== undefined ? months[1] : now;
+    return { intent: 'query', params: { subtype: 'compare', month1, month2, filter: cardMatchC ? cardMatchC[0].trim() : null } };
+  }
+
   // ── Por cartão / forma de pagamento ──────────────────────────────────────
   const cardMatch = t.match(/nubank|c6\s*bank|c6|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will\s*bank|will|pix|d[eé]bito|cr[eé]dito/);
   if (hasQuery && cardMatch)
@@ -133,11 +148,13 @@ Intenções:
 - "chat": saudação ou conversa
 
 Para query:
-  subtype: "summary"|"by_payment"|"biggest"|"investments"|"projects"|"by_name"|"by_name_range"|"analysis"
+  subtype: "summary"|"by_payment"|"biggest"|"investments"|"projects"|"by_name"|"by_name_range"|"analysis"|"compare"
   month: nome do mês PT-BR (aceita "mês passado", "mês anterior") ou null
   filter: texto de filtro ou null
   fromMonth: índice do mês inicial (0=jan) — para by_name_range e analysis
   toMonth: índice do mês final (0=jan) — para by_name_range e analysis
+  month1: índice do 1º mês (0=jan) — para compare
+  month2: índice do 2º mês (0=jan) — para compare
 
 Para add_installments: name, total_value, installments, payment, month
 Para update_due_date: expense_name, new_day
