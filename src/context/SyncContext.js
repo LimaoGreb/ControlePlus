@@ -10,7 +10,7 @@ import { useSettings } from './SettingsContext';
 import {
   pushCouple, fetchCouple, listenCouple,
   pushPersonalData, fetchPersonalData, listenPersonalData,
-  FIREBASE_CONFIGURED,
+  announceDeviceId, FIREBASE_CONFIGURED,
 } from '../services/firebase';
 
 const SyncContext = createContext(null);
@@ -144,6 +144,12 @@ export function SyncProvider({ children }) {
     });
   }, []);
 
+  // Anuncia deviceId ao conectar — garante que o(a) parceiro(a) aprenda nosso path pessoal.
+  useEffect(() => {
+    if (!ready || !coupleCode || !FIREBASE_CONFIGURED || !deviceId) return;
+    announceDeviceId(coupleCode, deviceId).catch(() => {});
+  }, [ready, coupleCode, deviceId]);
+
   // Listener de dados compartilhados — também descobre o deviceId do(a) parceiro(a).
   useEffect(() => {
     if (!ready || !coupleCode || !FIREBASE_CONFIGURED || !deviceId) return;
@@ -151,11 +157,14 @@ export function SyncProvider({ children }) {
     setStatus('syncing');
     fetchCouple(coupleCode)
       .then((remote) => {
+        // Sempre extrai deviceId — independente do ts
+        if (remote?.deviceId && remote.deviceId !== deviceId) {
+          updatePartnerDeviceId(remote.deviceId);
+        }
         if (remote && remote.ts > localTs.current) {
           saveLocalTs(remote.ts);
           setLastPartnerActivity(Date.now());
           if (remote.shared) { ignoreNextSharedPush.current = true; importSharedData(remote.shared); }
-          if (remote.deviceId && remote.deviceId !== deviceId) { updatePartnerDeviceId(remote.deviceId); }
         }
         setStatus('synced');
         setLastSync(Date.now());
@@ -163,11 +172,14 @@ export function SyncProvider({ children }) {
       .catch(() => setStatus('error'));
 
     stopListen.current = listenCouple(coupleCode, (remote) => {
+      // Sempre extrai deviceId — independente do ts (evita bug de first-connect)
+      if (remote.deviceId && remote.deviceId !== deviceId) {
+        updatePartnerDeviceId(remote.deviceId);
+      }
       if (remote.ts > localTs.current) {
         saveLocalTs(remote.ts);
         setLastPartnerActivity(Date.now());
         if (remote.shared) { ignoreNextSharedPush.current = true; importSharedData(remote.shared); }
-        if (remote.deviceId && remote.deviceId !== deviceId) { updatePartnerDeviceId(remote.deviceId); }
         setStatus('synced');
         setLastSync(Date.now());
       }

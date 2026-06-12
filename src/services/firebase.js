@@ -7,7 +7,7 @@
 //  4. Copie o objeto firebaseConfig e cole abaixo
 //  5. Rode: npm install firebase  (já feito se você vê esse arquivo)
 import { initializeApp, getApps } from 'firebase/app';
-import { getDatabase, ref, set, get, onValue, off } from 'firebase/database';
+import { getDatabase, ref, set, get, update, onValue, off } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAw-ooawiawK-NL5uqE4i4lKzok1zbdbwE',
@@ -45,6 +45,12 @@ export function listenCouple(code, callback) {
   const r = ref(getDb(), `couples/${code}`);
   onValue(r, (snap) => { if (snap.exists()) callback(snap.val()); });
   return () => off(r);
+}
+
+// Anuncia apenas o deviceId (partial update) — sem tocar em shared/ts.
+// Garante que o(a) parceiro(a) aprenda o path pessoal ao conectar.
+export async function announceDeviceId(code, deviceId) {
+  await update(ref(getDb(), `couples/${code}`), { deviceId });
 }
 
 // Dados pessoais — cada dispositivo tem seu próprio node, sem risco de sobrescrita mútua.
