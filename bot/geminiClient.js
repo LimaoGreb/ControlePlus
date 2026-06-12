@@ -48,6 +48,10 @@ function localClassify(t) {
   if (/projeto|meta|objetivo|poupando|guardando|economiz/.test(t))
     return { intent: 'query', params: { subtype: 'projects', month } };
 
+  // ── Por semana ────────────────────────────────────────────────────────────
+  if (/essa\s*semana|esta\s*semana|semana\s*(passada|atual|que\s*vem)|nessa\s*semana|nesta\s*semana/.test(t))
+    return { intent: 'query', params: { subtype: 'by_week', month: null } };
+
   // ── Maiores gastos ────────────────────────────────────────────────────────
   if (/maior(es)?|top\s*\d|piores?|mais\s*caro|mais\s*cara|o\s*que\s*(mais\s*)?(gast|custou)/.test(t))
     return { intent: 'query', params: { subtype: 'biggest', month } };

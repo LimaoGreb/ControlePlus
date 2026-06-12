@@ -39,6 +39,20 @@ export function answerQuery(snapshot, params) {
     }).join('\n\n')}`;
   }
 
+  if (subtype === 'by_week') {
+    const now = new Date();
+    // Semana começa na segunda
+    const day = now.getDay();
+    const diffToMon = (day === 0 ? -6 : 1 - day);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() + diffToMon);
+    startOfWeek.setHours(0, 0, 0, 0);
+    const weekItems = all.filter(i => i.date && new Date(i.date) >= startOfWeek);
+    if (!weekItems.length) return `📅 Nenhuma despesa registrada nesta semana (as despesas adicionadas antes desta versão não têm data individual).`;
+    const total = weekItems.reduce((s, i) => s + (i.value || 0), 0);
+    return `📅 *Esta semana*\n\n${weekItems.map(i => `• ${i.name}: ${R(i.value)}`).join('\n')}\n\nTotal: *${R(total)}*`;
+  }
+
   if (subtype === 'biggest') {
     const sorted = [...all].sort((a, b) => (b.value || 0) - (a.value || 0)).slice(0, 5);
     if (!sorted.length) return `📋 Nenhuma despesa em ${mn}.`;

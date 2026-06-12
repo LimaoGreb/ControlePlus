@@ -62,7 +62,7 @@ export function DataProvider({ children }) {
   const addItem = (monthIndex, section, name = '', value = 0, payment = null, extras = {}) => {
     updateMonth(monthIndex, (m) => ({
       ...m,
-      [section]: [...m[section], { id: uid(section), name, value, payment, ...extras }],
+      [section]: [...m[section], { id: uid(section), name, value, payment, date: new Date().toISOString(), ...extras }],
     }));
   };
 
