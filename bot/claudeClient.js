@@ -46,6 +46,7 @@ function extractName(text) {
     .replace(/\b(gastei|paguei|comprei|tive que pagar|fui no|fui na|fui|vim|fiz|no|na|em|de|do|da|pelo|pela|pro|pra|um|uma|o|a|meu|minha|aqui|agora|hoje|ontem|e|que|ali|la|lá)\b/gi, ' ')
     .replace(/R?\$?\s*\d+(?:[,.]?\d+)?\s*(?:reais?|conto|pila|real)?/gi, ' ')
     .replace(/\b(no pix|no d[eé]bito|no cr[eé]dito|no dinheiro|a d[eé]bito|em dinheiro|pix|d[eé]bito|cr[eé]dito|dinheiro|boleto|cart[aã]o)\b/gi, ' ')
+    .replace(/\b\d+\s*x\b/gi, ' ')
     .replace(/[.,!?;]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

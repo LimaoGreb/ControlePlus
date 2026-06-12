@@ -19,6 +19,18 @@ export async function sendTyping(chatId) {
   });
 }
 
+export async function sendDocument(chatId, filename, content, caption) {
+  try {
+    const fd = new FormData();
+    fd.append('chat_id', String(chatId));
+    fd.append('document', new Blob([content], { type: 'text/csv; charset=utf-8' }), filename);
+    if (caption) fd.append('caption', caption);
+    await fetch(`${BASE()}/sendDocument`, { method: 'POST', body: fd });
+  } catch (e) {
+    console.warn('[Telegram] sendDocument error:', e.message);
+  }
+}
+
 // Registra o webhook com a URL pública do servidor (chamar 1x no deploy).
 export async function setWebhook(url) {
   const res = await fetch(`${BASE()}/setWebhook`, {

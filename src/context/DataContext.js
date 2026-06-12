@@ -59,10 +59,10 @@ export function DataProvider({ children }) {
   };
 
   // section: 'incomes' | 'fixed' | 'variable'
-  const addItem = (monthIndex, section, name = '', value = 0, payment = null) => {
+  const addItem = (monthIndex, section, name = '', value = 0, payment = null, extras = {}) => {
     updateMonth(monthIndex, (m) => ({
       ...m,
-      [section]: [...m[section], { id: uid(section), name, value, payment }],
+      [section]: [...m[section], { id: uid(section), name, value, payment, ...extras }],
     }));
   };
 

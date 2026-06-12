@@ -52,12 +52,15 @@ export function useBotSync(telegramChatId, addItem) {
       for (const expense of expenses) {
         // Adiciona ao app (seção variável do mês correspondente)
         try {
+          const extras = {};
+          if (expense.dueDay) extras.dueDay = expense.dueDay;
           addItemRef.current(
             expense.monthIndex,
             expense.section || 'variable',
             expense.name,
             expense.value,
             expense.payment || null,
+            extras,
           );
 
           // Marca como processado no Firebase

@@ -43,8 +43,9 @@ export async function addPendingExpense(chatId, expense) {
     name: expense.name,
     value: expense.value,
     payment: expense.payment || null,
+    dueDay: expense.dueDay || null,
     monthIndex: expense.monthIndex,
-    section: 'variable', // despesas do bot vão para variáveis por padrão
+    section: expense.dueDay ? 'fixed' : 'variable',
     addedAt: new Date().toISOString(),
     processed: false,
   };
@@ -52,10 +53,41 @@ export async function addPendingExpense(chatId, expense) {
   return id;
 }
 
-/**
- * Marca uma despesa como processada (o app chama isso após adicionar).
- * Mantemos o registro por 7 dias para auditoria, depois pode limpar.
- */
 export async function markProcessed(chatId, expenseId) {
   await getDb().ref(`jarvis/${chatId}/pending/${expenseId}/processed`).set(true);
+}
+
+export async function readUserSnapshot(chatId) {
+  try {
+    const snap = await getDb().ref(`jarvis/${chatId}/snapshot`).once('value');
+    return snap.exists() ? snap.val() : null;
+  } catch (e) {
+    console.warn('[Firebase] readSnapshot error:', e.message);
+    return null;
+  }
+}
+
+export async function writeCommand(chatId, type, params) {
+  const id = uuid();
+  const payload = { id, type, params, status: 'pending', createdAt: new Date().toISOString() };
+  await getDb().ref(`jarvis/${chatId}/commands/${id}`).set(payload);
+  return id;
+}
+
+export async function pollCommandResult(chatId, cmdId, timeoutMs = 25000) {
+  return new Promise((resolve) => {
+    const dbRef = getDb().ref(`jarvis/${chatId}/commands/${cmdId}`);
+    const timer = setTimeout(() => {
+      dbRef.off('value');
+      resolve(null);
+    }, timeoutMs);
+    dbRef.on('value', (snap) => {
+      const val = snap.val();
+      if (val?.status === 'done' || val?.status === 'error') {
+        clearTimeout(timer);
+        dbRef.off('value');
+        resolve(val);
+      }
+    });
+  });
 }

@@ -34,6 +34,7 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import FloatingTabBar from './src/components/FloatingTabBar';
 import NotificationsManager from './src/components/NotificationsManager';
 import BotSyncManager from './src/components/BotSyncManager';
+import JarvisSyncManager from './src/components/JarvisSyncManager';
 import Avatar from './src/components/Avatar';
 import HeaderMenu from './src/components/HeaderMenu';
 import WelcomeBack from './src/components/WelcomeBack';
@@ -263,6 +264,7 @@ export default function App() {
             <InstallmentProvider>
               <NotificationsManager />
               <BotSyncManager />
+              <JarvisSyncManager />
               <WelcomeBack />
               <Navigation />
             </InstallmentProvider>
