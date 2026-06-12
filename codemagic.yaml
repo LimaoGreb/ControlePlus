@@ -5,6 +5,8 @@ workflows:
     environment:
       node: 18.19.0
       java: 17
+      groups:
+        - keystore
     scripts:
       - name: Install dependencies
         script: npm install
