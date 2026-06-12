@@ -77,10 +77,17 @@ function localClassify(t) {
       return { intent: 'conclude_expense', params: { expense_name: nameRaw } };
   }
 
-  // ── Análise / feedback multi-mês ─────────────────────────────────────────
-  if (/\bfeedback\b|an[aá]lise|analisa(r|me)?|como\s+(foi(ram)?|est[aá])\s+(o\s*)?(ano|m[eê]s|meses|per[ií]odo)|resumo\s+(do\s+)?(ano|per[ií]odo|trim|primeiros?|[uú]ltimos?)|primeiros?\s+\d+\s*mes|[uú]ltimos?\s+\d+\s*mes|primeiros?\s+(tr[eê]s|dois?|quatro)|[uú]ltimos?\s+(tr[eê]s|dois?|quatro)/i.test(t)) {
-    const range = parseMonthRange(t) || { from: 0, to: new Date().getMonth() };
-    return { intent: 'query', params: { subtype: 'analysis', fromMonth: range.from, toMonth: range.to } };
+  // ── Análise / feedback multi-mês (só quando há range explícito ou "ano") ──
+  const hasSingleMonth = /esse\s*m[eê]s|este\s*m[eê]s|m[eê]s\s*(atual|corrente|de\s*hoje)|esse\s*m[eê]s\s*atual/i.test(t);
+  const hasRange = /desde|primeiros?|[uú]ltimos?\s+\d|[uú]ltimos?\s+(tr[eê]s|dois?|quatro)|ano\s*(completo|inteiro|todo)|o\s*ano/i.test(t);
+  if (!hasSingleMonth && /\bfeedback\b|an[aá]lise|analisa(r|me)?|como\s+(foi(ram)?|est[aá])\s+(o\s*)?(ano|meses|per[ií]odo)|resumo\s+(do\s+)?(ano|per[ií]odo|trim|primeiros?|[uú]ltimos?)|primeiros?\s+\d+\s*mes|[uú]ltimos?\s+\d+\s*mes|primeiros?\s+(tr[eê]s|dois?|quatro)|[uú]ltimos?\s+(tr[eê]s|dois?|quatro)/i.test(t)) {
+    const range = hasRange ? parseMonthRange(t) : null;
+    if (range || /ano|primeiros?|[uú]ltimos?|desde/i.test(t)) {
+      const r = range || { from: 0, to: new Date().getMonth() };
+      return { intent: 'query', params: { subtype: 'analysis', fromMonth: r.from, toMonth: r.to } };
+    }
+    // "feedback" sem range → resumo do mês atual
+    return { intent: 'query', params: { subtype: 'summary', month: MONTH_PT[new Date().getMonth()] } };
   }
 
   // ── Por semana ────────────────────────────────────────────────────────────
