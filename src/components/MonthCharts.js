@@ -6,17 +6,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import ExpensesBreakdown from './ExpensesBreakdown';
 import PaymentBreakdown from './PaymentBreakdown';
+import BankBreakdown from './BankBreakdown';
 
 export default function MonthCharts({ month }) {
   const { colors } = useTheme();
   const [page, setPage] = useState(0);
   const [pageW, setPageW] = useState(0);
-  const [heights, setHeights] = useState([0, 0]);
+  const [heights, setHeights] = useState([0, 0, 0]);
   const scrollRef = useRef(null);
 
   const pages = [
     { key: 'cats', label: 'Despesas', icon: 'pie-chart-outline', render: <ExpensesBreakdown month={month} /> },
     { key: 'pay', label: 'Por Pagamento', icon: 'card-outline', render: <PaymentBreakdown month={month} /> },
+    { key: 'bank', label: 'Por Banco', icon: 'business-outline', render: <BankBreakdown month={month} /> },
   ];
 
   const setH = (i, h) =>

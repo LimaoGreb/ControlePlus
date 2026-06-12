@@ -106,9 +106,20 @@ export function SettingsProvider({ children }) {
     savePaymentMethods(next);
   };
 
-  // Marca/desmarca uma forma de pagamento como cartão de crédito (ativa o parcelamento).
   const setPaymentCredit = (id, isCredit) => {
     const next = paymentMethods.map((p) => (p.id === id ? { ...p, isCredit } : p));
+    setPaymentMethods(next);
+    savePaymentMethods(next);
+  };
+
+  const setPaymentBank = (id, bank) => {
+    const next = paymentMethods.map((p) => (p.id === id ? { ...p, bank } : p));
+    setPaymentMethods(next);
+    savePaymentMethods(next);
+  };
+
+  const setPaymentLimit = (id, creditLimit) => {
+    const next = paymentMethods.map((p) => (p.id === id ? { ...p, creditLimit: creditLimit || null } : p));
     setPaymentMethods(next);
     savePaymentMethods(next);
   };
@@ -193,6 +204,8 @@ export function SettingsProvider({ children }) {
         removePaymentMethod,
         updatePaymentMethod,
         setPaymentCredit,
+        setPaymentBank,
+        setPaymentLimit,
         isInvestor,
         setIsInvestor,
         investments,
