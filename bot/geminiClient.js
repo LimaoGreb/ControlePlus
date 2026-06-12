@@ -3,6 +3,44 @@
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
+const MONTH_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+// Classificador local — rápido, sem API. Cobre os casos mais comuns.
+function localClassify(text) {
+  const lower = text.toLowerCase();
+  const monthMatch = MONTH_PT.find(m => lower.includes(m));
+
+  // Exportar
+  if (/\b(exporta|exportar|planilha|csv|baixar dados|meus dados)\b/i.test(lower)) {
+    return { intent: 'export', params: {} };
+  }
+  // Investimentos
+  if (/\b(investimento|carteira|rendimento|aplica[çc][aã]o|aportes?)\b/i.test(lower)) {
+    return { intent: 'query', params: { subtype: 'investments', month: monthMatch || null } };
+  }
+  // Projetos
+  if (/\b(projeto|meta|objetivo|poupando|guardando)\b/i.test(lower)) {
+    return { intent: 'query', params: { subtype: 'projects', month: monthMatch || null } };
+  }
+  // Maiores gastos
+  if (/\b(maior|maiores|top|pior|piores)\b.*\b(gasto|despesa|conta)\b/i.test(lower) ||
+      /\b(gasto|despesa)\b.*\b(maior|maiores)\b/i.test(lower)) {
+    return { intent: 'query', params: { subtype: 'biggest', month: monthMatch || null } };
+  }
+  // Por forma de pagamento ou cartão específico
+  if (/\b(quanto|gastos?|gastei|paguei)\b/i.test(lower) &&
+      /\b(nubank|c6|picpay|next|inter|bradesco|itau|ita[uú]|santander|pix|d[eé]bito|cr[eé]dito|cart[aã]o|recargapay)\b/i.test(lower)) {
+    const filterMatch = lower.match(/\b(nubank|c6|picpay|next|inter|bradesco|ita[uú]|santander|pix|d[eé]bito|cr[eé]dito|recargapay)\b/i);
+    return { intent: 'query', params: { subtype: 'by_payment', month: monthMatch || null, filter: filterMatch ? filterMatch[0] : null } };
+  }
+  // Resumo geral / total do mês
+  if (/\b(resumo|como t[aá]|como foi|como est[aá]|total|quanto (eu |vc |você )?(gastei|gasto|gastou)|gastos? do m[eê]s|m[eê]s de|esse m[eê]s|este m[eê]s)\b/i.test(lower)) {
+    return { intent: 'query', params: { subtype: 'summary', month: monthMatch || null } };
+  }
+
+  return null; // ambíguo — deixa o Gemini decidir
+}
+
 const PROMPT = `Classifique a mensagem de um app de financas pessoais em PT-BR.
 Retorne SOMENTE JSON sem markdown.
 
@@ -35,6 +73,10 @@ Para chat: {}
 Formato exato: {"intent":"...","params":{...}}`;
 
 export async function classifyIntent(text) {
+  // Tenta classificador local primeiro (rápido, sem API)
+  const local = localClassify(text);
+  if (local) return local;
+
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { intent: 'chat', params: {} };
   try {
