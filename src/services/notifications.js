@@ -103,16 +103,18 @@ function buildBody(urgency, count, total, nameList, day) {
 }
 
 async function send(when, title, body) {
+  const secondsFromNow = Math.round((when - Date.now()) / 1000);
+  if (secondsFromNow < 5) return; // ignora se já passou ou falta menos de 5s
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
       body,
       sound: 'default',
       color: NOTIF_COLOR,
-      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
     },
     trigger: {
-      date: new Date(when),
+      seconds: secondsFromNow,
+      repeats: false,
       ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
     },
   });

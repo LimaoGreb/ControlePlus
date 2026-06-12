@@ -154,7 +154,7 @@ export default function ItemRow({
 
 const styles = StyleSheet.create({
   wrapper: { borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 10, marginBottom: 10 },
-  overdueWrapper: { borderLeftWidth: 3, borderLeftColor: 'rgba(255,59,48,0.65)', backgroundColor: 'rgba(255,59,48,0.04)', borderRadius: 6 },
+  overdueWrapper: { borderLeftWidth: 3, borderLeftColor: '#FF3B30', backgroundColor: 'rgba(255,59,48,0.11)' },
   row: { flexDirection: 'row', alignItems: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
   nameInput: { flex: 1, height: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, marginRight: 8 },
