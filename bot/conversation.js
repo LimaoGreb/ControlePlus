@@ -15,7 +15,7 @@ const MONTH_PT = MONTH_NAMES.map(m => m.toLowerCase());
 // { [chatId]: { step, data, askingFor, firstName, snapshot, pendingCmd, lastQuery, lastActivity, _contextLoaded } }
 const sessions = new Map();
 const SESSION_STEP_TTL = 5 * 60 * 1000; // 5 min — expira estados ativos (confirming/collecting)
-const ACTIVE_STEPS = new Set(['confirming', 'confirming_cmd', 'collecting', 'collecting_cmd']);
+const ACTIVE_STEPS = new Set(['confirming', 'confirming_cmd', 'collecting', 'collecting_cmd', 'collecting_income']);
 
 function getSession(chatId, firstName) {
   if (!sessions.has(chatId)) {
@@ -107,6 +107,7 @@ export async function handleMessage(chatId, text, firstName) {
   if (session.step === 'confirming_cmd') { await handleConfirmingCommand(chatId, text, session); return; }
   if (session.step === 'collecting') { await handleCollecting(chatId, text, session); return; }
   if (session.step === 'collecting_cmd') { await handleCollectingCmd(chatId, text, session); return; }
+  if (session.step === 'collecting_income') { await handleCollectingIncome(chatId, text, session); return; }
 
   // Tenta follow-up da última query antes de qualquer classificação
   const followUp = detectFollowUp(text, session.lastQuery);
@@ -153,10 +154,18 @@ async function dispatchIntent(chatId, session, classified) {
   }
 
   if (intent === 'income') {
-    await sendMessage(chatId,
-      `💰 Entendi que você recebeu um valor, mas ainda não gerencio renda no Controle+.\n\nPosso te ajudar com *despesas*, *parcelamentos*, *investimentos* e *projetos*. 😊`
-    );
-    session.step = 'done';
+    const { name = 'Renda', value, month } = params || {};
+    const mi = resolveMonth(month);
+    if (!value) {
+      session.step = 'collecting_income';
+      session.data = { incomeName: name, monthIndex: mi };
+      await sendMessage(chatId, `💰 Qual o valor que você recebeu de *${name}* em ${MONTH_NAMES[mi]}?`);
+      return;
+    }
+    const label = `💰 *${name}* — R$ ${value.toFixed(2)} · ${MONTH_NAMES[mi]}`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'ADD_INCOME', params: { name, value, monthIndex: mi }, label };
+    await sendMessage(chatId, `Confirma a entrada de renda:\n\n${label}\n\nConfirma? _(sim/não)_`);
     return;
   }
 
@@ -290,6 +299,23 @@ async function dispatchIntent(chatId, session, classified) {
     `📊 *Comparativo:* _"comparativo do nubank mês passado vs esse mês"_`
   );
   session.step = 'done';
+}
+
+// ─── Income collection ────────────────────────────────────────────────────────
+
+async function handleCollectingIncome(chatId, text, session) {
+  const numMatch = text.match(/(\d+(?:[.,]\d{1,2})?)/);
+  if (!numMatch) {
+    await sendMessage(chatId, 'Não entendi o valor. Tente: _"1500"_ ou _"R$ 1.500,00"_');
+    return;
+  }
+  const value = parseFloat(numMatch[1].replace(',', '.'));
+  const { incomeName: name, monthIndex: mi } = session.data;
+  const label = `💰 *${name}* — R$ ${value.toFixed(2)} · ${MONTH_NAMES[mi]}`;
+  session.step = 'confirming_cmd';
+  session.data = {};
+  session.pendingCmd = { type: 'ADD_INCOME', params: { name, value, monthIndex: mi }, label };
+  await sendMessage(chatId, `Confirma a entrada de renda:\n\n${label}\n\nConfirma? _(sim/não)_`);
 }
 
 // ─── Expense flow ─────────────────────────────────────────────────────────────
@@ -611,6 +637,8 @@ async function handleConfirmingCommand(chatId, text, session) {
       await sendMessage(chatId, `✅ *Vencimento atualizado!*\n\n${cmd.label}\n\n_Notificações reagendadas_ ✅`);
     } else if (cmd.type === 'CONCLUDE_EXPENSE') {
       await sendMessage(chatId, `✅ *Despesa(s) concluída(s)!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 🚀`);
+    } else if (cmd.type === 'ADD_INCOME') {
+      await sendMessage(chatId, `✅ *Renda adicionada!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 🚀`);
     }
   } catch (e) {
     console.error('[Jarvis] comando error:', e.message);

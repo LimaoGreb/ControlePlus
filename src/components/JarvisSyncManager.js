@@ -94,6 +94,12 @@ export default function JarvisSyncManager() {
 }
 
 async function executeCommand(cmd, data, addItem, updateItem, addInstallments) {
+  if (cmd.type === 'ADD_INCOME') {
+    const { name, value, monthIndex } = cmd.params;
+    addItem(monthIndex, 'incomes', name, value, null);
+    return { name, value, monthIndex };
+  }
+
   if (cmd.type === 'ADD_INSTALLMENTS') {
     const { name, parcelaValue, installments, payment, monthIndex } = cmd.params;
     const count = addInstallments(monthIndex, name, parcelaValue, installments, payment);

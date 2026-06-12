@@ -71,10 +71,23 @@ function extractNameFilter(t) {
 function localClassify(t) {
   const month = getMonthName(t);
 
-  // ── Renda / receita (não gerenciado) ─────────────────────────────────────
-  if (/\b(renda|salário|salario|receita|recebi|recebes?|proventos|faturei|faturamento|lucro|recebimento|ganho|ganhei)\b/.test(t) &&
-      /\b(adiciona|adicione|adicionar|lança|lance|registra|registre|coloca|coloque|minha|meu)\b/.test(t))
-    return { intent: 'income', params: {} };
+  // ── Renda / receita ───────────────────────────────────────────────────────
+  if (/\b(renda|sal[aá]rio|receita|recebi|proventos|faturei|faturamento|ganho|ganhei|recebimento|freela|freelance|comiss[aã]o|aluguel|pensao|pens[aã]o|benef[ií]cio|b[oô]nus)\b/.test(t) &&
+      !/\b(quanto|como|resumo|total|gastos?|hist[oó]rico|investimento)\b/.test(t)) {
+    const numMatch = t.match(/(\d+(?:[.,]\d{1,2})?)/);
+    const value = numMatch ? parseFloat(numMatch[1].replace(',', '.')) : null;
+    const sourceMap = [
+      [/sal[aá]rio|sal\b/, 'Salário'], [/freela|freelance/, 'Freelance'],
+      [/honor[aá]rios?/, 'Honorários'], [/comiss[aã]o/, 'Comissão'],
+      [/aluguel/, 'Aluguel'], [/dividend/, 'Dividendos'],
+      [/pens[aã]o/, 'Pensão'], [/benef[ií]cio/, 'Benefício'],
+      [/b[oô]nus/, 'Bônus'], [/13[oº]/, '13º Salário'],
+      [/f[eé]rias/, 'Férias'], [/venda/, 'Venda'],
+    ];
+    let name = 'Renda';
+    for (const [re, n] of sourceMap) { if (re.test(t)) { name = n; break; } }
+    return { intent: 'income', params: { name, value, month } };
+  }
 
   // ── Exportar ──────────────────────────────────────────────────────────────
   if (/exporta|exportar|planilha|csv|meus dados|baixar dados|relat[oó]rio/.test(t))
