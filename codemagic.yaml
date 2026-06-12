@@ -10,15 +10,8 @@ workflows:
         script: npm install
       - name: Expo Prebuild (gera pasta android)
         script: npx expo prebuild --platform android --clean --no-install
-      - name: Bundle JS (empacota bundle dentro do APK)
-        script: |
-          mkdir -p android/app/src/main/assets
-          npx react-native bundle \
-            --platform android \
-            --dev false \
-            --entry-file index.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res/
+      - name: Ativa bundle embutido no debug
+        script: echo "BUNDLE_IN_DEBUG=true" >> android/gradle.properties
       - name: Build APK debug
         script: |
           cd android
