@@ -3,6 +3,25 @@ const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemi
 
 const MONTH_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
+function parseNum(s) {
+  const map = { dois:2, duas:2, tres:3, três:3, quatro:4, cinco:5, seis:6 };
+  return parseInt(s) || map[s.toLowerCase()] || 3;
+}
+
+// Detecta range de meses → { from, to } (índices 0–11) ou null
+function parseMonthRange(t) {
+  const now = new Date().getMonth();
+  if (/desde\s*(o\s*)?in[íi]cio\s*(do\s*ano)?|desde\s*janeiro|do\s*in[íi]cio\s*do\s*ano/i.test(t))
+    return { from: 0, to: now };
+  if (/ano\s*(completo|inteiro|todo)|o\s*ano\s*inteiro/i.test(t))
+    return { from: 0, to: 11 };
+  const primMatch = t.match(/primeiros?\s+(\d+|tr[eê]s|dois?|quatro|cinco|seis)/i);
+  if (primMatch) { const n = parseNum(primMatch[1]); return { from: 0, to: Math.min(n - 1, 11) }; }
+  const ultMatch = t.match(/[uú]ltimos?\s+(\d+|tr[eê]s|dois?|quatro|cinco|seis)\s*mes/i);
+  if (ultMatch) { const n = parseNum(ultMatch[1]); return { from: Math.max(0, now - n + 1), to: now }; }
+  return null;
+}
+
 // Resolve referências relativas e nomes de mês → retorna nome do mês em PT
 function getMonthName(t) {
   if (/m[eê]s\s*(passado|anterior|[uú]ltimo)|[uú]ltimo\s*m[eê]s/i.test(t))
@@ -58,6 +77,12 @@ function localClassify(t) {
       return { intent: 'conclude_expense', params: { expense_name: nameRaw } };
   }
 
+  // ── Análise / feedback multi-mês ─────────────────────────────────────────
+  if (/\bfeedback\b|an[aá]lise|analisa(r|me)?|como\s+(foi(ram)?|est[aá])\s+(o\s*)?(ano|m[eê]s|meses|per[ií]odo)|resumo\s+(do\s+)?(ano|per[ií]odo|trim|primeiros?|[uú]ltimos?)|primeiros?\s+\d+\s*mes|[uú]ltimos?\s+\d+\s*mes|primeiros?\s+(tr[eê]s|dois?|quatro)|[uú]ltimos?\s+(tr[eê]s|dois?|quatro)/i.test(t)) {
+    const range = parseMonthRange(t) || { from: 0, to: new Date().getMonth() };
+    return { intent: 'query', params: { subtype: 'analysis', fromMonth: range.from, toMonth: range.to } };
+  }
+
   // ── Por semana ────────────────────────────────────────────────────────────
   if (/essa\s*semana|esta\s*semana|semana\s*(passada|atual|que\s*vem)|nessa\s*semana|nesta\s*semana/.test(t))
     return { intent: 'query', params: { subtype: 'by_week', month: null } };
@@ -78,6 +103,10 @@ function localClassify(t) {
     const nameFilter = extractNameFilter(t);
     const genericTerms = ['tudo','mes','geral','resumo','total','saldo','balanço','balanco','gastos','despesas','quanto'];
     if (nameFilter && nameFilter.length >= 3 && !genericTerms.includes(nameFilter)) {
+      const range = parseMonthRange(t);
+      if (range) {
+        return { intent: 'query', params: { subtype: 'by_name_range', fromMonth: range.from, toMonth: range.to, filter: nameFilter } };
+      }
       return { intent: 'query', params: { subtype: 'by_name', month, filter: nameFilter } };
     }
     return { intent: 'query', params: { subtype: 'summary', month } };
@@ -97,9 +126,11 @@ Intenções:
 - "chat": saudação ou conversa
 
 Para query:
-  subtype: "summary"|"by_payment"|"biggest"|"investments"|"projects"|"by_name"
+  subtype: "summary"|"by_payment"|"biggest"|"investments"|"projects"|"by_name"|"by_name_range"|"analysis"
   month: nome do mês PT-BR (aceita "mês passado", "mês anterior") ou null
   filter: texto de filtro ou null
+  fromMonth: índice do mês inicial (0=jan) — para by_name_range e analysis
+  toMonth: índice do mês final (0=jan) — para by_name_range e analysis
 
 Para add_installments: name, total_value, installments, payment, month
 Para update_due_date: expense_name, new_day

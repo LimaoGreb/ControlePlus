@@ -180,7 +180,9 @@ async function dispatchIntent(chatId, session, classified) {
     `🏆 *Maiores gastos:* _"maiores gastos de junho"_\n` +
     `📈 *Investimentos:* _"como estão meus investimentos?"_\n` +
     `🎯 *Projetos:* _"status dos projetos"_\n` +
-    `📁 *Exportar CSV:* _"exporta meus dados"_`
+    `📁 *Exportar CSV:* _"exporta meus dados"_\n\n` +
+    `🔍 *Busca multi-mês:* _"quanto gastei em ifood desde janeiro?"_\n` +
+    `📋 *Análise do período:* _"feedback dos primeiros 3 meses"_`
   );
   session.step = 'done';
 }

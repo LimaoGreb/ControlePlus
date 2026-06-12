@@ -75,6 +75,52 @@ export function answerQuery(snapshot, params) {
     return `🔍 *"${filter}" em ${mn}*\n\n${filtered.map(i => `• ${i.name}: ${R(i.value)}`).join('\n')}\nTotal: ${R(total)}`;
   }
 
+  if (subtype === 'by_name_range') {
+    const f = (filter || '').toLowerCase();
+    const from = params.fromMonth ?? 0;
+    const to = params.toMonth ?? new Date().getMonth();
+    const lines = [];
+    let grand = 0;
+    for (let i = from; i <= to; i++) {
+      const mm = (snapshot.months || {})[i] || {};
+      const items = [...(mm.fixed || []), ...(mm.variable || [])].filter(x => (x.name || '').toLowerCase().includes(f));
+      if (!items.length) continue;
+      const monthTotal = items.reduce((s, x) => s + (x.value || 0), 0);
+      grand += monthTotal;
+      lines.push(`*${MN[i]}:* ${items.map(x => `${x.name} ${R(x.value)}`).join(', ')} — ${R(monthTotal)}`);
+    }
+    if (!lines.length) return `🔍 Nenhuma despesa com *"${filter}"* de ${MN[from]} a ${MN[to]}.`;
+    return `🔍 *"${filter}"* de ${MN[from]} a ${MN[to]}\n\n${lines.join('\n')}\n\n*Total: ${R(grand)}*`;
+  }
+
+  if (subtype === 'analysis') {
+    const from = params.fromMonth ?? 0;
+    const to = params.toMonth ?? new Date().getMonth();
+    const months = snapshot.months || {};
+    let totalInc = 0, totalExp = 0;
+    const summaries = [];
+    for (let i = from; i <= to; i++) {
+      const mm = months[i] || {};
+      const tInc = (mm.incomes || []).reduce((s, x) => s + (x.value || 0), 0);
+      const tFix = (mm.fixed || []).reduce((s, x) => s + (x.value || 0), 0);
+      const tVar = (mm.variable || []).reduce((s, x) => s + (x.value || 0), 0);
+      const tExp = tFix + tVar;
+      totalInc += tInc; totalExp += tExp;
+      summaries.push({ name: MN[i], tInc, tExp, bal: tInc - tExp });
+    }
+    const totalBal = totalInc - totalExp;
+    const rate = totalInc > 0 ? (totalBal / totalInc) * 100 : 0;
+    const grade = rate >= 30 ? 'A 🟢 Excelente' : rate >= 20 ? 'B 🟡 Ótimo' : rate >= 10 ? 'C 🟠 Regular' : rate >= 0 ? 'D 🔴 Atenção' : 'F ⛔ Crítico';
+    const best = [...summaries].sort((a, b) => b.bal - a.bal)[0];
+    const worst = [...summaries].sort((a, b) => a.bal - b.bal)[0];
+    const label = from === 0 && to === new Date().getMonth() ? 'do início do ano' : `de ${MN[from]} a ${MN[to]}`;
+    const details = summaries.map(s => {
+      const icon = s.bal >= 0 ? '✅' : '❌';
+      return `${icon} *${s.name}:* Renda ${R(s.tInc)} · Gastos ${R(s.tExp)} · Saldo ${R(s.bal)}`;
+    }).join('\n');
+    return `📊 *Análise ${label}*\n\n${details}\n\n━━━━━━━━━━━━━\n💰 Renda total: ${R(totalInc)}\n💸 Gastos total: ${R(totalExp)}\n${totalBal >= 0 ? '✅' : '⚠️'} Saldo do período: ${R(totalBal)}\n📈 Taxa de poupança: ${rate.toFixed(1)}% — Nota ${grade}\n\n🏆 Melhor mês: *${best.name}* (${R(best.bal)})\n⚠️ Pior mês: *${worst.name}* (${R(worst.bal)})`;
+  }
+
   // summary / total_month (default)
   const tInc = incomes.reduce((s, i) => s + (i.value || 0), 0);
   const tFix = fixed.reduce((s, i) => s + (i.value || 0), 0);
