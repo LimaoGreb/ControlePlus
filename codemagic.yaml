@@ -32,7 +32,7 @@ workflows:
             echo "======================================================="
             echo "COPIE O BASE64 ABAIXO E SALVE COMO KEYSTORE_BASE64 NO CODEMAGIC:"
             echo "======================================================="
-            base64 /tmp/release.jks
+            base64 -i /tmp/release.jks
             echo "======================================================="
             echo "SHA-1 DO KEYSTORE (registrar no Google Cloud Console):"
             keytool -list -v -keystore /tmp/release.jks -alias release -storepass "Brenda.1011" | grep "SHA1:"
