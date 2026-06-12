@@ -21,6 +21,7 @@ export default function SettingsCartoesScreen() {
   } = useSettings();
   const [newPayment, setNewPayment] = useState('');
   const [expandedId, setExpandedId] = useState(null);
+  const [bankSearch, setBankSearch] = useState({});
 
   const handleAdd = () => { if (addPaymentMethod(newPayment)) setNewPayment(''); };
 
@@ -85,25 +86,42 @@ export default function SettingsCartoesScreen() {
               {pm.isCredit && isExpanded && (
                 <View style={[styles.expandPanel, { borderTopColor: colors.border }]}>
                   <Text style={[styles.panelLabel, { color: colors.textMuted }]}>Banco emissor</Text>
+                  <View style={[styles.bankSearchBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+                    <Ionicons name="search-outline" size={15} color={colors.textMuted} />
+                    <TextInput
+                      value={bankSearch[pm.id] || ''}
+                      onChangeText={t => setBankSearch(prev => ({ ...prev, [pm.id]: t }))}
+                      placeholder="Buscar banco..."
+                      placeholderTextColor={colors.textMuted}
+                      style={[styles.bankSearchInput, { color: colors.text }]}
+                    />
+                    {!!bankSearch[pm.id] && (
+                      <TouchableOpacity onPress={() => setBankSearch(prev => ({ ...prev, [pm.id]: '' }))}>
+                        <Ionicons name="close-circle" size={15} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bankScroll}>
-                    {BANKS.map((b) => {
-                      const selected = pm.bank === b.id;
-                      return (
-                        <TouchableOpacity
-                          key={b.id}
-                          onPress={() => setPaymentBank(pm.id, selected ? null : b.id)}
-                          style={[styles.bankChip, {
-                            backgroundColor: selected ? b.color : b.color + '18',
-                            borderColor: b.color,
-                          }]}
-                        >
-                          <BankBadge bank={b} size={22} />
-                          <Text style={[styles.bankChipText, { color: selected ? '#fff' : b.color, marginLeft: 6 }]}>
-                            {b.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                    {BANKS
+                      .filter(b => b.name.toLowerCase().includes((bankSearch[pm.id] || '').toLowerCase()))
+                      .map((b) => {
+                        const selected = pm.bank === b.id;
+                        return (
+                          <TouchableOpacity
+                            key={b.id}
+                            onPress={() => setPaymentBank(pm.id, selected ? null : b.id)}
+                            style={[styles.bankChip, {
+                              backgroundColor: selected ? b.color : b.color + '18',
+                              borderColor: b.color,
+                            }]}
+                          >
+                            <BankBadge bank={b} size={22} />
+                            <Text style={[styles.bankChipText, { color: selected ? '#fff' : b.color, marginLeft: 6 }]}>
+                              {b.name}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                   </ScrollView>
 
                   <Text style={[styles.panelLabel, { color: colors.textMuted, marginTop: 12 }]}>
@@ -174,6 +192,8 @@ const styles = StyleSheet.create({
 
   expandPanel: { borderTopWidth: 1, paddingHorizontal: 12, paddingVertical: 12 },
   panelLabel: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  bankSearchBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, gap: 6, marginBottom: 10 },
+  bankSearchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
   bankScroll: { flexGrow: 0 },
   bankChip: {
     borderWidth: 1.5, borderRadius: 20,
