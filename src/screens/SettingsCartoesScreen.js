@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { contrastText } from '../utils/colorUtils';
 import { BANKS, getBankById } from '../data/banks';
+import BankBadge from '../components/BankBadge';
 import { formatBRL } from '../utils/currency';
 
 export default function SettingsCartoesScreen() {
@@ -41,7 +42,7 @@ export default function SettingsCartoesScreen() {
               {/* Linha principal */}
               <View style={styles.pmRow}>
                 {bank
-                  ? <View style={[styles.bankDot, { backgroundColor: bank.color }]} />
+                  ? <BankBadge bank={bank} size={30} />
                   : <Ionicons name="card-outline" size={18} color={colors.primary} />
                 }
                 <TextInput
@@ -96,7 +97,8 @@ export default function SettingsCartoesScreen() {
                             borderColor: b.color,
                           }]}
                         >
-                          <Text style={[styles.bankChipText, { color: selected ? '#fff' : b.color }]}>
+                          <BankBadge bank={b} size={22} />
+                          <Text style={[styles.bankChipText, { color: selected ? '#fff' : b.color, marginLeft: 6 }]}>
                             {b.name}
                           </Text>
                         </TouchableOpacity>

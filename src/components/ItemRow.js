@@ -10,6 +10,7 @@ import { hapticTap, hapticSuccess } from '../utils/haptics';
 import { getBankById } from '../data/banks';
 import CurrencyInput from './CurrencyInput';
 import DueDayChip from './DueDayChip';
+import BankBadge from './BankBadge';
 
 export default function ItemRow({
   item,
@@ -92,7 +93,7 @@ export default function ItemRow({
                 onPress={() => onChangePayment(selected ? null : pm.name)}
                 style={[styles.chip, { backgroundColor: chipColor, borderColor }]}
               >
-                {bank && !selected && <View style={[styles.bankDot, { backgroundColor: bank.color }]} />}
+                {bank && !selected && <BankBadge bank={bank} size={22} />}
                 {selected && <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 3 }} />}
                 <Text style={[styles.chipText, { color: textColor }]}>{pm.name}</Text>
               </TouchableOpacity>

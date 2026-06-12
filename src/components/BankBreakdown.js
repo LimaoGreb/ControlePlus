@@ -1,6 +1,7 @@
 // Gráfico de gastos por banco/cartão com barra de limite de crédito.
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import BankBadge from './BankBadge';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { getBankById } from '../data/banks';
@@ -63,11 +64,11 @@ export default function BankBreakdown({ month }) {
           <View key={entry.pmName} style={styles.row}>
             {/* Linha: nome + valor */}
             <View style={styles.labelRow}>
-              <View style={[styles.colorDot, { backgroundColor: entry.color }]} />
+              {entry.bank
+                ? <BankBadge bank={entry.bank} size={26} />
+                : <View style={[styles.colorDot, { backgroundColor: entry.color }]} />
+              }
               <Text style={[styles.pmName, { color: colors.text }]} numberOfLines={1}>{entry.pmName}</Text>
-              {entry.bank && (
-                <Text style={[styles.bankBadge, { color: entry.color }]}>{entry.bank.name}</Text>
-              )}
               <Text style={[styles.amount, { color: colors.text }]}>{formatBRL(entry.spent)}</Text>
             </View>
 
