@@ -467,6 +467,18 @@ async function dispatchIntent(chatId, session, classified) {
     return;
   }
 
+  // Comandos não suportados via bot (gerenciados direto no app)
+  if (intent === 'unsupported') {
+    const feature = params?.feature;
+    if (feature === 'payment_method') {
+      await sendMessage(chatId, `💳 Para adicionar ou editar formas de pagamento e cartões, use o Controle\\+ diretamente:\n\n_Configurações → Formas de Pagamento_\n\nPelo bot só consigo *definir o limite* de um cartão já cadastrado:\n_"define limite de 2000 no Nubank"_`);
+    } else {
+      await sendMessage(chatId, `Hmm, não consigo fazer isso pelo chat 🤔\n\nUse o app Controle\\+ diretamente para esta ação.`);
+    }
+    session.step = 'done';
+    return;
+  }
+
   // Chat — greeting mostra menu completo; mensagem não-entendida recebe resposta curta
   const lower2 = (typeof text === 'string' ? text : '').toLowerCase().trim();
   const isGreeting = /^(jarvis\b|oi\b|ol[aá]\b|e\s*a[ií]\b|bom\s*dia|boa\s*tarde|boa\s*noite|hey\b|opa\b|salve\b|tudo\s*bem|help\b|ajuda\b|\/start|inicio\b)/.test(lower2);
@@ -611,6 +623,16 @@ async function handleCollectingIncome(chatId, text, session) {
 
 async function handleCollecting(chatId, text, session) {
   const lower = text.toLowerCase().trim();
+
+  // Escape: frustração, cancelamento ou repetição óbvia → cancela o fluxo
+  const isFrustration = /\b(cancela|cancelar|cancelo|sair|sai|para|pare|chega|n[aã]o\s*quero|burro|idiota|lixo|merda|bosta)\b/i.test(lower) ||
+    /^(\w+)[,\s]+\1[,\s]+\1/.test(lower); // mesma palavra 3x = frustração (ex: "burro, burro, burro")
+  if (isFrustration && !/\d/.test(text)) {
+    session.step = 'idle';
+    session.data = {};
+    await sendMessage(chatId, 'OK, cancelado! 😊 Pode mandar uma nova mensagem quando quiser.');
+    return;
+  }
 
   // Escape: se parece consulta ou comando (sem número), abandona o fluxo atual
   const QUERY_ESCAPE = /\b(quanto|gastos?|resumo|investimento|projeto|exporta|exportar|parcela|vencimento|maior|menor)\b/i;

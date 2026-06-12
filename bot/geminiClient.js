@@ -92,6 +92,13 @@ function localClassify(t) {
     return { intent: 'income', params: { name, value, month } };
   }
 
+  // ── Adicionar cartão/forma de pagamento (não suportado via bot) ─────────────
+  // Bloqueia antes do cardMatch genérico para não virar query by_payment
+  if (/\b(adicione?|adicionar|cria[rr]?|incluir?|nova?\s+forma|novo\s+cart)\b.{0,35}\b(cart[aã]o|forma\s*de\s*pagamento|m[eé]todo\s*de\s*pagamento|bandeira)\b/i.test(t) &&
+      !/\blimite\b/i.test(t)) {
+    return { intent: 'unsupported', params: { feature: 'payment_method' } };
+  }
+
   // ── Limite de cartão ─────────────────────────────────────────────────────
   if (/\blimite\b.{0,35}(cart[aã]o|cr[eé]dito|card)|(cart[aã]o|cr[eé]dito).{0,35}\blimite\b/i.test(t) ||
       /\b(define|coloca|adiciona|ajusta|muda|atualiza)\b.{0,20}\blimite\b/i.test(t)) {
