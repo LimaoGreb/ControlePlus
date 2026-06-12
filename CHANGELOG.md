@@ -2,6 +2,48 @@
 
 ---
 
+## v2.5.0 — 2026-06-12
+
+### Fix definitivo: Modo Casal — dados pessoais migrados para dentro de `couples/{code}`
+
+**Causa raiz de v2.4.0 ainda falhar:**
+O path `couples_personal/{code}/{deviceId}` era um node SEPARADO no Firebase. Se as regras do
+banco tiverem expirado ou forem customizadas apenas para `couples/`, o write nesse path falhava
+silenciosamente — sem nenhum indicador visível na UI. O status "Sincronizado" aparecia porque era
+derivado do `fetchCouple()` (read de `couples/`), não do push pessoal.
+
+**Fix (`src/services/firebase.js`):**
+- `pushPersonalData`: escreve em `couples/${code}/personal/${deviceId}` (era `couples_personal/...`)
+- `fetchPersonalData`: lê de `couples/${code}/personal` e filtra o parceiro
+- `listenPersonalData`: escuta `couples/${code}/personal` e filtra o parceiro
+- Motivo: `pushCouple` usa `update()` que preserva sub-paths não mencionados — `personal/` nunca
+  é sobrescrito quando o shared sync acontece. Mesmas regras Firebase que já funcionavam.
+
+**`src/context/SyncContext.js`:** apenas atualização de comentários e logs para refletir novo path.
+
+**`app.json`:** version 2.5.0, versionCode 30.
+
+---
+
+## v2.4.0 — 2026-06-12
+
+### Refatoração definitiva do Modo Casal — sync de dados pessoais
+
+**Problema raiz:** arquitetura de descoberta de deviceId em dois estágios era frágil.
+O `announceDeviceId` escrevia no node compartilhado `couples/{code}`, o `extractPartnerDeviceId`
+precisava ler e processar esse anúncio antes de iniciar o listener pessoal. Qualquer falha
+silenciosa em qualquer etapa quebrava toda a cadeia.
+
+**Nova arquitetura (`src/services/firebase.js` + `src/context/SyncContext.js`):**
+- Path hierárquico: `couples_personal/{code}/{deviceId}` (era `couples_personal/{code}_{deviceId}`)
+- Cada device escuta o **parent** `couples_personal/{code}` e filtra a própria entrada
+- Parceiro é encontrado diretamente no listener — zero etapa de descoberta separada
+- Removidos: `announceDeviceId`, `extractPartnerDeviceId`, estado `partnerDeviceId`
+- `catch {}` trocados por `catch(e) { console.error(...) }` em todos os pontos críticos
+- Logs `console.warn` adicionados em cada etapa do sync para debug visível
+
+---
+
 ## v2.3.0 — 2026-06-12
 
 ### Fix crítico: Modo Casal (partnerPersonalData null + FAB parceiro)

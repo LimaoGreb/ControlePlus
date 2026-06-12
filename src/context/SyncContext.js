@@ -1,10 +1,11 @@
 // Sincronização Firebase: gerencia código do casal, status de conexão e
 // sync dos dados COMPARTILHADOS e PESSOAIS.
 //
-// Arquitetura de dados pessoais:
-//   - Cada device escreve em couples_personal/{code}/{deviceId}
-//   - Cada device escuta o parent couples_personal/{code} e filtra a entrada do parceiro
-//   - Zero etapa de descoberta, zero race condition, zero partnerDeviceId state
+// Arquitetura de dados pessoais (v2.5.0):
+//   - Cada device escreve em couples/{code}/personal/{deviceId}
+//   - Mesmo node que dados compartilhados — mesmas regras Firebase, zero problema de permissão
+//   - pushCouple usa update() que preserva o sub-path personal/
+//   - Cada device escuta couples/{code}/personal e filtra a entrada do parceiro
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
@@ -178,8 +179,8 @@ export function SyncProvider({ children }) {
   }, [coupleCode, ready, deviceId]);
 
   // Listener de dados pessoais do(a) parceiro(a).
-  // Escuta couples_personal/{code} (parent) e filtra a entrada que não é nossa.
-  // Não depende de partnerDeviceId — a descoberta acontece no próprio listener.
+  // Escuta couples/{code}/personal e filtra a entrada que não é nossa.
+  // Mesmo path de couples/ que já funciona — zero problema de regra Firebase.
   useEffect(() => {
     if (!ready || !coupleCode || !deviceId || !FIREBASE_CONFIGURED) return;
 
@@ -248,7 +249,7 @@ export function SyncProvider({ children }) {
         const payload = { ...personalData };
         if (serializedAvatar) payload._avatar = serializedAvatar;
         await pushPersonalData(coupleCode, deviceId, payload);
-        console.warn('[Casal] dados pessoais enviados com sucesso para couples_personal/' + coupleCode + '/' + deviceId);
+        console.warn('[Casal] dados pessoais enviados para couples/' + coupleCode + '/personal/' + deviceId);
       } catch(e) {
         console.error('[Casal] pushPersonalData erro:', e);
       }

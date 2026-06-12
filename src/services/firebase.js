@@ -47,27 +47,31 @@ export function listenCouple(code, callback) {
   return () => off(r);
 }
 
-// Dados pessoais — path HIERÁRQUICO: couples_personal/{code}/{deviceId}
-// Isso permite escutar o parent (couples_personal/{code}) e descobrir o parceiro
-// sem nenhuma etapa separada de anúncio de deviceId.
+// Dados pessoais — sub-path dentro do MESMO node couples/{code}.
+// Path: couples/{code}/personal/{deviceId}
+//
+// Por que dentro de couples/:
+//   - Mesmas regras de segurança do Firebase que já funcionam para shared data
+//   - pushCouple usa update() que preserva sub-paths não mencionados no payload
+//   - Zero risco de regra faltando para um path separado
 
 export async function pushPersonalData(code, deviceId, data) {
-  await set(ref(getDb(), `couples_personal/${code}/${deviceId}`), data);
+  await set(ref(getDb(), `couples/${code}/personal/${deviceId}`), data);
 }
 
-// Busca os dados pessoais do PARCEIRO (quem não é myDeviceId) no parent.
+// Busca os dados pessoais do PARCEIRO (quem não é myDeviceId).
 export async function fetchPersonalData(code, myDeviceId) {
-  const snap = await get(ref(getDb(), `couples_personal/${code}`));
+  const snap = await get(ref(getDb(), `couples/${code}/personal`));
   if (!snap.exists()) return null;
   const all = snap.val();
   const entry = Object.entries(all).find(([id]) => id !== myDeviceId);
   return entry ? entry[1] : null;
 }
 
-// Escuta o parent e repassa os dados do PARCEIRO sempre que mudar.
+// Escuta o sub-path personal e repassa os dados do PARCEIRO sempre que mudar.
 // Callback recebe null se o parceiro ainda não publicou dados.
 export function listenPersonalData(code, myDeviceId, callback) {
-  const r = ref(getDb(), `couples_personal/${code}`);
+  const r = ref(getDb(), `couples/${code}/personal`);
   onValue(r, (snap) => {
     if (!snap.exists()) { callback(null); return; }
     const all = snap.val();
