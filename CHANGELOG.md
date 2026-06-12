@@ -2,6 +2,38 @@
 
 ---
 
+## v2.3.0 — 2026-06-12
+
+### Fix crítico: Modo Casal (partnerPersonalData null + FAB parceiro)
+
+**`src/services/firebase.js`**
+- `pushCouple`: trocado `set()` → `update()` — preserva o dict `deviceIds` ao sincronizar.
+- `announceDeviceId`: agora escreve em `couples/{code}/deviceIds/{id}` via `set()` no child path. Antes escrevia `{ deviceId }` no nó pai, causando race condition onde o último a anunciar nunca descobria o ID do parceiro.
+
+**`src/context/SyncContext.js`**
+- `extractPartnerDeviceId()`: novo helper que lê o dict `remote.deviceIds` (novo formato) com fallback para `remote.deviceId` legado. Resolve o bug onde ambos os dispositivos anunciavam mas somente um descobria o outro.
+
+**`src/screens/CasalScreen.js`**
+- Importa `PartnerDataProvider` (SharedDataContext) e `Avatar`.
+- FAB do parceiro no canto inferior direito: exibe avatar + nome do parceiro quando `partnerPersonalData` disponível.
+- Ao tocar no FAB: alterna entre view compartilhada (`SharedMonthData`) e view pessoal read-only do parceiro (`PartnerDataProvider`).
+- Header "Finanças de {parceiro}" com botão Voltar quando em modo parceiro.
+
+### Fixes do bot Jarvis (deploy Render, sem APK)
+
+**`bot/conversation.js`**
+- "jarvis" sozinho agora abre o menu de ajuda (adicionado ao regex de greeting).
+- Erro "Comando desconhecido: CMD_TYPE" → mensagem amigável "Este comando requer a versão mais recente do Controle+!" sem underscores problemáticos no Markdown.
+
+**`bot/geminiClient.js`** — melhorias no classificador local
+- `investments`: adicionados `ativos`, `renda fixa`, `debentur*`, `previdenci*`, `selic`, `ipca`, `fundo de investimento`.
+- `conclude_expense`: adicionados `(foi|tá|está) pago/paga`, `quitado/a`, `deu baixa`, `finalizei/ou/ado`, `liquidou`.
+- `analysis`: adicionados `trimestre`, `semestre`, `avaliação`, `últimos meses` (sem número), `como foram os meses`. `hasRange` expandido.
+- `compare`: adicionada condição com change-verbs (`cresceu`, `subiu`, `baixou`, `aumentou`, `diminuiu`, `mudou`, `variou`, `piorou`, `melhorou`, `tendência`) + CARD_RE/anterior.
+- `add_installments`: adicionado `meses?` na lista de vezes/parcelas/x + `crediário`.
+
+---
+
 ## Jarvis Imbatível — Sessão 2026-06-12
 
 ### Novas features do bot (deploy via Render, sem build de APK)
