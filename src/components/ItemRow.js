@@ -36,10 +36,8 @@ export default function ItemRow({
   const concluded = !!item.concluded;
 
   const rowContent = (
-    <View style={[
-      styles.wrapper,
-      { borderColor: isOverdue ? '#CC0000' : colors.border, borderWidth: isOverdue ? 2 : 1, backgroundColor: isOverdue ? 'rgba(210,0,0,0.45)' : colors.card },
-    ]}>
+    <View style={[styles.wrapper, { borderColor: isOverdue ? '#CC0000' : colors.border, borderWidth: isOverdue ? 2 : 1, backgroundColor: colors.card }]}>
+      {isOverdue && <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(220,0,0,0.38)', borderRadius: 12, zIndex: 1 }} />}
       <View style={styles.row}>
         {swipeable ? (
           <Ionicons
@@ -60,9 +58,9 @@ export default function ItemRow({
           style={[
             styles.nameInput,
             {
-              backgroundColor: concluded ? 'transparent' : isOverdue ? 'rgba(180,0,0,0.25)' : colors.inputBg,
-              color: concluded ? colors.textMuted : isOverdue ? '#FF2222' : colors.text,
-              borderColor: concluded ? 'transparent' : isOverdue ? '#AA0000' : colors.border,
+              backgroundColor: concluded ? 'transparent' : colors.inputBg,
+              color: concluded ? colors.textMuted : colors.text,
+              borderColor: concluded ? 'transparent' : colors.border,
               textDecorationLine: concluded ? 'line-through' : 'none',
             },
           ]}
