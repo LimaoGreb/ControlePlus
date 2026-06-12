@@ -31,8 +31,12 @@ export function answerQuery(snapshot, params) {
   }
 
   if (subtype === 'projects') {
-    const proj = (snapshot.projects || []).filter(p => p.name);
-    if (!proj.length) return '🎯 Nenhum projeto cadastrado no Controle+.';
+    const allProj = (snapshot.projects || []).filter(p => p.name);
+    const f = (filter || '').toLowerCase().trim();
+    const proj = f ? allProj.filter(p => p.name.toLowerCase().includes(f)) : allProj;
+    if (!proj.length) return f
+      ? `🎯 Nenhum projeto com *"${filter}"* encontrado.`
+      : '🎯 Nenhum projeto cadastrado no Controle+.';
     return `🎯 *Projetos*\n\n${proj.map(p => {
       const pct = p.target > 0 ? Math.min(100, Math.round((p.saved || 0) / p.target * 100)) : 0;
       return `*${p.name}*\n${R(p.saved || 0)} / ${R(p.target || 0)} — ${pct}%`;

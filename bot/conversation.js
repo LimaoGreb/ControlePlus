@@ -376,8 +376,8 @@ async function askNextMissing(chatId, session) {
 
 async function handleConfirmingExpense(chatId, text, session) {
   const lower = text.toLowerCase().trim();
-  const yes = ['sim', 's', 'ok', 'pode', 'yes', 'isso', 'certo', 'confirma'].some(w => lower.includes(w));
-  const no = ['não', 'nao', 'n', 'errado', 'cancela', 'cancelar'].some(w => lower.includes(w));
+  const yes = /\b(sim|ok|pode|yes|isso|certo|confirma)\b/.test(lower) || lower === 's';
+  const no = /\b(n[aã]o|nao|errado|cancela|cancelar)\b/.test(lower) || lower === 'n';
 
   if (yes) {
     const payFinal = (session.data.payment && session.data.payment !== false) ? session.data.payment : null;
@@ -481,8 +481,8 @@ async function handleConfirmingCommand(chatId, text, session) {
   }
 
   const lower = text.toLowerCase().trim();
-  const yes = ['sim', 's', 'ok', 'pode', 'yes', 'isso', 'certo', 'confirma'].some(w => lower.includes(w));
-  const no = ['não', 'nao', 'n', 'errado', 'cancela', 'cancelar'].some(w => lower.includes(w));
+  const yes = /\b(sim|ok|pode|yes|isso|certo|confirma)\b/.test(lower) || lower === 's';
+  const no = /\b(n[aã]o|nao|errado|cancela|cancelar)\b/.test(lower) || lower === 'n';
 
   if (!yes && !no) {
     await sendMessage(chatId, 'Confirma? Responde *sim* ou *não* 😊');

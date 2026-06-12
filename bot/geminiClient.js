@@ -15,10 +15,13 @@ function parseMonthRange(t) {
     return { from: 0, to: now };
   if (/ano\s*(completo|inteiro|todo)|o\s*ano\s*inteiro/i.test(t))
     return { from: 0, to: 11 };
+  if (/esse\s*ano\b|este\s*ano\b|nesse\s*ano\b|neste\s*ano\b/i.test(t))
+    return { from: 0, to: now };
   const primMatch = t.match(/primeiros?\s+(\d+|tr[eê]s|dois?|quatro|cinco|seis)/i);
   if (primMatch) { const n = parseNum(primMatch[1]); return { from: 0, to: Math.min(n - 1, 11) }; }
   const ultMatch = t.match(/[uú]ltimos?\s+(\d+|tr[eê]s|dois?|quatro|cinco|seis)\s*mes/i);
   if (ultMatch) { const n = parseNum(ultMatch[1]); return { from: Math.max(0, now - n + 1), to: now }; }
+  if (/[uú]ltimos\s+meses\b/i.test(t)) return { from: Math.max(0, now - 2), to: now };
   return null;
 }
 
@@ -36,7 +39,7 @@ function getMonthName(t) {
 // Remove palavras de ruído e retorna filtro de nome, ou null se não sobrar nada útil
 function extractNameFilter(t) {
   const noise = [
-    'quanto','eu','vc','voce','você','gastei','gastou','gasto','gastar',
+    'quanto','qto','eu','vc','voce','você','gastei','gastou','gasto','gastar',
     'paguei','pagou','pagar','comprei','comprou','despesa','despesas','gastos',
     'foram','foi','ficou','no','na','nos','nas','de','do','da','dos','das',
     'em','com','por','para','até','ate','esse','este','essa','esta','esses','estes',
@@ -44,6 +47,10 @@ function extractNameFilter(t) {
     'mes','mês','passado','anterior','atual','corrente','ultimo','último',
     'proximo','próximo','seguinte','vem','que','ja','já','aqui','agora','hoje',
     'ontem','semana','ano','jarvis','controle','quais','qual','sao','são',
+    'como','ta','tá','to','tô','foi','ficou','pra','pro','nesse','neste',
+    'desse','deste','total','totais','geral','resumo','saldo','balanço','balanco',
+    'tenho','tem','teve','tive','tinha','teria','fui','fiz',
+    'bem','mal','bom','boa','ruim','caro','barato','meses',
     ...MONTH_PT,
   ];
   const re = new RegExp(`\\b(${noise.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
@@ -56,41 +63,48 @@ function localClassify(t) {
   const month = getMonthName(t);
 
   // ── Exportar ──────────────────────────────────────────────────────────────
-  if (/exporta|exportar|planilha|csv|meus dados|baixar dados|relat[oó]rio|gera(r)?\s*(arquivo|relat)/.test(t))
+  if (/exporta|exportar|planilha|csv|meus dados|baixar dados|relat[oó]rio/.test(t))
     return { intent: 'export', params: {} };
 
   // ── Parcelar compra (ANTES do cardMatch — "parcelei no crédito" é parcela, não by_payment) ──
-  if (/parcel[eio]u?|parcel(ar|amento|ada?|ado)|divid[iu]\s*(em|n)?\s*\d+|\bem\s*\d+\s*[xX]\b|\d+\s*[xX]\s*(no|na|de|do)\b|financ[ie]|prestac|presta[çc]/.test(t))
+  if (/parcel[eio]u?|parcel(ar|amento|ada?|ado)|\bem\s*\d+\s*(vezes|parcelas|[xX])\b|\d+\s*[xX]\s*(no|na|de|do)\b|financ(iar|iamento)\b|financiei\b|prestac|presta[çc]/.test(t))
     return { intent: 'add_installments', params: {} };
 
   // ── Mudar vencimento ──────────────────────────────────────────────────────
-  if (/vencimento|vence\s*(dia|no\s*dia|n[ao]\s*dia)|\bmuda\s*(o\s*)?venc|atualiz\w*\s*(o\s*)?venc|novo\s*vencimento|troc\w+\s*(o\s*)?venc|dia\s*de\s*pagamento|muda\s*o\s*dia/.test(t))
+  if (/vencimento|vence\s*(dia|no\s*dia|n[ao]\s*dia)|\bmuda\s*(o\s*)?venc|atualiz\w*\s*(o\s*)?venc|novo\s*vencimento|muda\s*o\s*dia/.test(t))
     return { intent: 'update_due_date', params: {} };
 
   // ── Investimentos ─────────────────────────────────────────────────────────
-  if (/investimento|carteira|rendimento|aporte|aplica[çc][aã]o|quanto\s*(eu\s*)?investi|minha\s*carteira|a[çc][oõ]es?|fii\b|tesouro|cdb\b|lci\b|lca\b|cripto|bitcoin|btc\b/.test(t))
+  if (/investimento|carteira|rendimento|aporte|aplica[çc][aã]o|quanto\s*(eu\s*)?investi|investid[ao]\b|tenho\s*investid|minha\s*carteira|a[çc][oõ]es?\b|fii\b|tesouro\b|cdb\b|lci\b|lca\b|cripto|bitcoin|btc\b/.test(t))
     return { intent: 'query', params: { subtype: 'investments', month } };
 
   // ── Projetos ──────────────────────────────────────────────────────────────
-  if (/projeto|meta\b|objetivo|poupando|guardando|economiz|juntando\s*dinheiro|reserva/.test(t))
-    return { intent: 'query', params: { subtype: 'projects', month } };
+  if (/projeto|metas?\b|objetivo|poupando|guardando|economiz|juntando\s*dinheiro|reserva\b/.test(t)) {
+    const pStripped = t
+      .replace(/\b(status|qual|como|esta[oa]|estao|estão|meus?|minhas?|quantos?|falta|do|da|de|em|no|na|o|a|projeto|projetos|meta|metas|objetivo|objetivos)\b/gi, ' ')
+      .replace(/[?!.,]/g, '').replace(/\s+/g, ' ').trim();
+    const pFilter = pStripped.length >= 2 ? pStripped : null;
+    return { intent: 'query', params: { subtype: 'projects', month, filter: pFilter } };
+  }
 
   // ── Concluir / marcar como pago ───────────────────────────────────────────
-  if (/conclu[ií]|conclua|concluir|marqu?e?\s*(como\s*)?(pago|paga)|marca\s*(como\s*)?(pago|paga)|quitar?|quit[ae]|j[aá]\s*paguei\s*(o|a)\b|liquidar|liquidei|j[aá]\s*(t[aá]|foi)\s*pago|efetu[ea]r?\s*pagamento/.test(t)) {
-    const nameRaw = t
-      .replace(/\b(conclua|concluir|conclu[ií]|marque?|marca|quitar?|quit[ae]|j[aá]\s*paguei|liquidar|liquidei|efetu[ea]r?)\b/gi, '')
-      .replace(/\b(a\s+despesa\s+d[ao]?|o\s+gasto\s+d[ao]?|despesa\s+d[ao]?|a\s+conta\s+d[ao]?|como\s+pag[ao]|pra\s+mim|para\s+mim|jarvis|o\s+pagamento\s+d[ao]?)\b/gi, '')
-      .replace(/[?,!]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-    if (nameRaw.length >= 2)
-      return { intent: 'conclude_expense', params: { expense_name: nameRaw } };
+  if (/conclu[ií]|conclua|concluir|\bmarqu?e?\b.*\b(pago|paga)\b|quitar?|quit[ae]|paguei\s*(o|a)\b|j[aá]\s*paguei|liquidar|liquidei|j[aá]\s*(t[aá]|foi)\s*pago/.test(t)) {
+    if (!/quanto|total|saldo|resumo/.test(t)) {
+      const nameRaw = t
+        .replace(/\b(conclua|concluir|conclu[ií]|marqu?e?|quitar?|quit[ae]|j[aá]\s*paguei|paguei\s*(o|a)|liquidar|liquidei)\b/gi, '')
+        .replace(/\b(a\s+minha\s+despesa\b|minha\s+despesa\b|a\s+despesa\s+d[ao]?|o\s+gasto\s+d[ao]?|despesa\s+d[ao]?|a\s+conta\s+d[ao]?|como\s+pag[ao]|pra\s+mim|para\s+mim|jarvis)\b/gi, '')
+        .replace(/[?,!]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+      if (nameRaw.length >= 2)
+        return { intent: 'conclude_expense', params: { expense_name: nameRaw } };
+    }
   }
 
   // ── Análise / feedback multi-mês ─────────────────────────────────────────
-  const hasSingleMonth = /esse\s*m[eê]s|este\s*m[eê]s|m[eê]s\s*(atual|corrente|de\s*hoje)|esse\s*m[eê]s\s*atual/i.test(t);
-  const hasRange = /desde|primeiros?|[uú]ltimos?\s+\d|[uú]ltimos?\s+(tr[eê]s|dois?|quatro)|ano\s*(completo|inteiro|todo)|o\s*ano/i.test(t);
-  if (!hasSingleMonth && /\bfeedback\b|an[aá]lise|analisa(r|me)?|como\s+(foi(ram)?|est[aá])\s+(o\s*)?(ano|meses|per[ií]odo)|resumo\s+(do\s+)?(ano|per[ií]odo|trim|primeiros?|[uú]ltimos?)|primeiros?\s+\d+\s*mes|[uú]ltimos?\s+\d+\s*mes|primeiros?\s+(tr[eê]s|dois?|quatro)|[uú]ltimos?\s+(tr[eê]s|dois?|quatro)/i.test(t)) {
+  const hasSingleMonth = /esse\s*m[eê]s|este\s*m[eê]s|m[eê]s\s*(atual|corrente|de\s*hoje)/i.test(t);
+  const hasRange = /desde|primeiros?|[uú]ltimos?\s+(\d|tr[eê]s|dois?|quatro|meses)|ano\s*(completo|inteiro|todo)|o\s*ano|esse\s*ano|este\s*ano|hist[oó]rico/i.test(t);
+  if (!hasSingleMonth && /\bfeedback\b|an[aá]lise|analisa(r|me)?|como\s+(foi(ram)?|est[aá])\s+(o\s*)?(ano|meses|per[ií]odo)|resumo\s+(do\s+)?(ano|per[ií]odo|trim|primeiros?|[uú]ltimos?)|per[ií]odo|primeiros?\s+\d+\s*mes|[uú]ltimos?\s+\d+\s*mes|primeiros?\s+(tr[eê]s|dois?|quatro)|[uú]ltimos?\s+(tr[eê]s|dois?|quatro)/i.test(t)) {
     const range = hasRange ? parseMonthRange(t) : null;
-    if (range || /ano|primeiros?|[uú]ltimos?|desde/i.test(t)) {
+    if (range || /ano|primeiros?|[uú]ltimos?|desde|per[ií]odo/i.test(t)) {
       const r = range || { from: 0, to: new Date().getMonth() };
       return { intent: 'query', params: { subtype: 'analysis', fromMonth: r.from, toMonth: r.to } };
     }
@@ -101,14 +115,10 @@ function localClassify(t) {
   if (/\bsemana\b/.test(t))
     return { intent: 'query', params: { subtype: 'by_week', month: null } };
 
-  // ── Maiores gastos ────────────────────────────────────────────────────────
-  if (/maior(es)?|top\s*\d|piores?|mais\s*caro|mais\s*cara|o\s*que\s*(mais\s*)?(gast|custou)|gastei?\s*mais|mais\s*pesado|saiu\s*mais|custou\s*mais/.test(t))
-    return { intent: 'query', params: { subtype: 'biggest', month } };
-
-  const hasQuery = /quanto|gast|resumo|total|como\s*(t[aá]|foi|est[aá])|saldo|sobr[ao]u|sobr|sobrando|balanç|balanco|fiz|gastamos|dispend|situac|financ[ei]|dinheiro|fechamento|mensal|qto|kanto|gastei|saiu|foi\s*parar/.test(t);
-
-  // ── Comparativo entre dois meses ─────────────────────────────────────────
-  if (/comparativo|comparar|compar[ae]\b|\bvs\.?\s|\bversus\b|diferen[çc]a\s*entre|compara[çc][aã]o|evolu[ií]|evoluiu|melhor[ao]u|pior[ao]u\s*esse\s*m[eê]s/i.test(t)) {
+  // ── Comparativo (ANTES de biggest — "gastei mais no X vs mês passado" é compare) ─
+  const CARD_RE = /nubank|nu\b|c6\s*bank|c6\b|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will\s*bank|will\b|pix|d[eé]bito|cr[eé]dito/;
+  if (/comparativo|comparar|compar[ae]\b|\bvs\.?\b|\bversus\b|diferen[çc]a|compara[çc][aã]o|evolu[ií]\b|evoluiu/i.test(t) ||
+      (/mais\b/.test(t) && /anterior|passado/.test(t) && CARD_RE.test(t))) {
     const now = new Date().getMonth();
     const months = [];
     MONTH_PT.forEach((m, i) => { if (t.includes(m)) months.push(i); });
@@ -116,28 +126,51 @@ function localClassify(t) {
       months.unshift(((now - 1) + 12) % 12);
     if (/esse\s*m[eê]s|este\s*m[eê]s|m[eê]s\s*(atual|corrente)/i.test(t))
       if (!months.includes(now)) months.push(now);
-    const cardMatchC = t.match(/nubank|nu\b|c6\s*bank|c6\b|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|pix|d[eé]bito|cr[eé]dito/);
+    const cardMatchC = t.match(CARD_RE);
     const month1 = months[0] ?? ((now - 1 + 12) % 12);
     const month2 = months[1] !== undefined ? months[1] : now;
     return { intent: 'query', params: { subtype: 'compare', month1, month2, filter: cardMatchC ? cardMatchC[0].trim() : null } };
   }
 
+  // ── Maiores gastos ────────────────────────────────────────────────────────
+  if (/maior(es)?|\btop\b|pior(es)?\s*gasto|mais\s*caro|mais\s*cara|o\s*que\s*(mais\s*)?(gast|custou)|gastei?\s*mais\b|mais\s*pesado|saiu\s*mais\b|custou\s*mais/.test(t))
+    return { intent: 'query', params: { subtype: 'biggest', month } };
+
+  const hasQuery = /quanto|qto\b|gast|resumo|total|como\s*(t[aá]|foi|est[aá]|estou)|estou\s*(bem|mal)\b|t[aá]\s*(o\s*m[eê]s|bem\b|bom\b)|t[oô]\s*bem\b|financeiramente\b|saldo|sobr[ao]u|sobr\b|sobrando|balanç|balanco|situac|dinheiro|fechamento|mensal|o\s+que\b|oq\b|paguei\b|saiu\b|foi\s*(pro|pra|para)\b|hist[oó]rico|desde\b|nos\s+[uú]ltimos/.test(t);
+
   // ── Por cartão / forma de pagamento ──────────────────────────────────────
-  const cardMatch = t.match(/nubank|nu\b|c6\s*bank|c6\b|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will\s*bank|will\b|pix|d[eé]bito|cr[eé]dito/);
-  if (hasQuery && cardMatch)
+  const cardMatch = t.match(CARD_RE);
+  // Aceita card mesmo sem hasQuery se há mês ou mensagem curta (ex: "nubank esse mês")
+  if (cardMatch && (hasQuery || month || t.length < 28))
     return { intent: 'query', params: { subtype: 'by_payment', month, filter: cardMatch[0].trim() } };
 
   // ── Por nome / categoria ──────────────────────────────────────────────────
   if (hasQuery) {
     const nameFilter = extractNameFilter(t);
-    const genericTerms = ['tudo','mes','geral','resumo','total','saldo','balanço','balanco','gastos','despesas','quanto','qto','dinheiro','situacao','fechamento','financas'];
-    if (nameFilter && nameFilter.length >= 3 && !genericTerms.includes(nameFilter)) {
+    const genericTerms = ['tudo','mes','geral','resumo','total','saldo','balanço','balanco','gastos','despesas','quanto','qto','dinheiro','situacao','fechamento','financas','como','ficou','totais','balanc','estou','historico'];
+    const isGeneric = !nameFilter || nameFilter.length < 3
+      || genericTerms.some(g => nameFilter === g || nameFilter.startsWith(g + ' ') || nameFilter.endsWith(' ' + g));
+    if (!isGeneric) {
+      // "histórico de X" ou "X nos últimos meses" → range do ano todo
+      const isHist = /hist[oó]rico/i.test(t);
       const range = parseMonthRange(t);
-      if (range) {
-        return { intent: 'query', params: { subtype: 'by_name_range', fromMonth: range.from, toMonth: range.to, filter: nameFilter } };
+      if (range || isHist) {
+        const r = range || { from: 0, to: new Date().getMonth() };
+        return { intent: 'query', params: { subtype: 'by_name_range', fromMonth: r.from, toMonth: r.to, filter: nameFilter } };
       }
       return { intent: 'query', params: { subtype: 'by_name', month, filter: nameFilter } };
     }
+    return { intent: 'query', params: { subtype: 'summary', month } };
+  }
+
+  // ── Fallback: mensagem curta com mês → tenta extrair nome ou retorna summary ─
+  if (month && t.length <= 30) {
+    const nameFilter = extractNameFilter(t);
+    const genericTerms = ['tudo','mes','geral','resumo','total','saldo','gastos','despesas','quanto','qto','dinheiro'];
+    const isGeneric = !nameFilter || nameFilter.length < 2
+      || genericTerms.some(g => nameFilter === g || nameFilter.startsWith(g + ' ') || nameFilter.endsWith(' ' + g));
+    if (!isGeneric)
+      return { intent: 'query', params: { subtype: 'by_name', month, filter: nameFilter } };
     return { intent: 'query', params: { subtype: 'summary', month } };
   }
 
