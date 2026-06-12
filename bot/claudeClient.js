@@ -90,6 +90,9 @@ export async function parseExpenseMessage(text) {
   const hasNumber = /\d+/.test(text);
   const hasAddVerb = ADD_VERBS.test(text);
 
+  const isIncome = /\b(renda|salário|salario|receita|recebi|entrada|ganho|ganhei|proventos|faturei|faturamento|lucro|recebimento)\b/i.test(lower);
+  if (isIncome) return { isExpense: false };
+
   if (hasAddVerb) {
     return { isExpense: true, name: extractName(text), value: extractValue(text), payment: extractPayment(text), monthIndex: extractMonthIndex(text) };
   }
