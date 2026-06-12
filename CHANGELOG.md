@@ -2,6 +2,46 @@
 
 ---
 
+## v2.0.5 — 2026-06-12
+
+### Infraestrutura / Build
+- **Codemagic** substituiu EAS (plano gratuito do EAS esgotado). Build 100% na nuvem via `codemagic.yaml`.
+- **Keystore fixo**: `codemagic.yaml` suporta `KEYSTORE_BASE64` env var — usa keystore salvo ou gera novo e printa base64 + SHA-1 nos logs. Senha: `Brenda.1011`. ⚠️ Ainda pendente: extrair base64 do build #8 e salvar no Codemagic → Settings → Environment variables.
+- **SVG transformer**: instalado `react-native-svg-transformer`; `metro.config.js` configurado para tratar `.svg` como source extension.
+
+### BankBadge (`src/components/BankBadge.js`) — novo componente
+- Exibe logo SVG do banco quando disponível, fallback para badge de iniciais coloridas.
+- `assets/banks/` com 15 SVGs: bb, bradesco, c6, caixa, inter, itau, mercadopago, neon, next, nubank, pagbank, picpay, recargapay, santander, sicoob.
+- `src/data/banks.js`: campo `abbr` adicionado em todos os 17 bancos.
+- Try/catch em todo carregamento de SVG — nunca crasha o app se logo não carregar.
+
+### SettingsCartoesScreen (`src/screens/SettingsCartoesScreen.js`)
+- `BankBadge` substituiu pontos coloridos no seletor de banco.
+- Campo de busca em tempo real no seletor de banco (filtra por nome, botão de limpar).
+
+### ItemRow (`src/components/ItemRow.js`) + CurrencyInput (`src/components/CurrencyInput.js`)
+- **Overlay vermelho nítido** em despesas vencidas: `rgba(255,59,48,0.18)` no card + inputs com fundo vermelho.
+- Ambos os campos (nome e valor) com `editable={false}` em despesas concluídas — sem borda, sem fundo.
+
+### NotificationsManager (`src/components/NotificationsManager.js`)
+- Fix de notificações disparando 8x: removido call imediato duplicado + cooldown de 15s via ref `lastScheduled`.
+
+### SettingsScreen (`src/screens/SettingsScreen.js`)
+- Versão agora lida dinamicamente via `Constants.expoConfig.version` — nunca mais hardcoded.
+
+### Jarvis Bot (`bot/`)
+- **Análise multi-mês** (`queryHandler.js`): novo subtype `analysis` — mês a mês com renda/gastos/saldo, totais do período, nota A→F, melhor e pior mês.
+- **Busca por range** (`queryHandler.js`): novo subtype `by_name_range` — busca despesa por nome em múltiplos meses ("quanto gastei em ifood desde janeiro?").
+- **Classificador** (`geminiClient.js`): `parseMonthRange()` detecta "desde janeiro", "primeiros N meses", "últimos N meses", "ano completo". "feedback" com mês único → summary do mês (não análise anual).
+- Mensagem de ajuda atualizada com os novos comandos.
+
+### Pendências para próxima sessão
+- Salvar `KEYSTORE_BASE64` (pegar do log do build #8, passo "Configura keystore") e registrar SHA-1 no Google Cloud Console para Google OAuth funcionar no APK.
+- Remover terceiro gráfico da dashboard (BankBreakdown como gráfico separado).
+- Google Auth + backup Firebase + Modo Casal por email (sessão dedicada — ver `project-feature-google-auth.md`).
+
+---
+
 ## v2.0.4 — 2026-06-12
 
 ### Jarvis Bot
