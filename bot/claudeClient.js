@@ -43,10 +43,10 @@ function extractPayment(text) {
 function extractName(text) {
   let s = text
     .replace(/jarvis[,.]?\s*/gi, '')
-    .replace(/\b(gastei|paguei|comprei|tive que pagar|fui no|fui na|no|na|em|de|do|da|pelo|pela|pro|pra|um|uma|o|a|meu|minha)\b/gi, ' ')
+    .replace(/\b(gastei|paguei|comprei|tive que pagar|fui no|fui na|fui|vim|fiz|no|na|em|de|do|da|pelo|pela|pro|pra|um|uma|o|a|meu|minha|aqui|agora|hoje|ontem|e|que|ali|la|lá)\b/gi, ' ')
     .replace(/R?\$?\s*\d+(?:[,.]?\d+)?\s*(?:reais?|conto|pila|real)?/gi, ' ')
-    .replace(/\b(no pix|no débito|no crédito|no dinheiro|a débito|em dinheiro|pix|débito|crédito|dinheiro|boleto|cartão|cartao)\b/gi, ' ')
-    .replace(/[.,!?]/g, ' ')
+    .replace(/\b(no pix|no d[eé]bito|no cr[eé]dito|no dinheiro|a d[eé]bito|em dinheiro|pix|d[eé]bito|cr[eé]dito|dinheiro|boleto|cart[aã]o)\b/gi, ' ')
+    .replace(/[.,!?;]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
