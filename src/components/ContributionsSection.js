@@ -7,6 +7,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { contrastText } from '../utils/colorUtils';
 import { monthTotals } from '../utils/calculations';
 import { formatBRL, formatPercent } from '../utils/currency';
+import { YEAR } from '../data/initialData';
 import Collapsible from './Collapsible';
 import ItemRow from './ItemRow';
 
@@ -17,6 +18,12 @@ export default function ContributionsSection({ monthIndex, month, goalPct = 10 }
   const items = month.contributions || [];
   const color = colors.primary;
   const onColor = contrastText(color);
+
+  const now = new Date();
+  const isItemOverdue = (item) => {
+    if (!item.dueDay || item.concluded) return false;
+    return new Date(YEAR, monthIndex, item.dueDay, 23, 59, 59) < now;
+  };
 
   const achievedPct = totals.contributionsPct; // % da renda já contribuído
   const metGoal = goalPct > 0 && achievedPct >= goalPct;
@@ -65,6 +72,7 @@ export default function ContributionsSection({ monthIndex, month, goalPct = 10 }
           namePlaceholder="Ex.: Dízimo, Oferta, Caridade"
           accentColor={color}
           swipeable
+          isOverdue={isItemOverdue(item)}
           onToggleConcluded={(v) => updateItem(monthIndex, 'contributions', item.id, 'concluded', v)}
           onChangeDueDay={(d) => updateItem(monthIndex, 'contributions', item.id, 'dueDay', d)}
           onChangeName={(t) => updateItem(monthIndex, 'contributions', item.id, 'name', t)}

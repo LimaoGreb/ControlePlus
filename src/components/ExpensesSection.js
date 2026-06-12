@@ -7,6 +7,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { useInstallment } from '../context/InstallmentContext';
 import { contrastText } from '../utils/colorUtils';
+import { YEAR } from '../data/initialData';
 import Collapsible from './Collapsible';
 import ItemRow from './ItemRow';
 
@@ -27,6 +28,12 @@ export default function ExpensesSection({
   const { paymentMethods } = useSettings();
   const { requestInstallment } = useInstallment();
   const onColor = contrastText(color);
+
+  const now = new Date();
+  const isItemOverdue = (item) => {
+    if (!item.dueDay || item.concluded) return false;
+    return new Date(YEAR, monthIndex, item.dueDay, 23, 59, 59) < now;
+  };
 
   // Ao escolher uma forma de pagamento: marca no item e, se for cartão de
   // crédito (e já tiver valor), abre a janela de parcelamento.
@@ -63,6 +70,7 @@ export default function ExpensesSection({
           showPayment
           paymentMethods={paymentMethods}
           swipeable
+          isOverdue={isItemOverdue(item)}
           onToggleConcluded={(v) => updateItem(monthIndex, section, item.id, 'concluded', v)}
           onChangeDueDay={(d) => updateItem(monthIndex, section, item.id, 'dueDay', d)}
           onChangeName={(t) => updateItem(monthIndex, section, item.id, 'name', t)}

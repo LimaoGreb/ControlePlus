@@ -1,12 +1,9 @@
-// Lembretes de vencimento via notificação local (expo-notifications).
-// Agrupa itens por dia para evitar spam — 1 notif por data de vencimento.
-// Véspera: 20h (noite de preparação). Dia do vencimento: 9h.
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { formatBRL } from '../utils/currency';
 
 const CHANNEL_ID = 'vencimentos';
-const NOTIF_COLOR = '#F5A524'; // dourado — identidade visual do app
+const NOTIF_COLOR = '#F5A524';
 
 let configured = false;
 function configure() {
@@ -47,7 +44,6 @@ export async function ensurePermission() {
   }
 }
 
-// "Aluguel", "Aluguel e Netflix", "Aluguel, Netflix e mais 2"
 function formatNames(items) {
   const names = items.map((it) => it.name || 'Despesa');
   if (names.length === 1) return names[0];
@@ -57,6 +53,53 @@ function formatNames(items) {
 
 function sumValues(items) {
   return items.reduce((s, it) => s + (Number(it.value) || 0), 0);
+}
+
+// Escala de urgência: quanto mais perto do vencimento, mais notificações no dia
+// e mensagens mais desesperadas.
+//   urgency 0 — 7 dias antes, 9h  → gentil
+//   urgency 1 — 3 dias antes, 9h  → médio
+//   urgency 2 — 1 dia antes, 9h   → urgente (manhã)
+//   urgency 3 — 1 dia antes, 19h  → urgente (noite)
+//   urgency 4 — dia do vcto, 8h   → crítico (manhã)
+//   urgency 5 — dia do vcto, 13h  → crítico (tarde)
+const SLOTS = [
+  { offset: -7, hour: 9,  urgency: 0 },
+  { offset: -3, hour: 9,  urgency: 1 },
+  { offset: -1, hour: 9,  urgency: 2 },
+  { offset: -1, hour: 19, urgency: 3 },
+  { offset:  0, hour: 8,  urgency: 4 },
+  { offset:  0, hour: 13, urgency: 5 },
+];
+
+function buildTitle(urgency, count, firstName) {
+  switch (urgency) {
+    case 0: return count === 1 ? `💰 Em 7 dias: ${firstName}` : `💰 ${count} vencimentos em 7 dias`;
+    case 1: return count === 1 ? `⏰ Em 3 dias: ${firstName}` : `⏰ ${count} vencimentos em 3 dias`;
+    case 2: return count === 1 ? `😬 Amanhã vence: ${firstName}` : `😬 ${count} vencimentos amanhã`;
+    case 3: return count === 1 ? `⚠️ Amanhã é dia de pagar!` : `⚠️ ${count} pagamentos amanhã!`;
+    case 4: return count === 1 ? `💸 VENCE HOJE: ${firstName}` : `💸 ${count} vencem HOJE`;
+    case 5: return count === 1 ? `🔥 Ainda não pagou?` : `🔥 ${count} ainda em aberto hoje!`;
+    default: return firstName;
+  }
+}
+
+function buildBody(urgency, count, total, nameList, day) {
+  switch (urgency) {
+    case 0: return `${total} · daqui 7 dias é o dia ${day}. Vai separando!`;
+    case 1: return count === 1
+        ? `${total} · já tá guardado? Faltam 3 dias!`
+        : `${total} total · ${nameList} — 3 dias!`;
+    case 2: return `${total} · separa o dinheiro hoje para não atrasar amanhã!`;
+    case 3: return count === 1
+        ? `${total} · amanhã é o dia ${day}. Não vai esquecer?`
+        : `${total} total · ${nameList}. Amanhã vence!`;
+    case 4: return `${total} · hoje é o dia ${day}, paga o quanto antes!`;
+    case 5: return count === 1
+        ? `${total} · hoje é o último dia! Corre lá antes que atrase!`
+        : `${total} total · ${nameList}. Última chance hoje!`;
+    default: return total;
+  }
 }
 
 async function send(when, title, body) {
@@ -75,8 +118,13 @@ async function send(when, title, body) {
   });
 }
 
+// Mutex: impede execuções concorrentes que causam duplicação de notificações.
+let rescheduling = false;
+
 export async function rescheduleDueReminders(data, year) {
   if (Platform.OS === 'web' || !data) return;
+  if (rescheduling) return;
+  rescheduling = true;
   try {
     configure();
     const perm = await Notifications.getPermissionsAsync();
@@ -87,8 +135,7 @@ export async function rescheduleDueReminders(data, year) {
     const horizon = now + 60 * 24 * 3600 * 1000; // próximos 60 dias
     const months = data.months || {};
 
-    // Agrupa todos os itens pendentes por (mês, dia)
-    const groups = {}; // chave: `${mi}-${day}`
+    const groups = {};
     for (let mi = 0; mi < 12; mi++) {
       const m = months[mi];
       if (!m) continue;
@@ -106,34 +153,22 @@ export async function rescheduleDueReminders(data, year) {
     for (const { mi, day, items } of Object.values(groups)) {
       const count = items.length;
       const total = formatBRL(sumValues(items));
+      const firstName = items[0].name || 'Despesa';
       const nameList = formatNames(items);
 
-      // Véspera às 20h — new Date(year, mi, day-1, 20, 0, 0)
-      // day-1 = 0 funciona corretamente (último dia do mês anterior).
-      const tEve = new Date(year, mi, day - 1, 20, 0, 0).getTime();
-      if (tEve > now && tEve <= horizon) {
-        const title = count === 1
-          ? `💡 Vence amanhã · ${items[0].name || 'Despesa'}`
-          : `💡 ${count} vencimentos amanhã`;
-        const body = count === 1
-          ? `${total} — separa o dinheiro hoje para o dia ${day}!`
-          : `${total} no total · ${nameList}. Organiza hoje!`;
-        await send(tEve, title, body);
-      }
-
-      // Dia do vencimento às 9h
-      const tDue = new Date(year, mi, day, 9, 0, 0).getTime();
-      if (tDue > now && tDue <= horizon) {
-        const title = count === 1
-          ? `💸 Pagar hoje · ${items[0].name || 'Despesa'}`
-          : `💸 ${count} pagamentos hoje`;
-        const body = count === 1
-          ? `${total} · dia ${day} — não deixa pra depois!`
-          : `${total} no total · ${nameList}.`;
-        await send(tDue, title, body);
+      for (const { offset, hour, urgency } of SLOTS) {
+        // new Date com dia negativo funciona corretamente no JS (ex: dia 1 - 7 = 25 do mês anterior)
+        const t = new Date(year, mi, day + offset, hour, 0, 0).getTime();
+        if (t > now && t <= horizon) {
+          const title = buildTitle(urgency, count, firstName);
+          const body = buildBody(urgency, count, total, nameList, day);
+          await send(t, title, body);
+        }
       }
     }
   } catch (e) {
     console.warn('notif reschedule', e);
+  } finally {
+    rescheduling = false;
   }
 }

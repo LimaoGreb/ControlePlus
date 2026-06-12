@@ -22,7 +22,7 @@ export default function NotificationsManager() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       if (granted.current) rescheduleDueReminders(data, YEAR);
-    }, 1500);
+    }, 3000);
     return () => timer.current && clearTimeout(timer.current);
   }, [data, ready]);
 

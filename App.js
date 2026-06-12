@@ -33,6 +33,7 @@ import SettingsBackupScreen from './src/screens/SettingsBackupScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import FloatingTabBar from './src/components/FloatingTabBar';
 import NotificationsManager from './src/components/NotificationsManager';
+import BotSyncManager from './src/components/BotSyncManager';
 import Avatar from './src/components/Avatar';
 import HeaderMenu from './src/components/HeaderMenu';
 import WelcomeBack from './src/components/WelcomeBack';
@@ -261,6 +262,7 @@ export default function App() {
             <GoogleAuthProvider>
             <InstallmentProvider>
               <NotificationsManager />
+              <BotSyncManager />
               <WelcomeBack />
               <Navigation />
             </InstallmentProvider>

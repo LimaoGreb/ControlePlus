@@ -262,7 +262,7 @@ function PeekCard({cat,anim}) {
           ))}
         </View>
       )}
-      <Text style={pk.hint}>Segure para mais detalhes</Text>
+      <Text style={pk.hint}>↓ Toque em "Ver detalhes completos"</Text>
     </Animated.View>
   );
 }
@@ -695,7 +695,7 @@ export default function AnnualSummaryScreen() {
               <Text style={[s.cardTitle,{color:colors.text}]}>Onde foi seu dinheiro?</Text>
               <Text style={[s.cardSub,{color:colors.textMuted}]}>
                 {cats.length>0
-                  ?'Toque · segure para peek · segure longo para detalhes'
+                  ?'Toque para selecionar · segure para ver detalhes'
                   :'Lance despesas para ver a distribuição'}
               </Text>
             </View>
@@ -716,7 +716,7 @@ export default function AnnualSummaryScreen() {
             }}
             onPressIn={showPeek}
             onPressOut={hidePeek}
-            onLongPress={catId=>{ hidePeek(); openSheet(catId); }}
+            onLongPress={()=>{}}
           />
 
           {cats.length>0&&<>
@@ -741,6 +741,11 @@ export default function AnnualSummaryScreen() {
               <Ionicons name="chevron-up" size={14} color={colors.textMuted}/>
             </TouchableOpacity>
           </>}
+
+          {/* PeekCard inline — flutua sobre a rosquinha ao segurar um segmento */}
+          <View style={[StyleSheet.absoluteFillObject,s.peekOnCard]} pointerEvents="none">
+            <PeekCard cat={peekCat} anim={peekAnim}/>
+          </View>
         </View>
 
         {/* ── PROJETOS ── */}
@@ -783,11 +788,6 @@ export default function AnnualSummaryScreen() {
 
         <View style={{height:96}}/>
       </ScrollView>
-
-      {/* ── PEEK OVERLAY — pointerEvents none para não bloquear o SVG ── */}
-      <View style={[s.peekOverlay,{width}]} pointerEvents="none">
-        <PeekCard cat={peekCat} anim={peekAnim}/>
-      </View>
 
       {/* ── BOTTOM SHEET ── */}
       <CategoryBottomSheet
@@ -838,7 +838,7 @@ const s = StyleSheet.create({
   pillTxt:      {fontSize:12,fontWeight:'700'},
   swipeHint:    {flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginTop:14,paddingVertical:8,borderTopWidth:1},
   swipeHintTxt: {fontSize:12,fontWeight:'600'},
-  peekOverlay:  {position:'absolute',top:0,bottom:0,left:0,right:0,alignItems:'center',justifyContent:'flex-start',paddingTop:72,paddingHorizontal:18,zIndex:9999},
+  peekOnCard:   {alignItems:'center',justifyContent:'center',zIndex:9999,borderRadius:16},
   secTitle:     {fontSize:17,fontWeight:'900',marginBottom:4,marginTop:4},
   secSub:       {fontSize:12,marginBottom:10},
   hlRow:        {flexDirection:'row',gap:10,marginBottom:10},

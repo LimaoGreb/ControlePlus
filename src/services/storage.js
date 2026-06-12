@@ -14,6 +14,17 @@ const INVESTMENTS_KEY = '@financas:investimentos';
 const PROJECTS_KEY = '@financas:projetos';
 const CONTRIB_KEY = '@financas:contribuicoes';
 const CONTRIB_GOAL_KEY = '@financas:contribuicoesMeta';
+const TELEGRAM_CHAT_ID_KEY = '@financas:telegramChatId';
+
+export async function loadTelegramChatId() {
+  try { return await AsyncStorage.getItem(TELEGRAM_CHAT_ID_KEY) || null; } catch { return null; }
+}
+export async function saveTelegramChatId(id) {
+  try {
+    if (id) await AsyncStorage.setItem(TELEGRAM_CHAT_ID_KEY, String(id));
+    else await AsyncStorage.removeItem(TELEGRAM_CHAT_ID_KEY);
+  } catch {}
+}
 
 // Carrega os dados salvos. Na primeira execução, semeia com a estrutura vazia.
 export async function loadData() {

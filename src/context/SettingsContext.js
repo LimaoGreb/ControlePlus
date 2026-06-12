@@ -17,6 +17,8 @@ import {
   saveMakesContributions,
   loadContributionGoal,
   saveContributionGoal,
+  loadTelegramChatId,
+  saveTelegramChatId,
 } from '../services/storage';
 
 const SettingsContext = createContext(null);
@@ -33,6 +35,7 @@ export function SettingsProvider({ children }) {
   const [projects, setProjects] = useState([]);
   const [makesContributions, setMakesContributionsState] = useState(false);
   const [contributionGoalPct, setContributionGoalPctState] = useState(10);
+  const [telegramChatId, setTelegramChatIdState] = useState(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -45,7 +48,8 @@ export function SettingsProvider({ children }) {
       loadContributionGoal(),
       loadAvatar(),
       loadProjects(),
-    ]).then(([n, pms, inv, invts, mc, goal, av, projs]) => {
+      loadTelegramChatId(),
+    ]).then(([n, pms, inv, invts, mc, goal, av, projs, tgId]) => {
       setUserNameState(n);
       setPaymentMethods(pms);
       setIsInvestorState(inv);
@@ -54,6 +58,7 @@ export function SettingsProvider({ children }) {
       setContributionGoalPctState(goal);
       setAvatarState(av);
       setProjects(projs);
+      if (tgId) setTelegramChatIdState(tgId);
       setReady(true);
     });
   }, []);
@@ -113,6 +118,12 @@ export function SettingsProvider({ children }) {
     saveIsInvestor(value);
   };
 
+  const setTelegramChatId = (id) => {
+    const clean = id ? String(id).trim() : null;
+    setTelegramChatIdState(clean);
+    saveTelegramChatId(clean);
+  };
+
   // --- Investimentos ---
   const persistInvestments = (next) => {
     setInvestments(next);
@@ -158,6 +169,18 @@ export function SettingsProvider({ children }) {
     persistProjects(projects.filter((p) => p.id !== id));
   };
 
+  const importSettings = async (s) => {
+    if (!s) return;
+    if (s.userName !== undefined) { setUserNameState(s.userName); await saveUserName(s.userName); }
+    if (s.avatar !== undefined) { setAvatarState(s.avatar); await saveAvatar(s.avatar); }
+    if (s.paymentMethods !== undefined) { setPaymentMethods(s.paymentMethods); await savePaymentMethods(s.paymentMethods); }
+    if (s.isInvestor !== undefined) { setIsInvestorState(s.isInvestor); await saveIsInvestor(s.isInvestor); }
+    if (s.investments !== undefined) { setInvestments(s.investments); await saveInvestments(s.investments); }
+    if (s.projects !== undefined) { setProjects(s.projects); await saveProjects(s.projects); }
+    if (s.makesContributions !== undefined) { setMakesContributionsState(s.makesContributions); await saveMakesContributions(s.makesContributions); }
+    if (s.contributionGoalPct !== undefined) { setContributionGoalPctState(s.contributionGoalPct); await saveContributionGoal(s.contributionGoalPct); }
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -184,6 +207,9 @@ export function SettingsProvider({ children }) {
         setMakesContributions,
         contributionGoalPct,
         setContributionGoalPct,
+        importSettings,
+        telegramChatId,
+        setTelegramChatId,
         ready,
       }}
     >
