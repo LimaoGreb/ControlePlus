@@ -119,11 +119,13 @@ async function executeCommand(cmd, data, addItem, updateItem, addInstallments) {
   }
 
   if (cmd.type === 'CONCLUDE_EXPENSE') {
-    const { expense_name } = cmd.params;
+    const { expense_name, monthIndex } = cmd.params;
     const query = (expense_name || '').toLowerCase();
     const months = data?.months || {};
     let concluded = 0;
-    for (let mi = 0; mi < 12; mi++) {
+    const startMi = monthIndex != null ? monthIndex : 0;
+    const endMi = monthIndex != null ? monthIndex : 11;
+    for (let mi = startMi; mi <= endMi; mi++) {
       for (const section of ['fixed', 'variable']) {
         for (const item of (months[mi]?.[section] || [])) {
           if ((item.name || '').toLowerCase().includes(query) && !item.concluded) {

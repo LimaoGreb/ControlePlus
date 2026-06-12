@@ -212,19 +212,35 @@ async function dispatchIntent(chatId, session, classified) {
       return;
     }
     const R = (v) => `R$ ${(v || 0).toFixed(2)}`;
-    const list = matches.map(m =>
-      `• *${m.item.name}* — ${R(m.item.value)} · ${m.section === 'fixed' ? 'Fixo' : 'Variável'} · ${MONTH_NAMES[m.mi]}`
+
+    if (matches.length === 1) {
+      const m = matches[0];
+      const label = `• *${m.item.name}* — ${R(m.item.value)} · ${m.section === 'fixed' ? 'Fixo' : 'Variável'} · ${MONTH_NAMES[m.mi]}`;
+      session.step = 'confirming_cmd';
+      session.pendingCmd = {
+        type: 'CONCLUDE_EXPENSE',
+        params: { expense_name: query, monthIndex: m.mi },
+        label,
+      };
+      await sendMessage(chatId, `📝 Encontrei esta despesa:\n\n${label}\n\nMarcar como pago? _(sim/não)_`);
+      return;
+    }
+
+    // Múltiplos matches — lista numerada para o usuário escolher
+    const list = matches.map((m, i) =>
+      `${i + 1}. *${m.item.name}* — ${R(m.item.value)} · ${MONTH_NAMES[m.mi]}`
     ).join('\n');
     session.step = 'confirming_cmd';
     session.pendingCmd = {
       type: 'CONCLUDE_EXPENSE',
       params: { expense_name: query },
       label: list,
+      multiSelect: true,
+      matches,
     };
-    const header = matches.length === 1
-      ? `📝 Encontrei esta despesa:`
-      : `📝 Encontrei *${matches.length} despesas* com _"${expenseName}"_:`;
-    await sendMessage(chatId, `${header}\n\n${list}\n\nMarcar como pago? _(sim/não)_`);
+    await sendMessage(chatId,
+      `📝 Encontrei *${matches.length} despesas* com _"${expenseName}"_:\n\n${list}\n\nQual marcar como pago?\nResponda com o *número*, _"todos"_ ou _"não"_`
+    );
     return;
   }
 
@@ -481,6 +497,54 @@ async function handleConfirmingCommand(chatId, text, session) {
   }
 
   const lower = text.toLowerCase().trim();
+
+  // Fluxo de seleção numerada (múltiplos matches no conclude_expense)
+  if (session.pendingCmd?.multiSelect) {
+    const matches = session.pendingCmd.matches || [];
+    if (/\b(n[aã]o|nao|cancelar|cancela)\b/.test(lower) || lower === 'n') {
+      await sendMessage(chatId, 'OK, cancelado! 😊');
+      session.step = 'idle';
+      session.pendingCmd = null;
+      return;
+    }
+    const isTodos = /\btodos?\b|\ball\b|tudo/.test(lower);
+    const nums = isTodos
+      ? matches.map((_, i) => i + 1)
+      : [...lower.matchAll(/\d+/g)].map(m => parseInt(m[0])).filter(n => n >= 1 && n <= matches.length);
+
+    if (!nums.length) {
+      const example = matches.map((_, i) => i + 1).join(' ou ');
+      await sendMessage(chatId, `Responda com o número (${example}), _"todos"_ ou _"não"_`);
+      return;
+    }
+
+    const selected = nums.map(n => matches[n - 1]);
+    const baseQuery = session.pendingCmd.params.expense_name;
+    const R = (v) => `R$ ${(v || 0).toFixed(2)}`;
+    const label = selected.map(m =>
+      `• *${m.item.name}* — ${R(m.item.value)} · ${MONTH_NAMES[m.mi]}`
+    ).join('\n');
+
+    session.step = 'done';
+    session.pendingCmd = null;
+    await sendMessage(chatId, '⏳ Executando...');
+
+    try {
+      for (const m of selected) {
+        const cmdId = await writeCommand(chatId, 'CONCLUDE_EXPENSE', {
+          expense_name: baseQuery,
+          monthIndex: m.mi,
+        });
+        await pollCommandResult(chatId, cmdId, 25000);
+      }
+      await sendMessage(chatId, `✅ *Despesa(s) concluída(s)!*\n\n${label}\n\n_Atualizado no Controle+_ 🚀`);
+    } catch (e) {
+      console.error('[Jarvis] conclude multi error:', e.message);
+      await sendMessage(chatId, `✅ Agendado! Abre o Controle+ para aplicar. 📱`);
+    }
+    return;
+  }
+
   const yes = /\b(sim|ok|pode|yes|isso|certo|confirma)\b/.test(lower) || lower === 's';
   const no = /\b(n[aã]o|nao|errado|cancela|cancelar)\b/.test(lower) || lower === 'n';
 
