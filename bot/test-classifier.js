@@ -5,8 +5,19 @@
 //
 // Requer GEMINI_API_KEY no ambiente (mesmo do bot).
 
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { classifyIntent } from './geminiClient.js';
-import 'dotenv/config';
+
+// Carrega .env local sem precisar do pacote dotenv
+try {
+  const __dir = dirname(fileURLToPath(import.meta.url));
+  readFileSync(join(__dir, '.env'), 'utf8').split('\n').forEach(line => {
+    const eq = line.indexOf('=');
+    if (eq > 0) process.env[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+  });
+} catch {}
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
