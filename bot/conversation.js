@@ -10,8 +10,9 @@ const MONTH_NAMES = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
 ];
+const MONTH_PT = MONTH_NAMES.map(m => m.toLowerCase());
 
-// { [chatId]: { step, data, askingFor, firstName, snapshot, pendingCmd } }
+// { [chatId]: { step, data, askingFor, firstName, snapshot, pendingCmd, lastQuery } }
 const sessions = new Map();
 
 function getSession(chatId, firstName) {
@@ -27,6 +28,57 @@ function resolveMonth(monthName) {
   return idx >= 0 ? idx : new Date().getMonth();
 }
 
+// ─── Follow-up detector ───────────────────────────────────────────────────────
+// Detecta mensagens curtas/contextuais que são continuação da última query.
+// Ex: "e este mês?", "e no nubank?", "e janeiro?"
+
+const FOLLOWUP_PREFIX = /^(e\s|e\s+a[ií]?\s|e\s+o\s|e\s+a\s|mas\s+e\s|e\s+pra\s|que\s+tal\s|e\s+no\s|e\s+na\s|e\s+em\s)/i;
+const CARD_RE = /nubank|nu\b|c6|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|pix|d[eé]bito|cr[eé]dito/i;
+
+function resolveFollowUpMonth(t) {
+  const now = new Date().getMonth();
+  if (/m[eê]s\s*(passado|anterior|[uú]ltimo)|[uú]ltimo\s*m[eê]s/i.test(t))
+    return MONTH_PT[((now - 1) + 12) % 12];
+  if (/esse\s*m[eê]s|este\s*m[eê]s|m[eê]s\s*(atual|corrente)/i.test(t))
+    return MONTH_PT[now];
+  return MONTH_PT.find(m => t.includes(m)) || null;
+}
+
+function detectFollowUp(text, lastQuery) {
+  if (!lastQuery) return null;
+  const t = text.toLowerCase().trim();
+
+  // Só considera follow-up se for curto OU começa com "e "
+  if (t.length > 35 && !FOLLOWUP_PREFIX.test(t)) return null;
+
+  const month = resolveFollowUpMonth(t);
+  if (month) {
+    // "e este mês?" → mesma query, mês diferente
+    if (lastQuery.subtype === 'compare') {
+      const now = new Date().getMonth();
+      const m2i = MONTH_PT.indexOf(month);
+      return { intent: 'query', params: { ...lastQuery, month2: m2i >= 0 ? m2i : now } };
+    }
+    return { intent: 'query', params: { ...lastQuery, month } };
+  }
+
+  const cardMatch = t.match(CARD_RE);
+  if (cardMatch) {
+    // "e no nubank?" → filtrar por cartão com mesmo tipo de query
+    const base = ['summary', 'by_payment', 'biggest'].includes(lastQuery.subtype)
+      ? lastQuery.subtype
+      : 'by_payment';
+    return { intent: 'query', params: { ...lastQuery, subtype: base === 'summary' ? 'by_payment' : base, filter: cardMatch[0].trim() } };
+  }
+
+  // "mais detalhes" / "detalha" → repete a mesma query
+  if (/mais\s*detalhe|detalha|mostra\s*tudo|lista\s*tudo|detalhado/i.test(t)) {
+    return { intent: 'query', params: { ...lastQuery } };
+  }
+
+  return null;
+}
+
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
 export async function handleMessage(chatId, text, firstName) {
@@ -37,6 +89,13 @@ export async function handleMessage(chatId, text, firstName) {
   if (session.step === 'confirming_cmd') { await handleConfirmingCommand(chatId, text, session); return; }
   if (session.step === 'collecting') { await handleCollecting(chatId, text, session); return; }
   if (session.step === 'collecting_cmd') { await handleCollectingCmd(chatId, text, session); return; }
+
+  // Tenta follow-up da última query antes de qualquer classificação
+  const followUp = detectFollowUp(text, session.lastQuery);
+  if (followUp) {
+    await dispatchIntent(chatId, session, followUp);
+    return;
+  }
 
   // IDLE / DONE — tenta parser local primeiro (rápido, sem API)
   const parsed = await parseExpenseMessage(text);
@@ -68,6 +127,7 @@ async function dispatchIntent(chatId, session, classified) {
   if (intent === 'query') {
     const snapshot = await readUserSnapshot(chatId);
     await sendMessage(chatId, answerQuery(snapshot, params));
+    session.lastQuery = { ...params }; // salva contexto para follow-ups
     session.step = 'done';
     return;
   }
