@@ -63,6 +63,9 @@ function extractName(text) {
 const NON_EXPENSE = ['/start', '/cancelar', 'oi', 'olá', 'ola', 'tudo bem',
   'bom dia', 'boa tarde', 'boa noite', 'obrigado', 'obrigada', 'ok', 'sim', 'não', 'nao'];
 
+// Verbos que iniciam fluxo de despesa mesmo sem número (bot pergunta o valor depois)
+const ADD_VERBS = /\b(adiciona|adicione|adicionar|lança|lance|lançar|coloca|coloque|colocar|registra|registre|registrar)\b/i;
+
 export async function parseExpenseMessage(text) {
   const lower = text.toLowerCase().trim();
 
@@ -74,6 +77,12 @@ export async function parseExpenseMessage(text) {
     'reais', 'conto', 'pila', 'r$', 'tive que pagar'];
   const hasKeyword = expenseKeywords.some(k => lower.includes(k));
   const hasNumber = /\d+/.test(text);
+  const hasAddVerb = ADD_VERBS.test(text);
+
+  // Verbo de adição explícito: inicia fluxo mesmo sem número
+  if (hasAddVerb) {
+    return { isExpense: true, name: extractName(text), value: extractValue(text), payment: extractPayment(text), monthIndex: MONTH_INDEX };
+  }
 
   // Exige keyword E número — só keyword sem valor é consulta ("quanto gastei?")
   if (!hasKeyword || !hasNumber) return { isExpense: false };

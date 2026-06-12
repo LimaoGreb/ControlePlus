@@ -158,16 +158,24 @@ async function handleCollecting(chatId, text, session) {
   }
 
   if (session.askingFor === 'value') {
-    const val = await extractField('value', text);
-    if (!val) {
-      await sendMessage(chatId, 'Não entendi o valor. Tente: _"50 reais"_ ou _"R$ 50"_');
-      return;
+    const isSame = /\bmesmo\b|\bigual\b|\bsame\b/i.test(text);
+    if (isSame && session.lastExpense?.value) {
+      session.data.value = session.lastExpense.value;
+    } else {
+      const val = await extractField('value', text);
+      if (!val) {
+        await sendMessage(chatId, 'Não entendi o valor. Tente: _"50 reais"_ ou _"R$ 50"_');
+        return;
+      }
+      session.data.value = val;
     }
-    session.data.value = val;
   }
 
   if (session.askingFor === 'payment') {
-    if (['pular', 'não sei', 'nao sei', '-'].includes(lower)) {
+    const isSame = /\bmesmo\b|\bigual\b|\bsame\b/i.test(text);
+    if (isSame && session.lastExpense?.payment) {
+      session.data.payment = session.lastExpense.payment;
+    } else if (['pular', 'não sei', 'nao sei', '-'].includes(lower)) {
       session.data.payment = false;
     } else {
       session.data.payment = await extractField('payment', text);
@@ -273,6 +281,7 @@ async function handleConfirmingExpense(chatId, text, session) {
     await sendMessage(chatId,
       `✅ *Adicionado!*\n\n📝 *${session.data.name}*\n💰 *R$ ${session.data.value.toFixed(2)}*${pm}${dd}\n📅 ${MONTH_NAMES[session.data.monthIndex]}\n\n_Abre o Controle+ para ver_ 🚀`
     );
+    session.lastExpense = { value: session.data.value, payment: payFinal };
     session.step = 'done';
     session.data = {};
     return;
