@@ -28,9 +28,8 @@ function getDb() {
   return getDatabase();
 }
 
-// Sobe os dados compartilhados do casal (sem dados pessoais).
-// payload: { shared, ts, deviceId }
-// Usa update() para preservar deviceIds ao sincronizar.
+// Sobe os dados compartilhados do casal.
+// Usa update() para não apagar campos que possam existir no node (ex: legados).
 export async function pushCouple(code, payload) {
   await update(ref(getDb(), `couples/${code}`), payload);
 }
@@ -48,24 +47,32 @@ export function listenCouple(code, callback) {
   return () => off(r);
 }
 
-// Anuncia o deviceId em sub-path exclusivo — preservado pelo update() do pushCouple.
-// Ambos os dispositivos ficam registrados em deviceIds/{id}: true.
-export async function announceDeviceId(code, deviceId) {
-  await set(ref(getDb(), `couples/${code}/deviceIds/${deviceId}`), true);
-}
+// Dados pessoais — path HIERÁRQUICO: couples_personal/{code}/{deviceId}
+// Isso permite escutar o parent (couples_personal/{code}) e descobrir o parceiro
+// sem nenhuma etapa separada de anúncio de deviceId.
 
-// Dados pessoais — cada dispositivo tem seu próprio node, sem risco de sobrescrita mútua.
 export async function pushPersonalData(code, deviceId, data) {
-  await set(ref(getDb(), `couples_personal/${code}_${deviceId}`), data);
+  await set(ref(getDb(), `couples_personal/${code}/${deviceId}`), data);
 }
 
-export async function fetchPersonalData(code, deviceId) {
-  const snap = await get(ref(getDb(), `couples_personal/${code}_${deviceId}`));
-  return snap.exists() ? snap.val() : null;
+// Busca os dados pessoais do PARCEIRO (quem não é myDeviceId) no parent.
+export async function fetchPersonalData(code, myDeviceId) {
+  const snap = await get(ref(getDb(), `couples_personal/${code}`));
+  if (!snap.exists()) return null;
+  const all = snap.val();
+  const entry = Object.entries(all).find(([id]) => id !== myDeviceId);
+  return entry ? entry[1] : null;
 }
 
-export function listenPersonalData(code, deviceId, callback) {
-  const r = ref(getDb(), `couples_personal/${code}_${deviceId}`);
-  onValue(r, (snap) => callback(snap.exists() ? snap.val() : null));
+// Escuta o parent e repassa os dados do PARCEIRO sempre que mudar.
+// Callback recebe null se o parceiro ainda não publicou dados.
+export function listenPersonalData(code, myDeviceId, callback) {
+  const r = ref(getDb(), `couples_personal/${code}`);
+  onValue(r, (snap) => {
+    if (!snap.exists()) { callback(null); return; }
+    const all = snap.val();
+    const entry = Object.entries(all).find(([id]) => id !== myDeviceId);
+    callback(entry ? entry[1] : null);
+  });
   return () => off(r);
 }
