@@ -62,6 +62,8 @@ function extractNameFilter(t) {
     'show','summary','financeiro','corrente','vigente','gostaria','olha',
     'apura','atuais','detail','detalhes','detalhe','informa','informar',
     'valor','valores','periodo','historico',
+    // palavras de quantidade/totalidade — "ao todo", "em geral", etc.
+    'ao','todo','todos','todas','tudo','geral','gerais',
     ...MONTH_PT.map(norm),
   ];
   const tNorm = norm(t);
@@ -188,12 +190,24 @@ function localClassify(t) {
 
   // ── Reabrir / desconcluir despesa ─────────────────────────────────────────
   if (/reabr[ae]|reabertur|desconclui|desmarqu?e?|reabrir|volta\s*(ao\s*)?aberto|n[aã]o\s*(est[aá]|foi)\s*pag|desfa[çz]/i.test(t)) {
+    // "reabra todos os meses" → bulk de meses não suportado
+    if (/\btodos?\s+os\s+meses?\b|\btodas?\s+os\s+meses?\b/i.test(t))
+      return { intent: 'unsupported', params: { feature: 'bulk_reopen_months' } };
     const nameRaw = t
       .replace(/\b(reabr[ae]|reabertur\w*|desconclui[rr]?|desmarqu?e?|reabrir|volta\s*(?:ao\s*)?aberto|desfa[çz]\w*)\b/gi, '')
-      .replace(/\b(a\s+minha\s+despesa\b|minha\s+despesa\b|a\s+despesa\s+d[ao]?|todas?\s+(?:as\s+)?minhas?\s+despesas?|todas?\s+(?:as\s+)?despesas?|todas?)\b/gi, '')
+      // remove "todos/todas + os/as/meses/gastos/despesas" e genéricos
+      .replace(/\b(todos?\s+(?:[ao]s?\s+)?(?:minhas?\s+)?(?:despesas?|gastos?|meses?|contas?)|todas?\s+(?:[ao]s?\s+)?(?:minhas?\s+)?(?:despesas?|contas?)|a\s+minha\s+despesa|minha\s+despesa|a\s+despesa\s+d[ao]?|todos?|todas?|despesas?|gastos?|contas?)\b/gi, '')
+      // remove artigos soltos (ex: "a netflix" → "netflix")
+      .replace(/\b(o|a|os|as)\b/gi, '')
       .replace(/[?,!]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-    const isAll = /\b(todas?|tudo|all)\b/.test(t);
+    // isAll: pega "todos", "todas", "tudo" — inclui masculino e feminino
+    const isAll = /\b(todos?|todas?|tudo|all)\b/.test(t);
     return { intent: 'reopen_expense', params: { expense_name: nameRaw.length >= 2 ? nameRaw : null, all: isAll } };
+  }
+
+  // ── Bulk conclude (não suportado) — precisa vir ANTES do conclude individual ──
+  if (/\b(conclu[ií]|conclua|concluir)\b.{0,25}\b(todos?\s*os\s*meses?|todas?\s*(?:as\s*)?despesas?|todos?\s*(?:os\s*)?gastos?|tudo)\b|\b(todos?\s*os\s*meses?|todas?\s*as\s*despesas?)\b.{0,25}\b(conclu|concluir)\b/i.test(t)) {
+    return { intent: 'unsupported', params: { feature: 'bulk_conclude' } };
   }
 
   // ── Concluir / marcar como pago ───────────────────────────────────────────
@@ -202,6 +216,8 @@ function localClassify(t) {
       const nameRaw = t
         .replace(/\b(conclua|concluir|conclu[ií]|marqu?e?|quitar?|quit[ae]|j[aá]\s*paguei|paguei\s*(o|a)|liquidar|liquidei)\b/gi, '')
         .replace(/\b(a\s+minha\s+despesa\b|minha\s+despesa\b|a\s+despesa\s+d[ao]?|o\s+gasto\s+d[ao]?|despesa\s+d[ao]?|a\s+conta\s+d[ao]?|como\s+pag[ao]|pra\s+mim|para\s+mim|jarvis)\b/gi, '')
+        // remove artigos soltos ("o ifood" → "ifood", "a netflix" → "netflix")
+        .replace(/\b(o|a|os|as)\b/gi, '')
         .replace(/[?,!]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
       if (nameRaw.length >= 2)
         return { intent: 'conclude_expense', params: { expense_name: nameRaw } };

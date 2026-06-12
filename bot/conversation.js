@@ -472,6 +472,10 @@ async function dispatchIntent(chatId, session, classified) {
     const feature = params?.feature;
     if (feature === 'payment_method') {
       await sendMessage(chatId, `💳 Para adicionar ou editar formas de pagamento e cartões, use o Controle\\+ diretamente:\n\n_Configurações → Formas de Pagamento_\n\nPelo bot só consigo *definir o limite* de um cartão já cadastrado:\n_"define limite de 2000 no Nubank"_`);
+    } else if (feature === 'bulk_conclude') {
+      await sendMessage(chatId, `📋 Concluir todos os meses ou todas as despesas de uma vez não é possível pelo bot\\.\n\nNo Controle\\+:\n_Arraste o card do mês para a esquerda → "Concluir mês"_\n\nPara concluir uma despesa específica:\n_"conclua a Netflix"_ ou _"conclua o ifood"_`);
+    } else if (feature === 'bulk_reopen_months') {
+      await sendMessage(chatId, `📋 Reabrir todos os meses de uma vez não é possível pelo bot\\.\n\nNo Controle\\+:\n_Vá no mês desejado → arraste para a esquerda → "Reabrir mês"_\n\nPara reabrir uma despesa específica:\n_"reabra a Netflix"_\nOu para reabrir todas as despesas do mês atual:\n_"reabra todas"_`);
     } else {
       await sendMessage(chatId, `Hmm, não consigo fazer isso pelo chat 🤔\n\nUse o app Controle\\+ diretamente para esta ação.`);
     }
