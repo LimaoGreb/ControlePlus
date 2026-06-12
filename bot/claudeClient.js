@@ -1,74 +1,97 @@
-// Google Gemini Flash — gratuito, sem cartão de crédito.
-// Chave: aistudio.google.com → "Get API key" → "Create API key"
-const fetch = (...args) => import('node-fetch').then(m => m.default(...args));
-
-const GEMINI_URL = () =>
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+// Parser local de despesas em PT-BR — sem API externa, nunca falha.
 
 const MONTH_INDEX = new Date().getMonth();
 
-const SYSTEM_PROMPT = `Você é Jarvis, assistente financeiro do app Controle+.
-Analise a mensagem do usuário e extraia informações de uma DESPESA em português informal.
+const NUMBER_WORDS = {
+  'um': 1, 'uma': 1, 'dois': 2, 'duas': 2, 'tres': 3, 'três': 3,
+  'quatro': 4, 'cinco': 5, 'seis': 6, 'sete': 7, 'oito': 8, 'nove': 9,
+  'dez': 10, 'onze': 11, 'doze': 12, 'treze': 13, 'quatorze': 14,
+  'quinze': 15, 'dezesseis': 16, 'dezessete': 17, 'dezoito': 18,
+  'dezenove': 19, 'vinte': 20, 'trinta': 30, 'quarenta': 40,
+  'cinquenta': 50, 'sessenta': 60, 'setenta': 70, 'oitenta': 80,
+  'noventa': 90, 'cem': 100, 'cento': 100, 'duzentos': 200,
+  'trezentos': 300, 'quatrocentos': 400, 'quinhentos': 500,
+  'mil': 1000,
+};
 
-Responda APENAS com JSON válido (sem explicação, sem markdown, sem bloco de código):
-{
-  "name": "nome da despesa (ex: Mercado, Uber, Conta de luz)",
-  "value": 30.50,
-  "payment": "forma de pagamento mencionada ou null",
-  "monthIndex": 0,
-  "isExpense": true
+function extractValue(text) {
+  // Número com decimal: "35,50" ou "35.50"
+  const dec = text.match(/R?\$?\s*(\d+)[,.](\d{1,2})\s*(?:reais?|conto|pila|real)?/i);
+  if (dec) return parseFloat(`${dec[1]}.${dec[2]}`);
+  // Número inteiro
+  const num = text.match(/R?\$?\s*(\d+)\s*(?:reais?|conto|pila|real)?/i);
+  if (num) return parseFloat(num[1]);
+  // Por extenso
+  const lower = text.toLowerCase();
+  for (const [word, val] of Object.entries(NUMBER_WORDS)) {
+    if (new RegExp(`\\b${word}\\b`).test(lower)) return val;
+  }
+  return null;
 }
 
-Regras:
-- monthIndex: 0-11 (janeiro=0). Se não mencionado, use ${MONTH_INDEX}.
-- value: número em reais. "3 pila"=3, "30 conto"=30, "cinquenta"=50, null se não mencionado.
-- Se NÃO for sobre despesa: {"isExpense": false}`;
-
-async function callGemini(userText) {
-  const body = {
-    contents: [
-      { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
-      { role: 'model', parts: [{ text: 'Entendido. Vou responder apenas com JSON.' }] },
-      { role: 'user', parts: [{ text: userText }] },
-    ],
-    generationConfig: { maxOutputTokens: 256, temperature: 0.1 },
-  };
-
-  const res = await fetch(GEMINI_URL(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
-  const json = await res.json();
-  return json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+function extractPayment(text) {
+  const t = text.toLowerCase();
+  if (/pix/i.test(t)) return 'Pix';
+  if (/d[eé]bito/i.test(t)) return 'Débito';
+  if (/cr[eé]dito/i.test(t)) return 'Crédito';
+  if (/dinheiro|espécie|especie|cash/i.test(t)) return 'Dinheiro';
+  if (/boleto/i.test(t)) return 'Boleto';
+  if (/cartão|cartao/i.test(t)) return 'Cartão';
+  return null;
 }
+
+function extractName(text) {
+  let s = text
+    .replace(/jarvis[,.]?\s*/gi, '')
+    .replace(/\b(gastei|paguei|comprei|tive que pagar|fui no|fui na|no|na|em|de|do|da|pelo|pela|pro|pra|um|uma|o|a|meu|minha)\b/gi, ' ')
+    .replace(/R?\$?\s*\d+(?:[,.]?\d+)?\s*(?:reais?|conto|pila|real)?/gi, ' ')
+    .replace(/\b(no pix|no débito|no crédito|no dinheiro|a débito|em dinheiro|pix|débito|crédito|dinheiro|boleto|cartão|cartao)\b/gi, ' ')
+    .replace(/[.,!?]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Capitaliza
+  s = s.split(' ')
+    .filter(w => w.length > 1)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+
+  return s || null;
+}
+
+const NON_EXPENSE = ['/start', '/cancelar', 'oi', 'olá', 'ola', 'tudo bem',
+  'bom dia', 'boa tarde', 'boa noite', 'obrigado', 'obrigada', 'ok', 'sim', 'não', 'nao'];
 
 export async function parseExpenseMessage(text) {
-  try {
-    const raw = await callGemini(text);
-    if (!raw) return { isExpense: false };
-    // Remove possíveis backticks se o modelo incluir mesmo assim
-    const clean = raw.replace(/```json|```/g, '').trim();
-    return JSON.parse(clean);
-  } catch (e) {
-    console.error('[Gemini] parseExpenseMessage falhou:', e.message);
+  const lower = text.toLowerCase().trim();
+
+  if (NON_EXPENSE.some(w => lower === w || lower.startsWith(w + ' '))) {
     return { isExpense: false };
   }
+
+  const expenseKeywords = ['gastei', 'paguei', 'comprei', 'gasto', 'despesa',
+    'reais', 'conto', 'pila', 'r$', 'tive que pagar'];
+  const hasKeyword = expenseKeywords.some(k => lower.includes(k));
+  const hasNumber = /\d+/.test(text);
+
+  if (!hasKeyword && !hasNumber) return { isExpense: false };
+
+  return {
+    isExpense: true,
+    name: extractName(text),
+    value: extractValue(text),
+    payment: extractPayment(text),
+    monthIndex: MONTH_INDEX,
+  };
 }
 
 export async function extractField(field, userReply) {
-  const prompts = {
-    value: `O usuário disse "${userReply}". Qual é o valor em reais? Responda APENAS o número (ex: 30.50) ou null.`,
-    payment: `O usuário disse "${userReply}" como pagamento. Responda APENAS o nome limpo (ex: "Pix", "Débito Nubank") ou null.`,
-  };
-  try {
-    const raw = await callGemini(prompts[field] || userReply);
-    if (!raw || raw === 'null') return null;
-    if (field === 'value') return parseFloat(raw.replace(',', '.')) || null;
-    return raw;
-  } catch {
-    return null;
+  if (field === 'value') return extractValue(userReply);
+  if (field === 'payment') {
+    const p = extractPayment(userReply);
+    if (p) return p;
+    const clean = userReply.trim();
+    return clean.length > 0 && clean.length < 30 ? clean : null;
   }
+  return null;
 }

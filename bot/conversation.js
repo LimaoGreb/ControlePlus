@@ -59,7 +59,7 @@ export async function handleMessage(chatId, text, firstName) {
       // Usuário pode pular forma de pagamento
       const lower = text.toLowerCase().trim();
       if (lower === 'pular' || lower === 'não sei' || lower === 'nao sei' || lower === '-') {
-        session.data.payment = null;
+        session.data.payment = false; // false = usuario pulou explicitamente
       } else {
         const pay = await extractField('payment', text);
         session.data.payment = pay;
@@ -78,7 +78,9 @@ export async function handleMessage(chatId, text, firstName) {
 
     if (confirmed) {
       const expId = await addPendingExpense(chatId, session.data);
-      const pm = session.data.payment ? `\n💳 ${session.data.payment}` : '';
+      const payFinal = (session.data.payment && session.data.payment !== false) ? session.data.payment : null;
+      const pm = payFinal ? `\n💳 ${payFinal}` : '';
+      session.data.payment = payFinal;
       await sendMessage(chatId,
         `✅ *Adicionado!*\n\n📝 *${session.data.name}*\n💰 *R$ ${session.data.value.toFixed(2)}*${pm}\n📅 ${MONTH_NAMES[session.data.monthIndex]}\n\n_Abre o Controle+ para ver_ 🚀`
       );
@@ -115,7 +117,7 @@ async function askNextMissing(chatId, session) {
     return;
   }
 
-  if (data.payment === undefined) {
+  if (data.payment == null) { // null = nao mencionado; undefined = campo ausente
     session.askingFor = 'payment';
     await sendMessage(chatId,
       `💳 Como foi o pagamento? _(Pix, débito, crédito Nubank...)_\nOu manda _"pular"_ para deixar em branco.`
@@ -127,7 +129,8 @@ async function askNextMissing(chatId, session) {
   session.step = 'confirming';
   session.askingFor = null;
 
-  const pm = data.payment ? `\n💳 ${data.payment}` : '';
+  const payLabel = (data.payment && data.payment !== false) ? data.payment : null;
+  const pm = payLabel ? `\n💳 ${payLabel}` : '';
   await sendMessage(chatId,
     `Confere:\n\n📝 *${data.name}*\n💰 *R$ ${data.value.toFixed(2)}*${pm}\n📅 ${MONTH_NAMES[data.monthIndex]}\n\nConfirma? _(sim/não)_`
   );
