@@ -92,6 +92,20 @@ export async function readSessionContext(chatId) {
   }
 }
 
+// Retorna todos os chatIds que têm dados no nó /jarvis.
+export async function getAllChatIds() {
+  try {
+    const snap = await getDb().ref('jarvis').once('value');
+    if (!snap.exists()) return [];
+    const ids = [];
+    snap.forEach(child => { ids.push(child.key); });
+    return ids;
+  } catch (e) {
+    console.warn('[Firebase] getAllChatIds error:', e.message);
+    return [];
+  }
+}
+
 export async function pollCommandResult(chatId, cmdId, timeoutMs = 25000) {
   return new Promise((resolve) => {
     const dbRef = getDb().ref(`jarvis/${chatId}/commands/${cmdId}`);

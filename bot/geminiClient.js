@@ -92,6 +92,17 @@ function localClassify(t) {
     return { intent: 'income', params: { name, value, month } };
   }
 
+  // ── Toggle settings (investidor / contribuições) ──────────────────────────
+  if (/\b(ativa|ative|ativar|liga|ligar|habilita|habilitar|desativa|desative|desativar|desliga|desligar|desabilita|desabilitar)\b/i.test(t)) {
+    const isOn = !/\b(desativ|deslig|desabilit)\b/i.test(t);
+    if (/\binvest/i.test(t)) return { intent: 'toggle_setting', params: { key: 'isInvestor', value: isOn } };
+    if (/contribui|doa[çc]|d[íi]zimo|doacoes?/i.test(t)) return { intent: 'toggle_setting', params: { key: 'makesContributions', value: isOn } };
+  }
+
+  // ── Mudar foto / avatar ───────────────────────────────────────────────────
+  if (/\b(muda|mudar|troca|trocar|atualiza|atualizar|coloca|colocar|define|definir)\b.{0,20}\b(foto|avatar|imagem|perfil)\b|\bfoto\s*de\s*perfil\b|minha\s*foto\b/i.test(t))
+    return { intent: 'set_avatar', params: {} };
+
   // ── Exportar ──────────────────────────────────────────────────────────────
   if (/exporta|exportar|planilha|csv|meus dados|baixar dados|relat[oó]rio/.test(t))
     return { intent: 'export', params: {} };
@@ -103,6 +114,20 @@ function localClassify(t) {
   // ── Mudar vencimento ──────────────────────────────────────────────────────
   if (/vencimento|vence\s*(dia|no\s*dia|n[ao]\s*dia)|\bmuda\s*(o\s*)?venc|atualiz\w*\s*(o\s*)?venc|novo\s*vencimento|muda\s*o\s*dia/.test(t))
     return { intent: 'update_due_date', params: {} };
+
+  // ── Criar projeto / meta ─────────────────────────────────────────────────
+  if (/\b(cria|criar|adiciona|adicione|adicionar|novo|nova|cadastra|cadastrar)\b.{0,30}\b(projeto|meta|objetivo|poupan[çc]a|reserva)\b|\b(projeto|meta|objetivo)\b.{0,25}\b(novo|nova|cria|criar|adicionar)\b/i.test(t)) {
+    const nums = (t.match(/\d+(?:[.,]\d{1,2})?/g) || []).map(n => parseFloat(n.replace(',', '.')));
+    const nameStripped = t
+      .replace(/\b(cria|criar|adiciona|adicione|adicionar|novo|nova|cadastra|cadastrar|um|uma|projeto|meta|objetivo|poupan[çc]a|reserva|com|de|r\$|reais|guardando|guardado|mensais?|por\s*m[eê]s|j[aá])\b/gi, ' ')
+      .replace(/\d+(?:[.,]\d+)?/g, ' ').replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim();
+    return { intent: 'add_project', params: {
+      name: nameStripped.length >= 2 ? nameStripped : null,
+      target: nums[0] || null,
+      monthly: nums[1] || null,
+      saved: nums[2] || 0,
+    }};
+  }
 
   // ── Investimentos ─────────────────────────────────────────────────────────
   if (/investimento|carteira|rendimento|aporte|aplica[çc][aã]o|quanto\s*(eu\s*)?investi|investid[ao]\b|tenho\s*investid|minha\s*carteira|\ba[çc][oõ]es?\b|fii\b|tesouro\b|cdb\b|lci\b|lca\b|cripto|bitcoin|btc\b|portf[oó]lio|holdings?\b|\binvest\b/.test(t))
@@ -218,30 +243,80 @@ function localClassify(t) {
   return null; // ambíguo — tenta Gemini
 }
 
-const PROMPT = `Classifique a mensagem de um app de finanças pessoais em PT-BR.
-Retorne SOMENTE JSON sem markdown.
+const PROMPT = `Você é Jarvis, assistente financeiro do Controle+ (app PT-BR).
+Classifique a mensagem e retorne SOMENTE JSON sem markdown, sem explicações.
 
-Intenções:
-- "query": consultar dados (gastos, resumo, investimentos, projetos)
-- "add_installments": parcelar compra
-- "update_due_date": mudar vencimento de despesa fixa
-- "export": exportar CSV
-- "chat": saudação ou conversa
+INTENÇÕES:
 
-Para query:
-  subtype: "summary"|"by_payment"|"biggest"|"investments"|"projects"|"by_name"|"by_name_range"|"analysis"|"compare"
-  month: nome do mês PT-BR (aceita "mês passado", "mês anterior") ou null
-  filter: texto de filtro ou null
-  fromMonth: índice do mês inicial (0=jan) — para by_name_range e analysis
-  toMonth: índice do mês final (0=jan) — para by_name_range e analysis
-  month1: índice do 1º mês (0=jan) — para compare
-  month2: índice do 2º mês (0=jan) — para compare
+"query" — consultar/ver dados financeiros
+  subtype: "summary"|"by_payment"|"biggest"|"investments"|"projects"|"by_name"|"by_name_range"|"analysis"|"compare"|"by_week"
+  month: nome do mês PT-BR ou null
+  filter: filtro por nome (despesa, cartão) ou null
+  fromMonth/toMonth: índices 0–11 para ranges (0=jan, 11=dez)
+  month1/month2: índices 0–11 para compare
 
-Para add_installments: name, total_value, installments, payment, month
-Para update_due_date: expense_name, new_day
-Para export/chat: {}
+"add_installments" — parcelar compra em parcelas
+  name, total_value (total da compra), installments (nº parcelas), payment, month
 
-Retorne: {"intent":"...","params":{...}}`;
+"update_due_date" — mudar data de vencimento de despesa fixa
+  expense_name, new_day (1–31)
+
+"conclude_expense" — marcar despesa como paga/concluída
+  expense_name
+
+"reopen_expense" — desmarcar/reabrir despesa já concluída
+  expense_name (ou null), all: true|false
+
+"income" — adicionar renda, receita ou entrada
+  name (ex: "Salário","Freelance","Aluguel"), value (número), month
+
+"add_project" — criar projeto ou meta de poupança
+  name, target (valor total da meta), monthly (valor guardado/mês), saved (já guardado, default 0)
+
+"toggle_setting" — ativar ou desativar configuração do app
+  key: "isInvestor" | "makesContributions"
+  value: true (ativar) | false (desativar)
+
+"set_avatar" — usuário quer trocar foto de perfil
+  {}
+
+"export" — exportar dados em CSV
+  {}
+
+"chat" — saudação, ajuda, conversa geral
+  {}
+
+EXEMPLOS:
+"como tá o mês" → {"intent":"query","params":{"subtype":"summary","month":null}}
+"resumo de junho" → {"intent":"query","params":{"subtype":"summary","month":"junho"}}
+"quanto gastei no nubank" → {"intent":"query","params":{"subtype":"by_payment","filter":"nubank","month":null}}
+"maiores gastos de maio" → {"intent":"query","params":{"subtype":"biggest","month":"maio"}}
+"ifood em março" → {"intent":"query","params":{"subtype":"by_name","filter":"ifood","month":"março"}}
+"ifood desde janeiro" → {"intent":"query","params":{"subtype":"by_name_range","fromMonth":0,"toMonth":5,"filter":"ifood"}}
+"como foi o semestre" → {"intent":"query","params":{"subtype":"analysis","fromMonth":0,"toMonth":5}}
+"análise do ano" → {"intent":"query","params":{"subtype":"analysis","fromMonth":0,"toMonth":11}}
+"nubank vs mês passado" → {"intent":"query","params":{"subtype":"compare","month1":4,"month2":5,"filter":"nubank"}}
+"gastos por semana" → {"intent":"query","params":{"subtype":"by_week","month":null}}
+"parcelei notebook 3600 em 12x no crédito" → {"intent":"add_installments","params":{"name":"Notebook","total_value":3600,"installments":12,"payment":"Crédito","month":null}}
+"vencimento da netflix para dia 10" → {"intent":"update_due_date","params":{"expense_name":"netflix","new_day":10}}
+"conclua a internet" → {"intent":"conclude_expense","params":{"expense_name":"internet"}}
+"marquei o ifood como pago" → {"intent":"conclude_expense","params":{"expense_name":"ifood"}}
+"reabra a netflix" → {"intent":"reopen_expense","params":{"expense_name":"netflix","all":false}}
+"reabra todas" → {"intent":"reopen_expense","params":{"expense_name":null,"all":true}}
+"recebi 5000 de salário" → {"intent":"income","params":{"name":"Salário","value":5000,"month":null}}
+"cria projeto viagem meta 8000 guardando 400" → {"intent":"add_project","params":{"name":"Viagem","target":8000,"monthly":400,"saved":0}}
+"nova meta carro 30000 por 800 por mês" → {"intent":"add_project","params":{"name":"Carro","target":30000,"monthly":800,"saved":0}}
+"ativa modo investidor" → {"intent":"toggle_setting","params":{"key":"isInvestor","value":true}}
+"desativa investidor" → {"intent":"toggle_setting","params":{"key":"isInvestor","value":false}}
+"ativa contribuições" → {"intent":"toggle_setting","params":{"key":"makesContributions","value":true}}
+"desativa dízimo" → {"intent":"toggle_setting","params":{"key":"makesContributions","value":false}}
+"muda minha foto de perfil" → {"intent":"set_avatar","params":{}}
+"quero trocar meu avatar" → {"intent":"set_avatar","params":{}}
+"exporta meus dados" → {"intent":"export","params":{}}
+"oi jarvis" → {"intent":"chat","params":{}}
+"ajuda" → {"intent":"chat","params":{}}
+
+Retorne apenas o JSON, nada mais.`;
 
 export async function classifyIntent(text) {
   const local = localClassify(text.toLowerCase());

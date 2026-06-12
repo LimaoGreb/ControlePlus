@@ -172,6 +172,13 @@ export function SettingsProvider({ children }) {
     ]);
   };
 
+  // Usado pelo Jarvis — cria projeto com dados completos e retorna o id.
+  const addProjectFull = ({ name, target, monthly, saved }) => {
+    const newProj = { id: genId('proj'), name: name || '', target: target || 0, monthly: monthly || 0, saved: saved || 0 };
+    persistProjects([...projects, newProj]);
+    return newProj.id;
+  };
+
   const updateProject = (id, field, value) => {
     persistProjects(projects.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
   };
@@ -214,6 +221,7 @@ export function SettingsProvider({ children }) {
         removeInvestment,
         projects,
         addProject,
+        addProjectFull,
         updateProject,
         removeProject,
         makesContributions,

@@ -40,3 +40,30 @@ export async function setWebhook(url) {
   });
   return res.json();
 }
+
+// Retorna o file_path de um arquivo do Telegram para download.
+export async function getFile(fileId) {
+  try {
+    const res = await fetch(`${BASE()}/getFile?file_id=${encodeURIComponent(fileId)}`);
+    const json = await res.json();
+    return json.result?.file_path || null;
+  } catch (e) {
+    console.warn('[Telegram] getFile error:', e.message);
+    return null;
+  }
+}
+
+// Baixa um arquivo do Telegram e retorna como string base64.
+export async function downloadFileAsBase64(filePath) {
+  try {
+    const url = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${filePath}`;
+    const res = await fetch(url);
+    const buffer = await res.arrayBuffer();
+    const b64 = Buffer.from(buffer).toString('base64');
+    if (b64.length > 700000) console.warn('[Telegram] foto grande:', Math.round(b64.length / 1024), 'KB');
+    return b64;
+  } catch (e) {
+    console.warn('[Telegram] downloadFile error:', e.message);
+    return null;
+  }
+}

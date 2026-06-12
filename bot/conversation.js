@@ -4,7 +4,7 @@ import { classifyIntent } from './geminiClient.js';
 import { answerQuery } from './queryHandler.js';
 import { generateCSV } from './exportHandler.js';
 import { addPendingExpense, readUserSnapshot, writeCommand, pollCommandResult, writeSessionContext, readSessionContext } from './firebaseWriter.js';
-import { sendMessage, sendTyping, sendDocument } from './telegramApi.js';
+import { sendMessage, sendTyping, sendDocument, getFile, downloadFileAsBase64 } from './telegramApi.js';
 
 const MONTH_NAMES = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -15,7 +15,7 @@ const MONTH_PT = MONTH_NAMES.map(m => m.toLowerCase());
 // { [chatId]: { step, data, askingFor, firstName, snapshot, pendingCmd, lastQuery, lastActivity, _contextLoaded } }
 const sessions = new Map();
 const SESSION_STEP_TTL = 5 * 60 * 1000; // 5 min — expira estados ativos (confirming/collecting)
-const ACTIVE_STEPS = new Set(['confirming', 'confirming_cmd', 'collecting', 'collecting_cmd', 'collecting_income']);
+const ACTIVE_STEPS = new Set(['confirming', 'confirming_cmd', 'collecting', 'collecting_cmd', 'collecting_income', 'collecting_project', 'collecting_photo']);
 
 function getSession(chatId, firstName) {
   if (!sessions.has(chatId)) {
@@ -108,6 +108,16 @@ export async function handleMessage(chatId, text, firstName) {
   if (session.step === 'collecting') { await handleCollecting(chatId, text, session); return; }
   if (session.step === 'collecting_cmd') { await handleCollectingCmd(chatId, text, session); return; }
   if (session.step === 'collecting_income') { await handleCollectingIncome(chatId, text, session); return; }
+  if (session.step === 'collecting_project') { await handleCollectingProject(chatId, text, session); return; }
+  if (session.step === 'collecting_photo') {
+    if (/\b(cancela|cancelar|n[aã]o|nao|pare)\b/i.test(text.toLowerCase())) {
+      session.step = 'idle';
+      await sendMessage(chatId, 'OK, cancelado! 😊');
+    } else {
+      await sendMessage(chatId, `📸 Me *envie a foto* diretamente no chat!\n\nOu manda _"cancelar"_ para desistir.`);
+    }
+    return;
+  }
 
   // Tenta follow-up da última query antes de qualquer classificação
   const followUp = detectFollowUp(text, session.lastQuery);
@@ -166,6 +176,54 @@ async function dispatchIntent(chatId, session, classified) {
     session.step = 'confirming_cmd';
     session.pendingCmd = { type: 'ADD_INCOME', params: { name, value, monthIndex: mi }, label };
     await sendMessage(chatId, `Confirma a entrada de renda:\n\n${label}\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
+  if (intent === 'toggle_setting') {
+    const { key, value } = params || {};
+    const labels = {
+      isInvestor: value ? '📈 Ativar modo investidor' : '📈 Desativar modo investidor',
+      makesContributions: value ? '💜 Ativar contribuições/dízimo' : '💜 Desativar contribuições/dízimo',
+    };
+    const label = labels[key];
+    if (!label) {
+      await sendMessage(chatId, 'Qual configuração você quer alterar?\nEx: _"ativa modo investidor"_ ou _"desativa contribuições"_');
+      return;
+    }
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'TOGGLE_SETTING', params: { key, value }, label };
+    await sendMessage(chatId, `${label}\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
+  if (intent === 'add_project') {
+    const { name, target, monthly, saved = 0 } = params || {};
+    if (!name || name.length < 2) {
+      session.step = 'collecting_project';
+      session.data = { projectTarget: target, projectMonthly: monthly, projectSaved: saved, projectStage: 0 };
+      await sendMessage(chatId, `🎯 Boa ideia! Qual o nome desse projeto/meta?\n_Ex: "Viagem", "Carro novo", "Reserva de emergência"_`);
+      return;
+    }
+    if (!target) {
+      session.step = 'collecting_project';
+      session.data = { projectName: name, projectMonthly: monthly, projectSaved: saved, projectStage: 1 };
+      await sendMessage(chatId, `🎯 Projeto *${name}*!\n\n💰 Qual o valor total da meta? _(ex: "8000")_`);
+      return;
+    }
+    if (!monthly) {
+      session.step = 'collecting_project';
+      session.data = { projectName: name, projectTarget: target, projectSaved: saved, projectStage: 2 };
+      await sendMessage(chatId, `🎯 Projeto *${name}* — Meta R$ ${target.toFixed(2)}\n\n📅 Quanto guardar por mês? _(ex: "300")_`);
+      return;
+    }
+    await confirmProject(chatId, session, name, target, monthly, saved);
+    return;
+  }
+
+  if (intent === 'set_avatar') {
+    session.step = 'collecting_photo';
+    session.lastActivity = Date.now();
+    await sendMessage(chatId, `📸 Me manda a foto que quer usar como avatar no Controle+!\n\n_Qualquer foto serve — quadrada fica melhor_ 😊`);
     return;
   }
 
@@ -358,22 +416,117 @@ async function dispatchIntent(chatId, session, classified) {
   }
 
   await sendMessage(chatId,
-    `Oi ${session.firstName}! 👋 O que posso fazer:\n\n` +
-    `💸 *Adicionar despesa:* _"gastei 50 no mercado no pix"_\n` +
-    `📦 *Parcelar compra:* _"parcelei a TV 1200 em 6x no crédito"_\n` +
-    `📅 *Mudar vencimento:* _"vencimento da Netflix para dia 15"_\n` +
-    `✅ *Concluir despesa:* _"conclua a despesa do Carteiro"_\n` +
+    `Oi ${session.firstName}! 👋 Sou o Jarvis, seu assistente financeiro.\n\n` +
+    `💸 *Despesa:* _"gastei 50 no mercado no pix"_\n` +
+    `📦 *Parcelar:* _"parcelei a TV 1200 em 6x no crédito"_\n` +
+    `💰 *Renda:* _"recebi 5000 de salário"_\n` +
+    `✅ *Concluir:* _"conclua a Netflix"_\n` +
+    `🔓 *Reabrir:* _"reabra a Netflix"_ / _"reabra todas"_\n` +
+    `📅 *Vencimento:* _"vencimento da Netflix para dia 15"_\n\n` +
     `📊 *Resumo do mês:* _"como tá o mês?"_\n` +
-    `💳 *Por cartão:* _"quanto gastei no Nubank?"_\n` +
+    `💳 *Por cartão:* _"quanto no Nubank esse mês?"_\n` +
     `🏆 *Maiores gastos:* _"maiores gastos de junho"_\n` +
+    `🔍 *Multi-mês:* _"ifood desde janeiro"_\n` +
+    `📋 *Análise:* _"feedback dos primeiros 3 meses"_\n` +
+    `📊 *Comparativo:* _"nubank mês passado vs esse mês"_\n\n` +
     `📈 *Investimentos:* _"como estão meus investimentos?"_\n` +
-    `🎯 *Projetos:* _"status dos projetos"_\n` +
-    `📁 *Exportar CSV:* _"exporta meus dados"_\n\n` +
-    `🔍 *Busca multi-mês:* _"quanto gastei em ifood desde janeiro?"_\n` +
-    `📋 *Análise do período:* _"feedback dos primeiros 3 meses"_\n` +
-    `📊 *Comparativo:* _"comparativo do nubank mês passado vs esse mês"_`
+    `🎯 *Criar projeto:* _"cria projeto viagem meta 8000 guardando 400"_\n` +
+    `🎯 *Ver projetos:* _"status dos projetos"_\n\n` +
+    `📸 *Foto de perfil:* _"muda minha foto de perfil"_\n` +
+    `⚙️ *Configurações:* _"ativa modo investidor"_ / _"desativa contribuições"_\n` +
+    `📁 *Exportar CSV:* _"exporta meus dados"_`
   );
   session.step = 'done';
+}
+
+// ─── Photo handler (chamado pelo server.js quando msg.photo chega) ────────────
+
+export async function handlePhotoMessage(chatId, photos, firstName) {
+  const session = getSession(chatId, firstName);
+  session.lastActivity = Date.now();
+
+  if (session.step !== 'collecting_photo') {
+    await sendMessage(chatId, `📸 Para trocar sua foto, primeiro me peça:\n_"muda minha foto de perfil"_`);
+    return;
+  }
+
+  const largest = photos[photos.length - 1];
+  await sendTyping(chatId);
+  const filePath = await getFile(largest.file_id);
+  if (!filePath) {
+    await sendMessage(chatId, '❌ Não consegui acessar a foto. Tenta mandar de novo!');
+    return;
+  }
+  const b64 = await downloadFileAsBase64(filePath);
+  if (!b64) {
+    await sendMessage(chatId, '❌ Erro ao baixar a foto. Tenta de novo!');
+    return;
+  }
+
+  const avatarData = { kind: 'photo', value: `data:image/jpeg;base64,${b64}` };
+  session.step = 'confirming_cmd';
+  session.pendingCmd = {
+    type: 'SET_AVATAR',
+    params: { avatar: avatarData },
+    label: '📸 Nova foto de perfil no Controle+',
+  };
+  await sendMessage(chatId, `📸 Foto recebida!\n\nUsar como sua foto de perfil no Controle+?\n\n_(sim/não)_`);
+}
+
+// ─── Project collection ───────────────────────────────────────────────────────
+
+async function handleCollectingProject(chatId, text, session) {
+  const numMatch = text.match(/(\d+(?:[.,]\d{1,2})?)/);
+  const num = numMatch ? parseFloat(numMatch[1].replace(',', '.')) : null;
+  const stage = session.data.projectStage || 0;
+
+  if (stage === 0) {
+    const name = text.trim().replace(/[?!.,;]/g, '').trim();
+    if (!name || name.length < 2) {
+      await sendMessage(chatId, '🎯 Nome muito curto. Tenta de novo! _(ex: "Viagem", "Carro novo")_');
+      return;
+    }
+    session.data.projectName = name;
+    session.data.projectStage = 1;
+    await sendMessage(chatId, `🎯 Projeto *${name}*!\n\n💰 Qual o valor total da meta? _(ex: "8000" ou "R$ 5.000")_`);
+    return;
+  }
+
+  if (stage === 1) {
+    if (!num || num <= 0) {
+      await sendMessage(chatId, '💰 Não entendi o valor. Tenta: _"8000"_ ou _"R$ 5.000"_');
+      return;
+    }
+    session.data.projectTarget = num;
+    session.data.projectStage = 2;
+    await sendMessage(chatId, `💰 Meta: R$ ${num.toFixed(2)}\n\n📅 Quanto você pretende guardar por mês? _(ex: "300")_`);
+    return;
+  }
+
+  if (stage === 2) {
+    if (!num || num <= 0) {
+      await sendMessage(chatId, '📅 Não entendi o valor. Tenta: _"300"_ ou _"500 reais"_');
+      return;
+    }
+    session.data.projectMonthly = num;
+    const { projectName: name, projectTarget: target, projectSaved: saved = 0 } = session.data;
+    session.data = {};
+    await confirmProject(chatId, session, name, target, num, saved);
+    return;
+  }
+}
+
+async function confirmProject(chatId, session, name, target, monthly, saved = 0) {
+  const remaining = Math.max(0, target - saved);
+  const monthsNeeded = monthly > 0 ? Math.ceil(remaining / monthly) : null;
+  const timeStr = monthsNeeded
+    ? (monthsNeeded <= 12 ? `~${monthsNeeded} ${monthsNeeded === 1 ? 'mês' : 'meses'}` : `~${(monthsNeeded / 12).toFixed(1)} anos`)
+    : '';
+  const savedStr = saved > 0 ? `\n💾 Já guardado: R$ ${saved.toFixed(2)}` : '';
+  const label = `🎯 *${name}*\n💰 Meta: R$ ${target.toFixed(2)}\n📅 Guardar: R$ ${monthly.toFixed(2)}/mês${savedStr}${timeStr ? `\n⏱ Estimado: ${timeStr}` : ''}`;
+  session.step = 'confirming_cmd';
+  session.pendingCmd = { type: 'ADD_PROJECT', params: { name, target, monthly, saved }, label };
+  await sendMessage(chatId, `Confirma o projeto:\n\n${label}\n\nConfirma? _(sim/não)_`);
 }
 
 // ─── Income collection ────────────────────────────────────────────────────────
@@ -716,6 +869,12 @@ async function handleConfirmingCommand(chatId, text, session) {
       await sendMessage(chatId, `✅ *Renda adicionada!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 🚀`);
     } else if (cmd.type === 'REOPEN_EXPENSE') {
       await sendMessage(chatId, `🔓 *Despesa(s) reabertas!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 🚀`);
+    } else if (cmd.type === 'ADD_PROJECT') {
+      await sendMessage(chatId, `✅ *Projeto criado!*\n\n${cmd.label}\n\n_Aparece nos seus projetos no Controle+_ 🚀`);
+    } else if (cmd.type === 'TOGGLE_SETTING') {
+      await sendMessage(chatId, `✅ *Configuração atualizada!*\n\n${cmd.label}\n\n_Aplicado no Controle+_ ✅`);
+    } else if (cmd.type === 'SET_AVATAR') {
+      await sendMessage(chatId, `✅ *Foto atualizada!*\n\nSua nova foto de perfil já está no Controle+ 📸`);
     }
   } catch (e) {
     console.error('[Jarvis] comando error:', e.message);

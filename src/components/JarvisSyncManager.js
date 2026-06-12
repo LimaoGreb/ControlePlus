@@ -23,16 +23,18 @@ function getDb() {
 
 export default function JarvisSyncManager() {
   const { data, addItem, updateItem, addInstallments } = useData();
-  const { telegramChatId, investments, projects, userName, paymentMethods } = useSettings();
+  const { telegramChatId, investments, projects, userName, paymentMethods, setIsInvestor, setMakesContributions, addProjectFull, setAvatar } = useSettings();
 
   const dataRef = useRef(data);
   const addItemRef = useRef(addItem);
   const updateItemRef = useRef(updateItem);
   const addInstallmentsRef = useRef(addInstallments);
+  const settingsOpsRef = useRef({});
   dataRef.current = data;
   addItemRef.current = addItem;
   updateItemRef.current = updateItem;
   addInstallmentsRef.current = addInstallments;
+  settingsOpsRef.current = { setIsInvestor, setMakesContributions, addProjectFull, setAvatar };
 
   const snapshotTimer = useRef(null);
 
@@ -71,7 +73,7 @@ export default function JarvisSyncManager() {
       for (const [cmdId, cmd] of Object.entries(commands)) {
         if (cmd.status !== 'pending') continue;
         try {
-          const result = await executeCommand(cmd, dataRef.current, addItemRef.current, updateItemRef.current, addInstallmentsRef.current);
+          const result = await executeCommand(cmd, dataRef.current, addItemRef.current, updateItemRef.current, addInstallmentsRef.current, settingsOpsRef.current);
           await update(ref(db, `jarvis/${telegramChatId}/commands/${cmdId}`), {
             status: 'done',
             result,
@@ -93,7 +95,7 @@ export default function JarvisSyncManager() {
   return null;
 }
 
-async function executeCommand(cmd, data, addItem, updateItem, addInstallments) {
+async function executeCommand(cmd, data, addItem, updateItem, addInstallments, settings = {}) {
   if (cmd.type === 'REOPEN_EXPENSE') {
     const { expense_name, monthIndex, all } = cmd.params;
     const months = data?.months || {};
@@ -164,6 +166,28 @@ async function executeCommand(cmd, data, addItem, updateItem, addInstallments) {
     }
     if (concluded === 0) throw new Error(`Nenhuma despesa encontrada com "${expense_name}"`);
     return { concluded, expense_name };
+  }
+
+  if (cmd.type === 'TOGGLE_SETTING') {
+    const { key, value } = cmd.params;
+    if (key === 'isInvestor' && settings.setIsInvestor) settings.setIsInvestor(value);
+    else if (key === 'makesContributions' && settings.setMakesContributions) settings.setMakesContributions(value);
+    else throw new Error(`Chave de configuração desconhecida: ${key}`);
+    return { key, value };
+  }
+
+  if (cmd.type === 'ADD_PROJECT') {
+    const { name, target, monthly, saved } = cmd.params;
+    if (!settings.addProjectFull) throw new Error('addProjectFull não disponível');
+    const id = settings.addProjectFull({ name, target, monthly, saved: saved || 0 });
+    return { id, name };
+  }
+
+  if (cmd.type === 'SET_AVATAR') {
+    const { avatar } = cmd.params;
+    if (!settings.setAvatar) throw new Error('setAvatar não disponível');
+    settings.setAvatar(avatar);
+    return { kind: avatar?.kind };
   }
 
   throw new Error(`Comando desconhecido: ${cmd.type}`);
