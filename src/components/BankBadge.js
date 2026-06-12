@@ -17,6 +17,7 @@ const LOGOS = {
   pagbank:     require('../../assets/banks/pagbank.svg'),
   mercadopago: require('../../assets/banks/mercadopago.svg'),
   sicoob:      require('../../assets/banks/sicoob.svg'),
+  recargapay:  require('../../assets/banks/recargapay.svg'),
 };
 
 export default function BankBadge({ bank, size = 28 }) {
