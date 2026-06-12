@@ -152,6 +152,14 @@ async function dispatchIntent(chatId, session, classified) {
     return;
   }
 
+  if (intent === 'income') {
+    await sendMessage(chatId,
+      `💰 Entendi que você recebeu um valor, mas ainda não gerencio renda no Controle+.\n\nPosso te ajudar com *despesas*, *parcelamentos*, *investimentos* e *projetos*. 😊`
+    );
+    session.step = 'done';
+    return;
+  }
+
   if (intent === 'export') {
     const snapshot = await readUserSnapshot(chatId);
     if (!snapshot) {

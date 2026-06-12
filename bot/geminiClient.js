@@ -71,6 +71,11 @@ function extractNameFilter(t) {
 function localClassify(t) {
   const month = getMonthName(t);
 
+  // ── Renda / receita (não gerenciado) ─────────────────────────────────────
+  if (/\b(renda|salário|salario|receita|recebi|recebes?|proventos|faturei|faturamento|lucro|recebimento|ganho|ganhei)\b/.test(t) &&
+      /\b(adiciona|adicione|adicionar|lança|lance|registra|registre|coloca|coloque|minha|meu)\b/.test(t))
+    return { intent: 'income', params: {} };
+
   // ── Exportar ──────────────────────────────────────────────────────────────
   if (/exporta|exportar|planilha|csv|meus dados|baixar dados|relat[oó]rio/.test(t))
     return { intent: 'export', params: {} };
