@@ -18,7 +18,7 @@ function parseMonthRange(t) {
     const mi = MONTH_PT.findIndex(m => apartirMatch[1].toLowerCase().startsWith(m.substring(0, 3)));
     if (mi >= 0) return { from: mi, to: now };
   }
-  if (/ano\s*(completo|inteiro|todo)|o\s*ano\s*inteiro/i.test(t))
+  if (/ano\s*(completo|inteiro|todo)|o\s*ano\s*inteiro|anual\b/i.test(t))
     return { from: 0, to: 11 };
   if (/esse\s*ano\b|este\s*ano\b|nesse\s*ano\b|neste\s*ano\b/i.test(t))
     return { from: 0, to: now };
@@ -42,28 +42,31 @@ function getMonthName(t) {
 }
 
 // Remove palavras de ruído e retorna filtro de nome, ou null se não sobrar nada útil
+// Normaliza NFD antes do regex — \b não funciona com chars acentuados (á, ã, etc. são \W no JS)
+const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 function extractNameFilter(t) {
   const noise = [
     'quanto','qto','eu','vc','voce','você','gastei','gastou','gasto','gastar',
     'paguei','pagou','pagar','comprei','comprou','despesa','despesas','gastos',
     'foram','foi','ficou','no','na','nos','nas','de','do','da','dos','das',
-    'em','com','por','para','até','ate','esse','este','essa','esta','esses','estes',
+    'em','com','por','para','ate','esse','este','essa','esta','esses','estes',
     'meu','minha','meus','minhas','o','a','os','as','um','uma','uns','umas',
-    'mes','mês','passado','anterior','atual','corrente','ultimo','último',
-    'proximo','próximo','seguinte','vem','que','ja','já','aqui','agora','hoje',
-    'ontem','semana','ano','jarvis','controle','quais','qual','sao','são',
-    'como','ta','tá','to','tô','foi','ficou','pra','pro','nesse','neste',
-    'desse','deste','total','totais','geral','resumo','saldo','balanço','balanco',
-    'tenho','tem','teve','tive','tinha','teria','fui','fiz',
-    'bem','mal','bom','boa','ruim','caro','barato','meses',
+    'mes','passado','anterior','atual','corrente','ultimo','proximo','seguinte',
+    'vem','que','ja','aqui','agora','hoje','ontem','semana','ano','anual',
+    'jarvis','controle','quais','qual','sao','como','ta','to','foi','ficou',
+    'pra','pro','nesse','neste','desse','deste','total','totais','geral',
+    'resumo','saldo','balanco','tenho','tem','teve','tive','tinha','teria',
+    'fui','fiz','bem','mal','bom','boa','ruim','caro','barato','meses',
     'queria','quer','quero','ver','veja','mostra','fala','diz','anda','passa',
-    'traz','diga','extrato','semanais','semanal','pfv','pf','me','mim','minhas',
-    'show','summary','financeiro','corrente','vigente','gostaria','olha','apura',
-    'atuais','atual','detail','detalhes','detalhe','informa','informar',
-    ...MONTH_PT,
+    'traz','diga','extrato','semanais','semanal','pfv','pf','me','mim',
+    'show','summary','financeiro','corrente','vigente','gostaria','olha',
+    'apura','atuais','detail','detalhes','detalhe','informa','informar',
+    'valor','valores','periodo','historico',
+    ...MONTH_PT.map(norm),
   ];
-  const re = new RegExp(`\\b(${noise.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
-  const cleaned = t.replace(re, ' ').replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim();
+  const tNorm = norm(t);
+  const re = new RegExp(`\\b(${noise.map(w => norm(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
+  const cleaned = tNorm.replace(re, ' ').replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim();
   return (cleaned.length >= 2 && !/^\d+$/.test(cleaned)) ? cleaned.toLowerCase() : null;
 }
 
@@ -128,7 +131,7 @@ function localClassify(t) {
 
   // ── Análise / feedback multi-mês ─────────────────────────────────────────
   const hasSingleMonth = /esse\s*m[eê]s|este\s*m[eê]s|m[eê]s\s*(atual|corrente|de\s*hoje)/i.test(t);
-  const hasRange = /desde|a\s*partir\s*de|primeiros?|[uú]ltimos?\s+(\d|tr[eê]s|dois?|quatro|meses)|ano\s*(completo|inteiro|todo)|o\s*ano|esse\s*ano|este\s*ano|desse\s*ano|hist[oó]rico/i.test(t);
+  const hasRange = /desde|a\s*partir\s*de|primeiros?|[uú]ltimos?\s+(\d|tr[eê]s|dois?|quatro|meses)|ano\s*(completo|inteiro|todo)|o\s*ano|esse\s*ano|este\s*ano|desse\s*ano|hist[oó]rico|anual\b/i.test(t);
   if (!hasSingleMonth && /\bfeedback\b|an[aá]lise|analisa(r|me)?|como\s+(foi(ram)?|est[aá])\s+(o\s*)?(ano|meses|per[ií]odo)|resumo\s+(do\s+)?(ano|per[ií]odo|trim|primeiros?|[uú]ltimos?)|per[ií]odo|primeiros?\s+\d+\s*mes|[uú]ltimos?\s+\d+\s*mes|primeiros?\s+(tr[eê]s|dois?|quatro)|[uú]ltimos?\s+(tr[eê]s|dois?|quatro)/i.test(t)) {
     const range = hasRange ? parseMonthRange(t) : null;
     if (range || /ano|primeiros?|[uú]ltimos?|desde|per[ií]odo/i.test(t)) {
@@ -164,7 +167,7 @@ function localClassify(t) {
   if (/maior(es)?|\btop\b|pior(es)?\s*gasto|mais\s*(caro|cara|altos?|elevados?|significativos?|pesados?|expressivos?)|o\s*que\s+mais\s*(gast|custou|tirou|levou|consumiu)|gastei?\s*mais\b|mais\s*pesado|saiu\s*mais\b|custou\s*mais|m[aá]ximo\b|principais?\s*(gasto|despesa)|apertou|me\s*apertou/.test(t))
     return { intent: 'query', params: { subtype: 'biggest', month } };
 
-  const hasQuery = /quanto|qto\b|gast|resumo|total|como\s*(t[aá]|foi|est[aá]|estou|anda\b)|estou\s*(bem|mal)\b|t[aá]\s*(o\s*m[eê]s|bem\b|bom\b)|t[oô]\s*bem\b|financeiramente\b|financ\w*|queria\s*(ver|saber)|me\s*(fala|mostra|diz|passa|traz)\b|saldo|sobr[ao]u|sobr\b|sobrando|balanç|balanco|situac|dinheiro|fechamento|mensal|o\s+que\b|oq\b|paguei\b|saiu\b|foi\s*(pro|pra|para)\b|hist[oó]rico|desde\b|nos\s+[uú]ltimos|extrato\b|despesas?\b/.test(t);
+  const hasQuery = /quanto|qto\b|gast|resumo|total|como\s*(t[aá]|foi|est[aá]|estou|anda\b)|estou\s*(bem|mal)\b|t[aá]\s*(o\s*m[eê]s|bem\b|bom\b)|t[oô]\s*bem\b|financeiramente\b|financ\w*|queria\s*(ver|saber)|me\s*(fala|mostra|diz|passa|traz)\b|saldo|sobr[ao]u|sobr\b|sobrando|balanç|balanco|situac|dinheiro|fechamento|mensal|o\s+que\b|oq\b|paguei\b|saiu\b|foi\s*(pro|pra|para)\b|hist[oó]rico|desde\b|nos\s+[uú]ltimos|extrato\b|despesas?\b|valor\b|anual\b/.test(t);
 
   // ── Por cartão / forma de pagamento ──────────────────────────────────────
   const cardMatch = t.match(CARD_RE);

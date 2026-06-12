@@ -73,8 +73,8 @@ function detectFollowUp(text, lastQuery) {
     return { intent: 'query', params: { ...lastQuery, subtype: base === 'summary' ? 'by_payment' : base, filter: cardMatch[0].trim() } };
   }
 
-  // "mais detalhes" / "detalha" → repete a mesma query
-  if (/mais\s*detalhe|detalha|mostra\s*tudo|lista\s*tudo|detalhado/i.test(t)) {
+  // "mais detalhes" / "detalha" / "tente novamente" → repete a mesma query
+  if (/mais\s*detalhe|detalha|mostra\s*tudo|lista\s*tudo|detalhado|tente?\s*(novamente|de\s*novo|outra\s*vez)|repete?|de\s*novo\b/i.test(t)) {
     return { intent: 'query', params: { ...lastQuery } };
   }
 
@@ -281,7 +281,15 @@ async function dispatchIntent(chatId, session, classified) {
     return;
   }
 
-  // Chat / help
+  // Chat — greeting mostra menu completo; mensagem não-entendida recebe resposta curta
+  const lower2 = (typeof text === 'string' ? text : '').toLowerCase().trim();
+  const isGreeting = /^(oi\b|ol[aá]\b|e\s*a[ií]\b|bom\s*dia|boa\s*tarde|boa\s*noite|hey\b|opa\b|salve\b|tudo\s*bem|help\b|ajuda\b|\/start|inicio\b)/.test(lower2);
+  if (!isGreeting) {
+    await sendMessage(chatId, `Hmm, não entendi 🤔 Pode reformular?\n\nExemplos:\n• _"como tá o mês?"_\n• _"quanto gastei no ifood esse mês?"_\n• _"conclua a Netflix"_`);
+    session.step = 'done';
+    return;
+  }
+
   await sendMessage(chatId,
     `Oi ${session.firstName}! 👋 O que posso fazer:\n\n` +
     `💸 *Adicionar despesa:* _"gastei 50 no mercado no pix"_\n` +
