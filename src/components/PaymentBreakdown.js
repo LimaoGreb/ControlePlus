@@ -4,10 +4,13 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+import { useSettings } from '../context/SettingsContext';
 import { expensesByPayment } from '../utils/calculations';
 import { formatBRL, formatPercent } from '../utils/currency';
+import { getBankById } from '../data/banks';
+import BankBadge from './BankBadge';
 
-function PaymentBar({ entry, color }) {
+function PaymentBar({ entry, color, bank }) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
 
@@ -24,7 +27,8 @@ function PaymentBar({ entry, color }) {
     <View style={styles.wrap}>
       <TouchableOpacity activeOpacity={0.7} onPress={toggle}>
         <View style={styles.header}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{entry.name}</Text>
+          {bank && <BankBadge bank={bank} size={24} />}
+          <Text style={[styles.name, { color: colors.text, marginLeft: bank ? 8 : 0 }]} numberOfLines={1}>{entry.name}</Text>
           <View style={styles.right}>
             <Text style={[styles.value, { color: colors.textSecondary }]}>
               {formatBRL(entry.value)} · {formatPercent(entry.percent)}
@@ -64,7 +68,11 @@ function PaymentBar({ entry, color }) {
 
 export default function PaymentBreakdown({ month }) {
   const { colors } = useTheme();
-  const { list, total } = expensesByPayment(month);
+  const { paymentMethods } = useSettings();
+  const { list } = expensesByPayment(month);
+
+  const pmByName = {};
+  (paymentMethods || []).forEach((pm) => { pmByName[pm.name] = pm; });
 
   if (!list || list.length === 0) {
     return (
@@ -80,9 +88,13 @@ export default function PaymentBreakdown({ month }) {
       <Text style={[styles.tapHint, { color: colors.textMuted }]}>
         Toque numa forma de pagamento para ver os gastos
       </Text>
-      {list.map((entry, idx) => (
-        <PaymentBar key={entry.name} entry={entry} color={colors.chart[idx % colors.chart.length]} />
-      ))}
+      {list.map((entry, idx) => {
+        const pm = pmByName[entry.name];
+        const bank = pm?.bank ? getBankById(pm.bank) : null;
+        return (
+          <PaymentBar key={entry.name} entry={entry} color={bank?.color || colors.chart[idx % colors.chart.length]} bank={bank} />
+        );
+      })}
     </View>
   );
 }

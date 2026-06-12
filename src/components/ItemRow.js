@@ -36,8 +36,8 @@ export default function ItemRow({
   const concluded = !!item.concluded;
 
   const rowContent = (
-    <View style={[styles.wrapper, { borderColor: isOverdue ? '#CC0000' : colors.border, borderWidth: isOverdue ? 2 : 1, backgroundColor: colors.card }]}>
-      {isOverdue && <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(220,0,0,0.38)', borderRadius: 12, zIndex: 1 }} />}
+    <View style={[styles.wrapper, { borderColor: isOverdue ? '#CC0000' : colors.border, borderWidth: isOverdue ? 2 : 1, backgroundColor: colors.card, borderRadius: 12, overflow: 'hidden' }]}>
+      {isOverdue && <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(220,0,0,0.38)', zIndex: 1 }} />}
       <View style={styles.row}>
         {swipeable ? (
           <Ionicons

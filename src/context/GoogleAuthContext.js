@@ -23,13 +23,11 @@ export function GoogleAuthProvider({ children }) {
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: ANDROID_CLIENT_ID,
-    webClientId: WEB_CLIENT_ID,
     scopes: [
       'profile',
       'email',
       'https://www.googleapis.com/auth/drive.file',
     ],
-    // Força exibição do seletor de conta sempre — evita login preso em conta errada.
     selectAccount: true,
   });
 
