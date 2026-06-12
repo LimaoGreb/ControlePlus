@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Platform, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import Constants from 'expo-constants';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { useSync } from '../context/SyncContext';
@@ -103,7 +104,7 @@ export default function SettingsScreen() {
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>SOBRE O APP</Text>
         <Info label="Nome" value="Controle+" colors={colors} />
-        <Info label="Versão" value="2.0.1" colors={colors} />
+        <Info label="Versão" value={Constants.expoConfig?.version || '2.0.5'} colors={colors} />
         <Info label="Ano de controle" value={String(YEAR)} colors={colors} />
         <Info label="Armazenamento" value="Local (AsyncStorage)" colors={colors} />
         <Info label="Plataforma" value={Platform.OS} colors={colors} />
