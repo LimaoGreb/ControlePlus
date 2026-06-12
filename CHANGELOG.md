@@ -2,6 +2,48 @@
 
 ---
 
+## Jarvis Imbatível — Sessão 2026-06-12
+
+### Novas features do bot (deploy via Render, sem build de APK)
+
+**`bot/server.js`**
+- Suporte a `msg.photo`: fotos enviadas ao bot são roteadas para `handlePhotoMessage`.
+- Scheduler de lembretes de vencimento (`setInterval` a cada hora): verifica todas as despesas fixas com `dueDay === hoje` e envia Telegram reminder se não concluída.
+- Importa `getAllChatIds` + `readUserSnapshot` do firebaseWriter para varrer todos os usuários.
+
+**`bot/telegramApi.js`**
+- `getFile(fileId)`: chama `getFile` da API do Telegram, retorna `file_path`.
+- `downloadFileAsBase64(filePath)`: baixa o arquivo do CDN do Telegram e retorna como base64.
+
+**`bot/firebaseWriter.js`**
+- `getAllChatIds()`: lista todos os chatIds no nó `/jarvis` (usado pelo scheduler).
+
+**`bot/geminiClient.js`**
+- Novos intents no classificador local: `toggle_setting` (ativa/desativa isInvestor/makesContributions), `add_project` (cria projeto/meta), `set_avatar` (troca foto de perfil).
+- `add_project` posicionado ANTES da detecção de projetos-query (evita "cria projeto X" virar query).
+- PROMPT Gemini reescrito com 30+ exemplos cobrindo todos os intents.
+
+**`bot/conversation.js`**
+- Novos handlers em `dispatchIntent`: `toggle_setting`, `add_project`, `set_avatar`.
+- `handleCollectingProject`: fluxo de coleta em 3 etapas (nome → meta → mensal) via `session.data.projectStage`.
+- `confirmProject`: cálculo de tempo estimado e confirmação.
+- `handlePhotoMessage` (exportado): baixa foto, confirma com usuário antes de aplicar.
+- `ACTIVE_STEPS` expandido com `collecting_project` e `collecting_photo`.
+- Menu de ajuda atualizado com todas as novas features.
+- Mensagens de sucesso para ADD_PROJECT, TOGGLE_SETTING, SET_AVATAR.
+
+### Novas features do app (requerem build de APK)
+
+**`src/context/SettingsContext.js`**
+- `addProjectFull({ name, target, monthly, saved })`: cria projeto com dados completos, retorna `id`.
+
+**`src/components/JarvisSyncManager.js`**
+- `settingsOpsRef`: ref para `{ setIsInvestor, setMakesContributions, addProjectFull, setAvatar }`.
+- `executeCommand` recebe `settings` como 5º argumento.
+- Novos comandos: `TOGGLE_SETTING`, `ADD_PROJECT`, `SET_AVATAR`.
+
+---
+
 ## Jarvis — Sessão 2026-06-12 (pós v2.1.0)
 
 ### Classificador local — 80/80 seeds (100%)
