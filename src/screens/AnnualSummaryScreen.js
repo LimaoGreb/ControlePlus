@@ -660,6 +660,20 @@ const pj = StyleSheet.create({
   rem:{fontSize:11,marginLeft:'auto'},
 });
 
+// ─── CarouselDots ─────────────────────────────────────────────────────────────
+function CarouselDots({page}) {
+  return (
+    <View style={{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:6,marginTop:10}}>
+      {[0,1].map(i=>(
+        <View key={i} style={{
+          width:i===page?22:8, height:8, borderRadius:4,
+          backgroundColor:i===page?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.28)',
+        }}/>
+      ))}
+    </View>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function AnnualSummaryScreen() {
   const {colors}=useTheme();
@@ -671,6 +685,12 @@ export default function AnnualSummaryScreen() {
   const totals=useMemo(()=>annualTotals(data.months),[data.months]);
   const {cats,grand}=useMemo(()=>categorize(data.months),[data.months]);
 
+  // Categorias do mês atual
+  const currentMonthIdx=new Date().getMonth();
+  const {cats: mCats, grand: mGrand}=useMemo(()=>{
+    const m={}; m[currentMonthIdx]=data.months?.[currentMonthIdx]; return categorize(m);
+  },[data.months,currentMonthIdx]);
+
   const rate=totals.rendaTotal>0?(totals.sobraTotal/totals.rendaTotal)*100:0;
   const health=getHealth(rate);
   // Destaques do Ano: somente meses já concluídos pelo usuário
@@ -679,16 +699,20 @@ export default function AnnualSummaryScreen() {
   const bestM=mwd.length>0?mwd.reduce((a,b)=>b.sobra>a.sobra?b:a,mwd[0]):null;
   const worstM=mwd.length>0?mwd.reduce((a,b)=>b.despesa>a.despesa?b:a,mwd[0]):null;
 
-  // Mês atual
-  const currentMonthIdx=new Date().getMonth();
   const currentM=totals.perMonth[currentMonthIdx]||{renda:0,despesa:0,sobra:0,index:currentMonthIdx};
   const monthPct=currentM.renda>0?Math.min(100,(currentM.despesa/currentM.renda)*100):0;
-  const monthHealth=getHealth(currentM.renda>0?(currentM.sobra/currentM.renda)*100:0);
+  const monthRate=currentM.renda>0?(currentM.sobra/currentM.renda)*100:0;
+  const monthHealth=getHealth(monthRate);
 
-  // Selected slice (inline highlight)
+  // Carousel pages
+  const [heroPage,setHeroPage]=useState(0);
+  const [donutPage,setDonutPage]=useState(0);
+
+  // Donut selection (separate for month/annual)
   const [selCat,setSelCat]=useState(null);
+  const [mSelCat,setMSelCat]=useState(null);
 
-  // Peek card state (press & hold)
+  // Peek card state (shared — só um donut ativo por vez)
   const peekAnim=useRef(new Animated.Value(0)).current;
   const [peekCat,setPeekCat]=useState(null);
 
@@ -701,130 +725,189 @@ export default function AnnualSummaryScreen() {
     Animated.timing(peekAnim,{toValue:0,duration:160,useNativeDriver:true}).start(()=>setPeekCat(null));
   },[peekAnim]);
 
-  // Bottom sheet state
+  // Bottom sheet
   const [sheetOpen,setSheetOpen]=useState(false);
   const [sheetCatId,setSheetCatId]=useState(null);
+  const [sheetSource,setSheetSource]=useState('annual'); // 'month' | 'annual'
 
-  const openSheet=useCallback((catId=null)=>{
-    setSheetCatId(catId);
-    setSheetOpen(true);
+  const openSheet=useCallback((catId=null,source='annual')=>{
+    setSheetCatId(catId); setSheetSource(source); setSheetOpen(true);
   },[]);
-
   const closeSheet=useCallback(()=>setSheetOpen(false),[]);
 
   const {width}=useWindowDimensions();
+  const pageW=width-32; // conteúdo tem padding 16 em cada lado
 
   return (
     <View style={{flex:1,backgroundColor:colors.background}}>
       <ScrollView ref={scrollRef} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
-        {/* ── HERO ── */}
-        <LinearGradient colors={[health.color+'EE',health.color+'99']}
-          start={{x:0,y:0}} end={{x:1,y:1}} style={s.hero}>
-          {/* Linha 1: ring anual + stats anuais */}
-          <View style={s.heroRow}>
-            <ScoreRing rate={Math.max(0,rate)} grade={health.grade}/>
-            <View style={s.heroR}>
-              <Text style={s.heroEye}>Saúde Financeira {YEAR}</Text>
-              <Text style={s.heroGrade}>{health.label}</Text>
-              <Text style={s.heroSobra}>{formatBRL(totals.sobraTotal)}</Text>
-              <Text style={s.heroSobraLbl}>sobra acumulada no ano</Text>
-              <View style={s.heroMini}>
-                <View><Text style={s.heroML}>Renda</Text><Text style={s.heroMV}>{formatBRL(totals.rendaTotal)}</Text></View>
-                <View style={s.heroDiv}/>
-                <View><Text style={s.heroML}>Gastos</Text><Text style={s.heroMV}>{formatBRL(totals.despesaTotal)}</Text></View>
-                {posMonths>0&&<><View style={s.heroDiv}/><View><Text style={s.heroML}>Meses +</Text><Text style={s.heroMV}>{posMonths}/12</Text></View></>}
+        {/* ── CARROSSEL DE SAÚDE (Mês → Ano) ── */}
+        <ScrollView
+          horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+          style={{width:pageW,marginBottom:4}}
+          onMomentumScrollEnd={e=>setHeroPage(Math.round(e.nativeEvent.contentOffset.x/pageW))}
+        >
+          {/* Página 0 — Mês atual */}
+          <LinearGradient colors={[monthHealth.color+'EE',monthHealth.color+'99']}
+            start={{x:0,y:0}} end={{x:1,y:1}}
+            style={[s.hero,{width:pageW,marginBottom:0}]}>
+            <View style={s.heroRow}>
+              <ScoreRing rate={Math.max(0,monthRate)} grade={monthHealth.grade}/>
+              <View style={s.heroR}>
+                <Text style={s.heroEye}>Saúde de {MONTH_NAMES[currentMonthIdx]}</Text>
+                <Text style={s.heroGrade}>{monthHealth.label}</Text>
+                <Text style={s.heroSobra}>{currentM.sobra>=0?'+':''}{formatBRL(currentM.sobra)}</Text>
+                <Text style={s.heroSobraLbl}>{currentM.sobra>=0?'de sobra este mês':'acima da renda'}</Text>
+                <View style={s.heroMini}>
+                  <View><Text style={s.heroML}>Renda</Text><Text style={s.heroMV}>{formatBRL(currentM.renda)}</Text></View>
+                  <View style={s.heroDiv}/>
+                  <View><Text style={s.heroML}>Gastos</Text><Text style={s.heroMV}>{formatBRL(currentM.despesa)}</Text></View>
+                  <View style={s.heroDiv}/>
+                  <View><Text style={s.heroML}>Consumido</Text><Text style={s.heroMV}>{Math.round(monthPct)}%</Text></View>
+                </View>
               </View>
             </View>
-          </View>
+            {currentM.renda>0&&<>
+              <View style={s.heroMonthTrack}>
+                <View style={[s.heroMonthFill,{
+                  width:`${monthPct}%`,
+                  backgroundColor:currentM.sobra>=0?'rgba(255,255,255,0.5)':'rgba(255,120,120,0.65)',
+                }]}/>
+              </View>
+              <Text style={[s.heroMonthPct,{textAlign:'center',marginTop:4}]}>{monthHealth.tip}</Text>
+            </>}
+            <CarouselDots page={heroPage}/>
+          </LinearGradient>
 
-          {/* Linha 2: sub-chart do mês atual */}
-          {(currentM.renda>0||currentM.despesa>0)&&<View style={s.heroMonth}>
-            <View style={s.heroMonthHead}>
-              <Text style={s.heroMonthLabel}>📅 {MONTH_NAMES[currentMonthIdx]}</Text>
-              <View style={[s.heroMonthGradePill,{backgroundColor:monthHealth.color+'40'}]}>
-                <Text style={[s.heroMonthGrade,{color:monthHealth.color==='#2ECC71'||monthHealth.color==='#27AE60'?'#b8ffd5':'#fff'}]}>
-                  {monthHealth.grade}
+          {/* Página 1 — Ano */}
+          <LinearGradient colors={[health.color+'EE',health.color+'99']}
+            start={{x:0,y:0}} end={{x:1,y:1}}
+            style={[s.hero,{width:pageW,marginBottom:0}]}>
+            <View style={s.heroRow}>
+              <ScoreRing rate={Math.max(0,rate)} grade={health.grade}/>
+              <View style={s.heroR}>
+                <Text style={s.heroEye}>Saúde Financeira {YEAR}</Text>
+                <Text style={s.heroGrade}>{health.label}</Text>
+                <Text style={s.heroSobra}>{formatBRL(totals.sobraTotal)}</Text>
+                <Text style={s.heroSobraLbl}>sobra acumulada no ano</Text>
+                <View style={s.heroMini}>
+                  <View><Text style={s.heroML}>Renda</Text><Text style={s.heroMV}>{formatBRL(totals.rendaTotal)}</Text></View>
+                  <View style={s.heroDiv}/>
+                  <View><Text style={s.heroML}>Gastos</Text><Text style={s.heroMV}>{formatBRL(totals.despesaTotal)}</Text></View>
+                  {posMonths>0&&<><View style={s.heroDiv}/><View><Text style={s.heroML}>Meses +</Text><Text style={s.heroMV}>{posMonths}/12</Text></View></>}
+                </View>
+              </View>
+            </View>
+            <CarouselDots page={heroPage}/>
+          </LinearGradient>
+        </ScrollView>
+        <Text style={[s.tip,{color:colors.textMuted}]}>{heroPage===0?monthHealth.tip:health.tip}</Text>
+
+        {/* ── CARROSSEL DE DONUT (Mês → Ano) ── */}
+        <ScrollView
+          horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+          style={{width:pageW,marginBottom:4}}
+          onMomentumScrollEnd={e=>{
+            const p=Math.round(e.nativeEvent.contentOffset.x/pageW);
+            setDonutPage(p);
+            hidePeek(); // esconde peek ao mudar de página
+          }}
+        >
+          {/* Página 0 — Mês atual */}
+          <View style={[s.card,{backgroundColor:colors.card,borderColor:colors.border,width:pageW,marginBottom:0}]}>
+            <View style={s.cardHead}>
+              <View style={{flex:1,marginRight:10}}>
+                <Text style={[s.cardTitle,{color:colors.text}]}>Onde foi o dinheiro este mês?</Text>
+                <Text style={[s.cardSub,{color:colors.textMuted}]}>
+                  {mCats.length>0?'Toque para selecionar · segure para ver detalhes':'Nenhuma despesa em '+MONTH_NAMES[currentMonthIdx]}
                 </Text>
               </View>
-              <Text style={[s.heroMonthSobra,{color:currentM.sobra>=0?'#b8ffd5':'#ffaaaa'}]}>
-                {currentM.sobra>=0?'▲':'▼'} {formatBRL(Math.abs(currentM.sobra))}
-              </Text>
-            </View>
-            <View style={s.heroMonthTrack}>
-              <View style={[s.heroMonthFill,{
-                width:`${monthPct}%`,
-                backgroundColor:currentM.sobra>=0?'rgba(255,255,255,0.55)':'rgba(255,120,120,0.65)',
-              }]}/>
-            </View>
-            <View style={s.heroMonthStats}>
-              <Text style={s.heroMonthStat}>↑ {formatBRL(currentM.renda)}</Text>
-              <Text style={s.heroMonthStat}>↓ {formatBRL(currentM.despesa)}</Text>
-              <Text style={s.heroMonthPct}>{Math.round(monthPct)}% consumido</Text>
-            </View>
-          </View>}
-        </LinearGradient>
-        <Text style={[s.tip,{color:colors.textMuted}]}>{health.tip}</Text>
-
-        {/* ── DONUT CARD ── */}
-        <View style={[s.card,{backgroundColor:colors.card,borderColor:colors.border}]}>
-          <View style={s.cardHead}>
-            <View style={{flex:1,marginRight:10}}>
-              <Text style={[s.cardTitle,{color:colors.text}]}>Onde foi seu dinheiro?</Text>
-              <Text style={[s.cardSub,{color:colors.textMuted}]}>
-                {cats.length>0
-                  ?'Toque para selecionar · segure para ver detalhes'
-                  :'Lance despesas para ver a distribuição'}
-              </Text>
-            </View>
-            {cats.length>0&&(
-              <TouchableOpacity style={[s.exploreBtn,{backgroundColor:colors.primary+'18',borderColor:colors.primary+'44'}]}
-                onPress={()=>openSheet(null)}>
-                <Ionicons name="layers-outline" size={14} color={colors.primary}/>
-                <Text style={[s.exploreTxt,{color:colors.primary}]}>Tudo</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <DonutChart
-            cats={cats} selectedId={selCat} grand={grand}
-            onSelect={id=>{
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              setSelCat(p=>p===id?null:id);
-            }}
-            onPressIn={showPeek}
-            onPressOut={hidePeek}
-            onLongPress={()=>{}}
-          />
-
-          {cats.length>0&&<>
-            <View style={s.pills}>
-              {cats.map(cat=>(
-                <TouchableOpacity key={cat.id}
-                  style={[s.pill,{borderColor:cat.color,backgroundColor:selCat===cat.id?cat.color:'transparent'}]}
-                  onPress={()=>{
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    setSelCat(p=>p===cat.id?null:cat.id);
-                  }}
-                  onLongPress={()=>openSheet(cat.id)}>
-                  <Text style={{fontSize:11}}>{CAT_EMOJI[cat.id]}</Text>
-                  <Text style={[s.pillTxt,{color:selCat===cat.id?'#fff':colors.textSecondary}]}>{cat.label}</Text>
+              {mCats.length>0&&(
+                <TouchableOpacity style={[s.exploreBtn,{backgroundColor:colors.primary+'18',borderColor:colors.primary+'44'}]}
+                  onPress={()=>openSheet(null,'month')}>
+                  <Ionicons name="layers-outline" size={14} color={colors.primary}/>
+                  <Text style={[s.exploreTxt,{color:colors.primary}]}>Tudo</Text>
                 </TouchableOpacity>
-              ))}
+              )}
             </View>
-            <TouchableOpacity style={[s.swipeHint,{borderColor:colors.border}]}
-              onPress={()=>openSheet(null)} activeOpacity={0.7}>
-              <Ionicons name="chevron-up" size={14} color={colors.textMuted}/>
-              <Text style={[s.swipeHintTxt,{color:colors.textMuted}]}>Ver detalhes completos</Text>
-              <Ionicons name="chevron-up" size={14} color={colors.textMuted}/>
-            </TouchableOpacity>
-          </>}
-
-          {/* PeekCard inline — flutua sobre a rosquinha ao segurar um segmento */}
-          <View style={[StyleSheet.absoluteFillObject,s.peekOnCard]} pointerEvents="none">
-            <PeekCard cat={peekCat} anim={peekAnim}/>
+            <DonutChart
+              cats={mCats} selectedId={mSelCat} grand={mGrand}
+              onSelect={id=>{ LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setMSelCat(p=>p===id?null:id); }}
+              onPressIn={showPeek} onPressOut={hidePeek} onLongPress={()=>{}}
+            />
+            {mCats.length>0&&<>
+              <View style={s.pills}>
+                {mCats.map(cat=>(
+                  <TouchableOpacity key={cat.id}
+                    style={[s.pill,{borderColor:cat.color,backgroundColor:mSelCat===cat.id?cat.color:'transparent'}]}
+                    onPress={()=>{ LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setMSelCat(p=>p===cat.id?null:cat.id); }}
+                    onLongPress={()=>openSheet(cat.id,'month')}>
+                    <Text style={{fontSize:11}}>{CAT_EMOJI[cat.id]}</Text>
+                    <Text style={[s.pillTxt,{color:mSelCat===cat.id?'#fff':colors.textSecondary}]}>{cat.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity style={[s.swipeHint,{borderColor:colors.border}]}
+                onPress={()=>openSheet(null,'month')} activeOpacity={0.7}>
+                <Ionicons name="chevron-up" size={14} color={colors.textMuted}/>
+                <Text style={[s.swipeHintTxt,{color:colors.textMuted}]}>Ver detalhes do mês</Text>
+                <Ionicons name="chevron-up" size={14} color={colors.textMuted}/>
+              </TouchableOpacity>
+            </>}
+            <View style={s.donutDots}><View style={[s.dotIndicator,{width:22,backgroundColor:colors.primary}]}/><View style={[s.dotIndicator,{backgroundColor:colors.textMuted+'55'}]}/></View>
+            <View style={[StyleSheet.absoluteFillObject,s.peekOnCard]} pointerEvents="none">
+              <PeekCard cat={peekCat} anim={peekAnim}/>
+            </View>
           </View>
-        </View>
+
+          {/* Página 1 — Ano completo */}
+          <View style={[s.card,{backgroundColor:colors.card,borderColor:colors.border,width:pageW,marginBottom:0}]}>
+            <View style={s.cardHead}>
+              <View style={{flex:1,marginRight:10}}>
+                <Text style={[s.cardTitle,{color:colors.text}]}>Onde foi o dinheiro este ano?</Text>
+                <Text style={[s.cardSub,{color:colors.textMuted}]}>
+                  {cats.length>0?'Toque para selecionar · segure para ver detalhes':'Lance despesas para ver a distribuição'}
+                </Text>
+              </View>
+              {cats.length>0&&(
+                <TouchableOpacity style={[s.exploreBtn,{backgroundColor:colors.primary+'18',borderColor:colors.primary+'44'}]}
+                  onPress={()=>openSheet(null,'annual')}>
+                  <Ionicons name="layers-outline" size={14} color={colors.primary}/>
+                  <Text style={[s.exploreTxt,{color:colors.primary}]}>Tudo</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <DonutChart
+              cats={cats} selectedId={selCat} grand={grand}
+              onSelect={id=>{ LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setSelCat(p=>p===id?null:id); }}
+              onPressIn={showPeek} onPressOut={hidePeek} onLongPress={()=>{}}
+            />
+            {cats.length>0&&<>
+              <View style={s.pills}>
+                {cats.map(cat=>(
+                  <TouchableOpacity key={cat.id}
+                    style={[s.pill,{borderColor:cat.color,backgroundColor:selCat===cat.id?cat.color:'transparent'}]}
+                    onPress={()=>{ LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setSelCat(p=>p===cat.id?null:cat.id); }}
+                    onLongPress={()=>openSheet(cat.id,'annual')}>
+                    <Text style={{fontSize:11}}>{CAT_EMOJI[cat.id]}</Text>
+                    <Text style={[s.pillTxt,{color:selCat===cat.id?'#fff':colors.textSecondary}]}>{cat.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity style={[s.swipeHint,{borderColor:colors.border}]}
+                onPress={()=>openSheet(null,'annual')} activeOpacity={0.7}>
+                <Ionicons name="chevron-up" size={14} color={colors.textMuted}/>
+                <Text style={[s.swipeHintTxt,{color:colors.textMuted}]}>Ver detalhes anuais</Text>
+                <Ionicons name="chevron-up" size={14} color={colors.textMuted}/>
+              </TouchableOpacity>
+            </>}
+            <View style={s.donutDots}><View style={[s.dotIndicator,{backgroundColor:colors.textMuted+'55'}]}/><View style={[s.dotIndicator,{width:22,backgroundColor:colors.primary}]}/></View>
+            <View style={[StyleSheet.absoluteFillObject,s.peekOnCard]} pointerEvents="none">
+              <PeekCard cat={peekCat} anim={peekAnim}/>
+            </View>
+          </View>
+        </ScrollView>
 
         {/* ── PROJETOS ── */}
         {projects.length>0&&<>
@@ -870,7 +953,7 @@ export default function AnnualSummaryScreen() {
       {/* ── BOTTOM SHEET ── */}
       <CategoryBottomSheet
         visible={sheetOpen}
-        cats={cats}
+        cats={sheetSource==='month' ? mCats : cats}
         selectedCatId={sheetCatId}
         onClose={closeSheet}
         onSelectCat={setSheetCatId}
@@ -917,6 +1000,8 @@ const s = StyleSheet.create({
   swipeHint:    {flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginTop:14,paddingVertical:8,borderTopWidth:1},
   swipeHintTxt: {fontSize:12,fontWeight:'600'},
   peekOnCard:   {alignItems:'center',justifyContent:'center',zIndex:9999,borderRadius:16},
+  donutDots:    {flexDirection:'row',justifyContent:'center',alignItems:'center',gap:6,marginTop:10},
+  dotIndicator: {width:8,height:8,borderRadius:4},
   secTitle:     {fontSize:17,fontWeight:'900',marginBottom:4,marginTop:4},
   secSub:       {fontSize:12,marginBottom:10},
   hlRow:        {flexDirection:'row',gap:10,marginBottom:10},
