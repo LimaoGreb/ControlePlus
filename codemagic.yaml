@@ -1,6 +1,6 @@
 workflows:
   android-apk:
-    name: Android APK Debug
+    name: Android APK Release
     max_build_duration: 60
     environment:
       node: 18.19.0
@@ -10,12 +10,26 @@ workflows:
         script: npm install
       - name: Expo Prebuild (gera pasta android)
         script: npx expo prebuild --platform android --clean --no-install
-      - name: Ativa bundle embutido no debug
-        script: echo "BUNDLE_IN_DEBUG=true" >> android/gradle.properties
-      - name: Build APK debug
+      - name: Gera keystore para assinar o APK
+        script: |
+          keytool -genkey -v \
+            -keystore /tmp/release.jks \
+            -alias release \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android123 \
+            -keypass android123 \
+            -dname "CN=FinanceApp,O=Kowalsky,C=BR"
+      - name: Build APK release (bundle embutido)
         script: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=/tmp/release.jks \
+            -Pandroid.injected.signing.store.password=android123 \
+            -Pandroid.injected.signing.key.alias=release \
+            -Pandroid.injected.signing.key.password=android123 \
+            --no-daemon
     artifacts:
-      - android/app/build/outputs/apk/debug/app-debug.apk
+      - android/app/build/outputs/apk/release/app-release.apk
