@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { contrastText } from '../utils/colorUtils';
 import { hapticTap, hapticSuccess } from '../utils/haptics';
+import { getBankById } from '../data/banks';
 import CurrencyInput from './CurrencyInput';
 import DueDayChip from './DueDayChip';
 
@@ -80,17 +81,19 @@ export default function ItemRow({
           )}
           {showPayment && paymentMethods.map((pm) => {
             const selected = item.payment === pm.name;
+            const bank = pm.bank ? getBankById(pm.bank) : null;
+            const chipColor = selected ? (bank?.color || accent) : 'transparent';
+            const borderColor = selected ? (bank?.color || accent) : (bank?.color ? bank.color + '55' : colors.border);
+            const textColor = selected ? '#fff' : (bank?.color || colors.textSecondary);
             return (
               <TouchableOpacity
                 key={pm.id}
                 onPress={() => onChangePayment(selected ? null : pm.name)}
-                style={[
-                  styles.chip,
-                  { backgroundColor: selected ? accent : 'transparent', borderColor: selected ? accent : colors.border },
-                ]}
+                style={[styles.chip, { backgroundColor: chipColor, borderColor }]}
               >
-                {selected && <Ionicons name="checkmark" size={13} color={contrastText(accent)} style={{ marginRight: 3 }} />}
-                <Text style={[styles.chipText, { color: selected ? contrastText(accent) : colors.textSecondary }]}>{pm.name}</Text>
+                {bank && !selected && <View style={[styles.bankDot, { backgroundColor: bank.color }]} />}
+                {selected && <Ionicons name="checkmark" size={13} color="#fff" style={{ marginRight: 3 }} />}
+                <Text style={[styles.chipText, { color: textColor }]}>{pm.name}</Text>
               </TouchableOpacity>
             );
           })}
@@ -160,6 +163,7 @@ const styles = StyleSheet.create({
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginLeft: 16 },
   chip: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, marginBottom: 6 },
   chipText: { fontSize: 13, fontWeight: '700' },
+  bankDot: { width: 7, height: 7, borderRadius: 4, marginRight: 5 },
   action: { justifyContent: 'center', width: 100, paddingHorizontal: 14, borderRadius: 10, marginBottom: 10 },
   actionText: { color: '#fff', fontSize: 12, fontWeight: '800', marginTop: 2 },
 });

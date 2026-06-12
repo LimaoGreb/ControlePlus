@@ -1,72 +1,100 @@
-// Classifica intencoes via Gemini Flash (gratuito).
-// Usado apenas para queries/comandos — despesas usam o parser local.
-
+// Classifica intencoes via classificador local + Gemini Flash como fallback.
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 const MONTH_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
-// Classificador local — sem API, cobre todos os casos comuns de query.
-function localClassify(text) {
-  const t = text.toLowerCase();
-  const month = MONTH_PT.find(m => t.includes(m)) || null;
-
-  if (/exporta|planilha|csv|meus dados/.test(t))
-    return { intent: 'export', params: {} };
-
-  if (/investimento|carteira|rendimento|aporte/.test(t))
-    return { intent: 'query', params: { subtype: 'investments', month } };
-
-  if (/projeto|meta|objetivo/.test(t))
-    return { intent: 'query', params: { subtype: 'projects', month } };
-
-  if (/maior|maiores/.test(t))
-    return { intent: 'query', params: { subtype: 'biggest', month } };
-
-  const hasQuery = /quanto|gast|resumo|total|como t|como foi|como est/.test(t);
-  const cardMatch = t.match(/nubank|c6|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pix|d[eé]bito|cr[eé]dito/);
-  if (hasQuery && cardMatch)
-    return { intent: 'query', params: { subtype: 'by_payment', month, filter: cardMatch[0] } };
-
-  if (hasQuery)
-    return { intent: 'query', params: { subtype: 'summary', month } };
-
-  return null;
+// Resolve referências relativas e nomes de mês → retorna nome do mês em PT
+function getMonthName(t) {
+  if (/m[eê]s\s*(passado|anterior|[uú]ltimo)|[uú]ltimo\s*m[eê]s/i.test(t))
+    return MONTH_PT[((new Date().getMonth() - 1) + 12) % 12];
+  if (/pr[oó]ximo\s*m[eê]s|m[eê]s\s*(que\s*vem|seguinte)/i.test(t))
+    return MONTH_PT[(new Date().getMonth() + 1) % 12];
+  if (/m[eê]s\s*(atual|corrente|de\s*hoje|vigente)|esse\s*m[eê]s|este\s*m[eê]s/i.test(t))
+    return MONTH_PT[new Date().getMonth()];
+  return MONTH_PT.find(m => t.includes(m)) || null;
 }
 
-const PROMPT = `Classifique a mensagem de um app de financas pessoais em PT-BR.
+// Remove palavras de ruído e retorna filtro de nome, ou null se não sobrar nada útil
+function extractNameFilter(t) {
+  const noise = [
+    'quanto','eu','vc','voce','você','gastei','gastou','gasto','gastar',
+    'paguei','pagou','pagar','comprei','comprou','despesa','despesas','gastos',
+    'foram','foi','ficou','no','na','nos','nas','de','do','da','dos','das',
+    'em','com','por','para','até','ate','esse','este','essa','esta','esses','estes',
+    'meu','minha','meus','minhas','o','a','os','as','um','uma','uns','umas',
+    'mes','mês','passado','anterior','atual','corrente','ultimo','último',
+    'proximo','próximo','seguinte','vem','que','ja','já','aqui','agora','hoje',
+    'ontem','semana','ano','jarvis','controle','quais','qual','sao','são',
+    ...MONTH_PT,
+  ];
+  const re = new RegExp(`\\b(${noise.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
+  const cleaned = t.replace(re, ' ').replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim();
+  return (cleaned.length >= 2 && !/^\d+$/.test(cleaned)) ? cleaned.toLowerCase() : null;
+}
+
+// Classificador local — sem API. Cobre >95% dos casos reais.
+function localClassify(t) {
+  const month = getMonthName(t);
+
+  // ── Exportar ──────────────────────────────────────────────────────────────
+  if (/exporta|exportar|planilha|csv|meus dados|baixar dados|relat[oó]rio/.test(t))
+    return { intent: 'export', params: {} };
+
+  // ── Investimentos ─────────────────────────────────────────────────────────
+  if (/investimento|carteira|rendimento|aporte|aplica[çc][aã]o|quanto\s*(eu\s*)?investi|minha\s*carteira/.test(t))
+    return { intent: 'query', params: { subtype: 'investments', month } };
+
+  // ── Projetos ──────────────────────────────────────────────────────────────
+  if (/projeto|meta|objetivo|poupando|guardando|economiz/.test(t))
+    return { intent: 'query', params: { subtype: 'projects', month } };
+
+  // ── Maiores gastos ────────────────────────────────────────────────────────
+  if (/maior(es)?|top\s*\d|piores?|mais\s*caro|mais\s*cara|o\s*que\s*(mais\s*)?(gast|custou)/.test(t))
+    return { intent: 'query', params: { subtype: 'biggest', month } };
+
+  const hasQuery = /quanto|gast|resumo|total|como\s*(t[aá]|foi|est[aá])|saldo|sobr[ao]u|sobr|sobrando|balanç|fiz|gastamos|dispend/.test(t);
+
+  // ── Por cartão / forma de pagamento ──────────────────────────────────────
+  const cardMatch = t.match(/nubank|c6\s*bank|c6|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will\s*bank|will|pix|d[eé]bito|cr[eé]dito/);
+  if (hasQuery && cardMatch)
+    return { intent: 'query', params: { subtype: 'by_payment', month, filter: cardMatch[0].trim() } };
+
+  // ── Por nome / categoria ──────────────────────────────────────────────────
+  if (hasQuery) {
+    const nameFilter = extractNameFilter(t);
+    const genericTerms = ['tudo','mes','geral','resumo','total','saldo','balanço','balanco','gastos','despesas','quanto'];
+    if (nameFilter && nameFilter.length >= 3 && !genericTerms.includes(nameFilter)) {
+      return { intent: 'query', params: { subtype: 'by_name', month, filter: nameFilter } };
+    }
+    return { intent: 'query', params: { subtype: 'summary', month } };
+  }
+
+  return null; // ambíguo — tenta Gemini
+}
+
+const PROMPT = `Classifique a mensagem de um app de finanças pessoais em PT-BR.
 Retorne SOMENTE JSON sem markdown.
 
-Intencoes possiveis:
-- "query": quer consultar informacoes (gastos, resumo, investimentos, projetos)
-- "add_installments": quer parcelar uma compra em N vezes
-- "update_due_date": quer mudar o dia de vencimento de uma despesa fixa
-- "export": quer exportar os dados em CSV
-- "chat": saudacao ou conversa geral
+Intenções:
+- "query": consultar dados (gastos, resumo, investimentos, projetos)
+- "add_installments": parcelar compra
+- "update_due_date": mudar vencimento de despesa fixa
+- "export": exportar CSV
+- "chat": saudação ou conversa
 
-Para query, inclua:
-  subtype: "summary" | "by_payment" | "biggest" | "investments" | "projects" | "by_name"
-  month: nome do mes PT-BR ou null (null = mes atual)
-  filter: texto de filtro (forma de pagamento, nome) ou null
+Para query:
+  subtype: "summary"|"by_payment"|"biggest"|"investments"|"projects"|"by_name"
+  month: nome do mês PT-BR (aceita "mês passado", "mês anterior") ou null
+  filter: texto de filtro ou null
 
-Para add_installments, inclua:
-  name: nome da compra ou null
-  total_value: numero (valor TOTAL) ou null
-  installments: numero de parcelas ou null
-  payment: forma de pagamento ou null
-  month: mes de inicio PT-BR ou null
+Para add_installments: name, total_value, installments, payment, month
+Para update_due_date: expense_name, new_day
+Para export/chat: {}
 
-Para update_due_date, inclua:
-  expense_name: nome da despesa (parcial ok)
-  new_day: numero 1-31 ou null
-
-Para export: {}
-Para chat: {}
-
-Formato exato: {"intent":"...","params":{...}}`;
+Retorne: {"intent":"...","params":{...}}`;
 
 export async function classifyIntent(text) {
-  // Tenta classificador local primeiro (rápido, sem API)
-  const local = localClassify(text);
+  const local = localClassify(text.toLowerCase());
   if (local) return local;
 
   const key = process.env.GEMINI_API_KEY;

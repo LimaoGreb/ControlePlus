@@ -1,6 +1,17 @@
 // Parser local de despesas em PT-BR — sem API externa, nunca falha.
 
 const MONTH_INDEX = new Date().getMonth();
+const MONTH_NAMES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function extractMonthIndex(text) {
+  const t = text.toLowerCase();
+  if (/m[eê]s\s*(passado|anterior|[uú]ltimo)|[uú]ltimo\s*m[eê]s/i.test(t))
+    return ((MONTH_INDEX - 1) + 12) % 12;
+  if (/pr[oó]ximo\s*m[eê]s|m[eê]s\s*(que\s*vem|seguinte)/i.test(t))
+    return (MONTH_INDEX + 1) % 12;
+  const idx = MONTH_NAMES_PT.findIndex(m => t.includes(m));
+  return idx >= 0 ? idx : MONTH_INDEX;
+}
 
 const NUMBER_WORDS = {
   'um': 1, 'uma': 1, 'dois': 2, 'duas': 2, 'tres': 3, 'três': 3,
@@ -79,9 +90,8 @@ export async function parseExpenseMessage(text) {
   const hasNumber = /\d+/.test(text);
   const hasAddVerb = ADD_VERBS.test(text);
 
-  // Verbo de adição explícito: inicia fluxo mesmo sem número
   if (hasAddVerb) {
-    return { isExpense: true, name: extractName(text), value: extractValue(text), payment: extractPayment(text), monthIndex: MONTH_INDEX };
+    return { isExpense: true, name: extractName(text), value: extractValue(text), payment: extractPayment(text), monthIndex: extractMonthIndex(text) };
   }
 
   // Exige keyword E número — só keyword sem valor é consulta ("quanto gastei?")
@@ -92,7 +102,7 @@ export async function parseExpenseMessage(text) {
     name: extractName(text),
     value: extractValue(text),
     payment: extractPayment(text),
-    monthIndex: MONTH_INDEX,
+    monthIndex: extractMonthIndex(text),
   };
 }
 
