@@ -9,6 +9,7 @@ import Avatar from '../components/Avatar';
 import QuickAddFab from '../components/QuickAddFab';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
+import { useSync } from '../context/SyncContext';
 import { MONTH_NAMES } from '../data/initialData';
 
 const MENU_ITEMS = [
@@ -22,6 +23,7 @@ const MENU_ITEMS = [
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { userName, avatar } = useSettings();
+  const { activeProfile, partnerName, partnerAvatar, partnerPersonalData } = useSync();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const currentMonth = new Date().getMonth();
@@ -32,7 +34,10 @@ export default function HomeScreen() {
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const firstName = userName && userName.trim() ? userName.trim().split(' ')[0] : null;
+  const isPartnerMode = activeProfile === 'partner' && !!partnerPersonalData;
+  const displayName = isPartnerMode ? (partnerName || 'Parceiro(a)') : (userName || '');
+  const displayAvatar = isPartnerMode ? partnerAvatar : avatar;
+  const firstName = displayName.trim() ? displayName.trim().split(' ')[0] : null;
   const greeting = firstName ? `Olá, ${firstName}` : 'Olá!';
 
   return (
@@ -43,7 +48,7 @@ export default function HomeScreen() {
 
         {/* Linha 1: avatar + saudação + três pontinhos */}
         <View style={styles.topRow}>
-          <Avatar avatar={avatar} size={44} />
+          <Avatar avatar={displayAvatar} size={44} />
           <View style={styles.titleGroup}>
             <Text style={[styles.greeting, { color: colors.text }]} numberOfLines={1}>{greeting}</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{MONTH_NAMES[currentMonth]} · Dashboard</Text>

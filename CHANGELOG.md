@@ -2,6 +2,49 @@
 
 ---
 
+## v2.5.2 — 2026-06-12
+
+### Fix: header do HomeScreen mostrava nome errado em modo parceiro
+
+**Bug:** ao visualizar dados do parceiro (PartnerDataProvider sobrescreve DataContext),
+o header "Olá, [nome]" continuava lendo `userName` de `useSettings()` — sempre o usuário
+local. O avatar também era o do usuário local.
+
+**Arquivo alterado (`src/screens/HomeScreen.js`):**
+- Adicionado `useSync()` para detectar `isPartnerMode`
+- `displayName` = `partnerName` quando em modo parceiro; `userName` caso contrário
+- `displayAvatar` = `partnerAvatar` quando em modo parceiro; `avatar` caso contrário
+- Padrão idêntico ao que `App.js` já usava no banner laranja de "Visualizando dados de X"
+
+---
+
+## v2.5.1 (bot patches) — 2026-06-12
+
+### Fix: saldo do resumo do Jarvis não incluía contribuições
+
+**Bug:** `queryHandler.js` calculava `bal = tInc - tFix - tVar`, ignorando `m.contributions`.
+Usuário via R$201,75 no bot vs R$21,75 no app (diferença = dízimo ~R$180).
+
+**Arquivos alterados (`bot/queryHandler.js`):**
+- Subtype `summary`: adicionado `tCont = contributions.reduce(...)`, `bal = tInc - tExp - tCont`,
+  linha `contLine` exibe "💜 Contribuições: R$X" quando > 0.
+- Subtype `analysis`: mesma correção dentro do loop de meses; `totalCont` acumulado no período;
+  `totalBal = totalInc - totalExp - totalCont`.
+
+### Fix: `CONCLUDE_EXPENSE` falhava com "Nenhuma despesa encontrada" mesmo a despesa existindo
+
+**Bug:** o comando buscava APENAS no `monthIndex` enviado pelo bot. Se o snapshot estava
+levemente desatualizado (item em mês diferente no AsyncStorage, ou já concluído no app mas
+snapshot ainda exibia como aberto), a busca retornava 0 resultados.
+
+**Arquivo alterado (`src/components/JarvisSyncManager.js`):**
+- Handler `CONCLUDE_EXPENSE`: busca no mês especificado primeiro; se não achar item aberto,
+  percorre todos os outros meses em fallback.
+- Novo caso de erro: "Despesa X já está concluída no app" (quando item existe mas concluded=true),
+  vs "Nenhuma despesa encontrada" (item genuinamente ausente).
+
+---
+
 ## v2.5.0 — 2026-06-12
 
 ### Fix definitivo: Modo Casal — dados pessoais migrados para dentro de `couples/{code}`

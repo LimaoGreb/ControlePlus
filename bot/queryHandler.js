@@ -101,18 +101,19 @@ export function answerQuery(snapshot, params) {
     const from = params.fromMonth ?? 0;
     const to = params.toMonth ?? new Date().getMonth();
     const months = snapshot.months || {};
-    let totalInc = 0, totalExp = 0;
+    let totalInc = 0, totalExp = 0, totalCont = 0;
     const summaries = [];
     for (let i = from; i <= to; i++) {
       const mm = months[i] || {};
-      const tInc = (mm.incomes || []).reduce((s, x) => s + (x.value || 0), 0);
-      const tFix = (mm.fixed || []).reduce((s, x) => s + (x.value || 0), 0);
-      const tVar = (mm.variable || []).reduce((s, x) => s + (x.value || 0), 0);
-      const tExp = tFix + tVar;
-      totalInc += tInc; totalExp += tExp;
-      summaries.push({ name: MN[i], tInc, tExp, bal: tInc - tExp });
+      const tInc  = (mm.incomes || []).reduce((s, x) => s + (x.value || 0), 0);
+      const tFix  = (mm.fixed || []).reduce((s, x) => s + (x.value || 0), 0);
+      const tVar  = (mm.variable || []).reduce((s, x) => s + (x.value || 0), 0);
+      const tCont = (mm.contributions || []).reduce((s, x) => s + (x.value || 0), 0);
+      const tExp  = tFix + tVar;
+      totalInc += tInc; totalExp += tExp; totalCont += tCont;
+      summaries.push({ name: MN[i], tInc, tExp, tCont, bal: tInc - tExp - tCont });
     }
-    const totalBal = totalInc - totalExp;
+    const totalBal = totalInc - totalExp - totalCont;
     const rate = totalInc > 0 ? (totalBal / totalInc) * 100 : 0;
     const grade = rate >= 30 ? 'A 🟢 Excelente' : rate >= 20 ? 'B 🟡 Ótimo' : rate >= 10 ? 'C 🟠 Regular' : rate >= 0 ? 'D 🔴 Atenção' : 'F ⛔ Crítico';
     const best = [...summaries].sort((a, b) => b.bal - a.bal)[0];
@@ -164,10 +165,13 @@ export function answerQuery(snapshot, params) {
   }
 
   // summary / total_month (default)
-  const tInc = incomes.reduce((s, i) => s + (i.value || 0), 0);
-  const tFix = fixed.reduce((s, i) => s + (i.value || 0), 0);
-  const tVar = variable.reduce((s, i) => s + (i.value || 0), 0);
-  const tExp = tFix + tVar;
-  const bal = tInc - tExp;
-  return `📊 *${mn}*\n\n💰 Renda: ${R(tInc)}\n💸 Gastos: ${R(tExp)}\n  ├ Fixos: ${R(tFix)}\n  └ Variáveis: ${R(tVar)}\n\n${bal >= 0 ? '✅' : '⚠️'} Saldo: ${R(bal)}`;
+  const contributions = m.contributions || [];
+  const tInc  = incomes.reduce((s, i) => s + (i.value || 0), 0);
+  const tFix  = fixed.reduce((s, i) => s + (i.value || 0), 0);
+  const tVar  = variable.reduce((s, i) => s + (i.value || 0), 0);
+  const tCont = contributions.reduce((s, i) => s + (i.value || 0), 0);
+  const tExp  = tFix + tVar;
+  const bal   = tInc - tExp - tCont;
+  const contLine = tCont > 0 ? `\n💜 Contribuições: ${R(tCont)}` : '';
+  return `📊 *${mn}*\n\n💰 Renda: ${R(tInc)}\n💸 Gastos: ${R(tExp)}\n  ├ Fixos: ${R(tFix)}\n  └ Variáveis: ${R(tVar)}${contLine}\n\n${bal >= 0 ? '✅' : '⚠️'} Saldo: ${R(bal)}`;
 }

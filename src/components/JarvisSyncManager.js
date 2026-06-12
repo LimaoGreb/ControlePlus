@@ -152,19 +152,36 @@ async function executeCommand(cmd, data, addItem, updateItem, addInstallments, s
     const query = (expense_name || '').toLowerCase();
     const months = data?.months || {};
     let concluded = 0;
-    const startMi = monthIndex != null ? monthIndex : 0;
-    const endMi = monthIndex != null ? monthIndex : 11;
-    for (let mi = startMi; mi <= endMi; mi++) {
+    let alreadyDone = 0;
+
+    // Busca no mês especificado primeiro; se não achar item aberto,
+    // percorre todos os outros meses (cobre snapshot desatualizado).
+    const allMonths = Array.from({ length: 12 }, (_, i) => i);
+    const searchOrder = monthIndex != null
+      ? [monthIndex, ...allMonths.filter(i => i !== monthIndex)]
+      : allMonths;
+
+    for (const mi of searchOrder) {
       for (const section of ['fixed', 'variable']) {
         for (const item of (months[mi]?.[section] || [])) {
-          if ((item.name || '').toLowerCase().includes(query) && !item.concluded) {
-            updateItem(mi, section, item.id, 'concluded', true);
-            concluded++;
+          if ((item.name || '').toLowerCase().includes(query)) {
+            if (!item.concluded) {
+              updateItem(mi, section, item.id, 'concluded', true);
+              concluded++;
+            } else {
+              alreadyDone++;
+            }
           }
         }
       }
+      if (concluded > 0) break;
     }
-    if (concluded === 0) throw new Error(`Nenhuma despesa encontrada com "${expense_name}"`);
+
+    if (concluded === 0) {
+      if (alreadyDone > 0)
+        throw new Error(`Despesa "${expense_name}" já está concluída no app`);
+      throw new Error(`Nenhuma despesa encontrada com "${expense_name}"`);
+    }
     return { concluded, expense_name };
   }
 
