@@ -8,28 +8,47 @@ workflows:
     scripts:
       - name: Install dependencies
         script: npm install
+
       - name: Expo Prebuild (gera pasta android)
         script: npx expo prebuild --platform android --clean --no-install
-      - name: Gera keystore para assinar o APK
+
+      - name: Configura keystore (fixo via env ou gera novo)
         script: |
-          keytool -genkey -v \
-            -keystore /tmp/release.jks \
-            -alias release \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass android123 \
-            -keypass android123 \
-            -dname "CN=FinanceApp,O=Kowalsky,C=BR"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo ">> Usando keystore fixo do ambiente"
+            echo "$KEYSTORE_BASE64" | base64 -d > /tmp/release.jks
+          else
+            echo ">> KEYSTORE_BASE64 nao definido — gerando keystore novo"
+            keytool -genkey -v \
+              -keystore /tmp/release.jks \
+              -alias release \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "Brenda.1011" \
+              -keypass "Brenda.1011" \
+              -dname "CN=FinanceApp,O=Kowalsky,C=BR"
+            echo ""
+            echo "======================================================="
+            echo "COPIE O BASE64 ABAIXO E SALVE COMO KEYSTORE_BASE64 NO CODEMAGIC:"
+            echo "======================================================="
+            base64 /tmp/release.jks
+            echo "======================================================="
+            echo "SHA-1 DO KEYSTORE (registrar no Google Cloud Console):"
+            keytool -list -v -keystore /tmp/release.jks -alias release -storepass "Brenda.1011" | grep "SHA1:"
+            echo "======================================================="
+          fi
+
       - name: Build APK release (bundle embutido)
         script: |
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file=/tmp/release.jks \
-            -Pandroid.injected.signing.store.password=android123 \
+            -Pandroid.injected.signing.store.password="Brenda.1011" \
             -Pandroid.injected.signing.key.alias=release \
-            -Pandroid.injected.signing.key.password=android123 \
+            -Pandroid.injected.signing.key.password="Brenda.1011" \
             --no-daemon
+
     artifacts:
       - android/app/build/outputs/apk/release/app-release.apk
