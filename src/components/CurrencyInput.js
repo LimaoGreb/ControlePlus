@@ -1,55 +1,56 @@
-// Campo de valor monetário em BRL.
-// Enquanto o usuário digita: entrada livre (sem formatação ao vivo).
-// Ao sair do campo (blur): parseia e formata "1.500,00".
-// Suporta tanto ponto quanto vírgula como separador decimal.
-import React, { useEffect, useRef, useState } from 'react';
+// Campo de valor monetário BRL — padrão "centavos por dígito" (estilo Nubank/PicPay).
+// Ao focar: zera o campo, o usuário digita os dígitos da direita para a esquerda.
+//   "1" → 0,01 | "150" → 1,50 | "150000" → 1.500,00
+// Ao blur: exibe o valor formatado salvo externamente.
+import React, { useEffect, useState } from 'react';
 import { TextInput, StyleSheet } from 'react-native';
-import { formatNumber, parseBRL } from '../utils/currency';
 import { useTheme } from '../theme/ThemeContext';
+
+function fmtDigits(digits) {
+  if (!digits) return '';
+  const n = parseInt(digits, 10) || 0;
+  if (n === 0) return '';
+  const r = Math.floor(n / 100);
+  const c = n % 100;
+  const rStr = String(r).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${rStr},${String(c).padStart(2, '0')}`;
+}
 
 export default function CurrencyInput({ value, onChangeValue, style }) {
   const { colors } = useTheme();
+  const [rawDigits, setRawDigits] = useState('');
   const [focused, setFocused] = useState(false);
-  const [raw, setRaw] = useState('');
-  // Referência interna para evitar atualização quando vem de fora durante digitação.
-  const lastEmitted = useRef(value || 0);
 
-  // Atualiza o display quando o valor muda por fora (reset, importação, etc.)
+  // Sincroniza quando o valor muda externamente (reset, importação, etc.)
   useEffect(() => {
     if (!focused) {
-      lastEmitted.current = value || 0;
+      const cents = Math.round((value || 0) * 100);
+      setRawDigits(cents > 0 ? String(cents) : '');
     }
   }, [value, focused]);
 
   const handleFocus = () => {
     setFocused(true);
-    // Mostra o número limpo para facilitar a edição (sem pontuação de milhar).
-    const v = value || 0;
-    setRaw(v > 0 ? String(v).replace('.', ',') : '');
+    setRawDigits(''); // limpa para o usuário começar do zero
   };
 
   const handleChange = (text) => {
-    // Permite apenas dígitos + um separador decimal (vírgula ou ponto).
-    const cleaned = text.replace(/[^0-9.,]/g, '');
-    setRaw(cleaned);
-    // Emite o valor em tempo real para o pai não ficar desatualizado.
-    const parsed = parseBRL(cleaned);
-    lastEmitted.current = parsed;
-    onChangeValue(parsed);
+    // Extrai apenas dígitos (backspace remove o último, append adiciona)
+    const digits = text.replace(/\D/g, '').slice(0, 9); // máx R$ 9.999.999,99
+    setRawDigits(digits);
+    onChangeValue(parseInt(digits || '0', 10) / 100);
   };
 
-  const handleBlur = (e) => {
-    setFocused(false);
-    const text = e.nativeEvent?.text ?? raw;
-    const parsed = parseBRL(text);
-    lastEmitted.current = parsed;
-    setRaw('');
-    onChangeValue(parsed);
-  };
+  const handleBlur = () => setFocused(false);
 
-  // Enquanto focado: mostra o que o usuário está digitando.
-  // Fora de foco: mostra o valor formatado (ou vazio se zero).
-  const display = focused ? raw : (value ? formatNumber(value) : '');
+  // Durante foco: mostra o que está sendo digitado.
+  // Fora de foco: mostra o valor externo formatado.
+  const centsStr = focused
+    ? rawDigits
+    : Math.round((value || 0) * 100) > 0
+      ? String(Math.round((value || 0) * 100))
+      : '';
+  const display = fmtDigits(centsStr);
 
   return (
     <TextInput
@@ -57,8 +58,7 @@ export default function CurrencyInput({ value, onChangeValue, style }) {
       onChangeText={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      keyboardType="numeric"
-      inputMode="decimal"
+      keyboardType="number-pad"
       placeholder="0,00"
       placeholderTextColor={colors.textMuted}
       style={[

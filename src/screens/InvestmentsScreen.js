@@ -168,32 +168,34 @@ export default function InvestmentsScreen() {
         </Text>
       </View>
 
-      {/* Resumo da carteira */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryCol}>
-            <Text style={[styles.sLabel, { color: colors.textSecondary }]}>Investido</Text>
-            <Text style={[styles.sValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-              {formatBRL(totals.invested)}
-            </Text>
+      {/* Resumo da carteira — só mostra quando há investimentos */}
+      {investments.length > 0 && (
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryCol}>
+              <Text style={[styles.sLabel, { color: colors.textSecondary }]}>Investido</Text>
+              <Text style={[styles.sValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                {formatBRL(totals.invested)}
+              </Text>
+            </View>
+            <View style={styles.summaryCol}>
+              <Text style={[styles.sLabel, { color: colors.textSecondary }]}>Valor atual</Text>
+              <Text style={[styles.sValue, { color: colors.primary }]} numberOfLines={1} adjustsFontSizeToFit>
+                {formatBRL(totals.current)}
+              </Text>
+            </View>
           </View>
-          <View style={styles.summaryCol}>
-            <Text style={[styles.sLabel, { color: colors.textSecondary }]}>Valor atual</Text>
-            <Text style={[styles.sValue, { color: colors.primary }]} numberOfLines={1} adjustsFontSizeToFit>
-              {formatBRL(totals.current)}
+          <View style={[styles.resultBanner, { backgroundColor: colors.alpha(resultColor, 0.12), borderColor: resultColor }]}>
+            <Text style={[styles.rLabel, { color: colors.textSecondary }]}>Rentabilidade total</Text>
+            <Text style={[styles.rValue, { color: resultColor }]}>
+              {sign}{formatBRL(totals.result)}
+            </Text>
+            <Text style={[styles.rPct, { color: resultColor }]}>
+              {sign}{formatPercent(totals.resultPct)}
             </Text>
           </View>
         </View>
-        <View style={[styles.resultBanner, { backgroundColor: colors.alpha(resultColor, 0.12), borderColor: resultColor }]}>
-          <Text style={[styles.rLabel, { color: colors.textSecondary }]}>Rentabilidade total</Text>
-          <Text style={[styles.rValue, { color: resultColor }]}>
-            {sign}{formatBRL(totals.result)}
-          </Text>
-          <Text style={[styles.rPct, { color: resultColor }]}>
-            {sign}{formatPercent(totals.resultPct)}
-          </Text>
-        </View>
-      </View>
+      )}
 
       {/* Alocação por classe */}
       {groups.length > 0 && (
@@ -232,9 +234,31 @@ export default function InvestmentsScreen() {
       </Text>
 
       {investments.length === 0 && (
-        <Text style={[styles.empty, { color: colors.textMuted }]}>
-          Nenhum investimento cadastrado. Toque em "+ Adicionar investimento" para começar.
-        </Text>
+        <View style={[styles.onboardCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={styles.onboardEmoji}>💼</Text>
+          <Text style={[styles.onboardTitle, { color: colors.text }]}>Você já está investindo?</Text>
+          <Text style={[styles.onboardSub, { color: colors.textSecondary }]}>
+            Se você já tem aplicações, cadastre cada uma para acompanhar a rentabilidade. Se está começando agora, adicione seu primeiro aporte!
+          </Text>
+          <View style={styles.onboardBtns}>
+            <TouchableOpacity
+              style={[styles.onboardBtn, { backgroundColor: colors.primary }]}
+              onPress={addInvestment}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="checkmark-circle" size={18} color="#fff" />
+              <Text style={styles.onboardBtnTxt}>Sim, já invisto!</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.onboardBtn, { backgroundColor: colors.cardAlt, borderWidth: 1.5, borderColor: colors.border }]}
+              onPress={addInvestment}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="rocket-outline" size={18} color={colors.primary} />
+              <Text style={[styles.onboardBtnTxt, { color: colors.primary }]}>Quero começar agora</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
       {investments.map((inv) => (
@@ -305,6 +329,13 @@ const styles = StyleSheet.create({
   detailValue: { fontSize: 13, fontWeight: '600' },
   sectionTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', marginBottom: 12, marginLeft: 2 },
   empty: { fontSize: 13, fontStyle: 'italic', marginBottom: 12 },
+  onboardCard: { borderRadius: 18, borderWidth: 1, padding: 24, marginBottom: 14, alignItems: 'center' },
+  onboardEmoji: { fontSize: 48, marginBottom: 12 },
+  onboardTitle: { fontSize: 19, fontWeight: '900', marginBottom: 8, textAlign: 'center' },
+  onboardSub: { fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: 20 },
+  onboardBtns: { width: '100%', gap: 10 },
+  onboardBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingVertical: 13, gap: 8 },
+  onboardBtnTxt: { fontSize: 15, fontWeight: '800', color: '#fff' },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingVertical: 14, marginTop: 4 },
   addText: { fontSize: 16, fontWeight: '800', marginLeft: 4 },
   note: { fontSize: 12, lineHeight: 18, marginTop: 16 },
