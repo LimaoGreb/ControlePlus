@@ -105,7 +105,12 @@ function extractNameFilter(t) {
     'pode','dar','favor','pfavor','desde',
     ...MONTH_PT.map(norm),
   ];
-  const tNorm = norm(t);
+  // Remove padrões de tempo com número (ex: "últimos 3 meses") antes de extrair o filtro
+  const tStripped = t
+    .replace(/\b[uú]ltimos?\s+\d+\s*(?:m[eê]s|meses)\b/gi, ' ')
+    .replace(/\bprimeiros?\s+\d+\s*(?:m[eê]s|meses)\b/gi, ' ')
+    .replace(/\b\d+\s*(?:m[eê]s|meses)\b/gi, ' ');
+  const tNorm = norm(tStripped);
   const re = new RegExp(`\\b(${noise.map(w => norm(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
   // Remove emojis and special Unicode symbols before final cleaning
   const cleaned = tNorm.replace(re, ' ').replace(/[?!.,;]/g, '').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{1F300}-\u{1F9FF}]/gu, '').replace(/\s+/g, ' ').trim();

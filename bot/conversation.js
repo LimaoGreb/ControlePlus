@@ -1,4 +1,13 @@
 // Maquina de estados do Jarvis — gerencia todos os fluxos de conversa.
+
+// Parse de número no formato brasileiro: "2.500,00" → 2500, "1.500" → 1500, "500,50" → 500.5
+function parseBRNumber(text) {
+  const brMatch = text.match(/\b(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?)\b/);
+  if (brMatch) return parseFloat(brMatch[1].replace(/\./g, '').replace(',', '.'));
+  const simpleMatch = text.match(/\b(\d+(?:,\d{1,2})?)\b/);
+  if (simpleMatch) return parseFloat(simpleMatch[1].replace(',', '.'));
+  return null;
+}
 import { parseExpenseMessage, extractField } from './claudeClient.js';
 import { classifyIntent } from './geminiClient.js';
 import { answerQuery } from './queryHandler.js';
@@ -93,6 +102,19 @@ export async function handleMessage(chatId, text, firstName) {
     session.pendingCmd = null;
   }
   session.lastActivity = Date.now();
+
+  // Cancel universal — qualquer palavra de cancelamento encerra QUALQUER fluxo ativo
+  if (ACTIVE_STEPS.has(session.step)) {
+    const t = text.trim().toLowerCase().replace(/[!?.]/g, '');
+    if (/^(cancelar?|cancela|cancelo|apaga[r]?|apague|excluir?|exclu[ií]|desistir?|sair|pare|para|\/cancelar?|stop|abort)$/.test(t)) {
+      session.step = 'idle';
+      session.data = {};
+      session.pendingCmd = null;
+      session.askingFor = null;
+      await sendMessage(chatId, 'OK, cancelado! 😊 Em que posso ajudar?');
+      return;
+    }
+  }
 
   // Recupera contexto do Firebase ao criar sessão nova (bot restart)
   if (!session._contextLoaded) {
@@ -582,8 +604,7 @@ export async function handlePhotoMessage(chatId, photos, firstName) {
 // ─── Project collection ───────────────────────────────────────────────────────
 
 async function handleCollectingProject(chatId, text, session) {
-  const numMatch = text.match(/(\d+(?:[.,]\d{1,2})?)/);
-  const num = numMatch ? parseFloat(numMatch[1].replace(',', '.')) : null;
+  const num = parseBRNumber(text);
   const stage = session.data.projectStage || 0;
 
   if (stage === 0) {
@@ -638,12 +659,11 @@ async function confirmProject(chatId, session, name, target, monthly, saved = 0)
 // ─── Income collection ────────────────────────────────────────────────────────
 
 async function handleCollectingIncome(chatId, text, session) {
-  const numMatch = text.match(/(\d+(?:[.,]\d{1,2})?)/);
-  if (!numMatch) {
+  const value = parseBRNumber(text);
+  if (!value) {
     await sendMessage(chatId, 'Não entendi o valor. Tente: _"1500"_ ou _"R$ 1.500,00"_');
     return;
   }
-  const value = parseFloat(numMatch[1].replace(',', '.'));
   const { incomeName: name, monthIndex: mi } = session.data;
   const label = `💰 *${name}* — R$ ${value.toFixed(2)} · ${MONTH_NAMES[mi]}`;
   session.step = 'confirming_cmd';

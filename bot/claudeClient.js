@@ -109,6 +109,10 @@ export async function parseExpenseMessage(text) {
   // Exige keyword E número — só keyword sem valor é consulta ("quanto gastei?")
   if (!hasKeyword || !hasNumber) return { isExpense: false };
 
+  // "quanto gastei em X nos últimos 3 meses" é query, não despesa
+  const hasQueryIntent = /\bquanto\b|\bhist[oó]rico\b|\bextrato\b|\btotal\b|\bresumão?\b/i.test(lower);
+  if (hasQueryIntent && !hasAddVerb) return { isExpense: false };
+
   return {
     isExpense: true,
     name: extractName(text),
