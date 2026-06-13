@@ -2,6 +2,38 @@
 
 ---
 
+## v2.5.3 (app + bot) — 2026-06-13
+
+### feat: Jarvis com acesso total ao app — CRUD completo
+
+**Contexto:** Implementação futura-proof de todos os comandos CRUD no JarvisSyncManager.
+A partir desta versão nenhum novo APK será necessário para novas operações de edição/deleção.
+
+**Arquivos alterados:**
+- `src/components/JarvisSyncManager.js` — 12 novos tipos de comando no `executeCommand`:
+  - `RENAME_EXPENSE` — renomear despesa por nome
+  - `EDIT_EXPENSE_VALUE` — editar valor de despesa
+  - `EDIT_EXPENSE_PAYMENT` — editar forma de pagamento de despesa
+  - `DELETE_EXPENSE` — apagar despesa(s) por nome
+  - `MOVE_EXPENSE` — mover despesa entre fixo e variável (usa `addItem` + `removeItem`)
+  - `RENAME_PROJECT` — renomear projeto
+  - `EDIT_PROJECT` — editar meta/mensal/guardado de projeto
+  - `DELETE_PROJECT` — apagar projeto
+  - `BULK_CONCLUDE_MONTH` — concluir/reabrir todas as despesas de um mês
+  - `ADD_CONTRIBUTION` — adicionar contribuição/dízimo
+  - `DELETE_INCOME` — remover renda
+  - `EDIT_INCOME_VALUE` — editar valor de renda
+  - Adicionados: `removeItem`, `concludeAllItems` (DataContext); `removeProject` (SettingsContext)
+- `bot/geminiClient.js` — 7 novos intents no `localClassify` + PROMPT do Gemini atualizado:
+  `rename_expense`, `edit_expense`, `delete_expense`, `move_expense`,
+  `rename_project`, `edit_project`, `delete_project`
+- `bot/conversation.js` — handlers de confirmação + mensagens de sucesso para todos os novos tipos
+
+**Score classificador:** 2780/2780 (100%) mantido.
+**Build necessária:** Sim (apenas Gabriel). Namorada não precisa baixar (não usa Jarvis).
+
+---
+
 ## v2.5.4 (bot) — 2026-06-13
 
 ### feat: classificador Jarvis 100% — suite expandida 2780/2780 seeds
