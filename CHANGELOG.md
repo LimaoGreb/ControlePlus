@@ -2,6 +2,31 @@
 
 ---
 
+## v2.5.3 (bot) — 2026-06-13
+
+### feat: classificador Jarvis 100% — 2315/2315 seeds (0 falhas)
+
+**Contexto:** `localClassify` em `bot/geminiClient.js` foi elevado de 97% para 100% via
+correções cirúrgicas de regex. A suite de testes em `bot/test-classifier.js` tem 2315 seeds.
+
+**Arquivos alterados:**
+- `bot/geminiClient.js` — 15+ correções de regex no `localClassify`
+- `bot/test-classifier.js` — `checkResult` agora compara filtros accent-insensitive (NFD)
+
+**Correções principais:**
+- **Syntax fix:** regex do chat guard tinha `|^\\/` que fechava o literal regex prematuramente
+- **CARD_RE:** `nu\b` → `\bnu\b` (evita match de "nu" dentro de "diminuí")
+- **Noise list:** adicionados `estou`, `esteve`, `desde` para não vazar como filtro de despesa
+- **earlyGeneric:** adicionados `estou`, `desde`, `finanças` para bloquear by_name_range em análises
+- **Analysis regex:** `financ\w*` → `finan[çc]\w*` para casar "finanças" (ç ≠ c no regex JS)
+- **hasQuery:** `gst\w+` adicionado para typo "gstei" (variante de "gastei")
+- **Chat blocker:** `portf\w*` adicionado para "como vai meu portfolio" → investments
+- **renda variável** → investments (bloqueio já estava no income, agora funciona sem syntax error)
+- **quanto falta** → projects (removido requisito de "pra/pro/para")
+- **compare:** `diminuí os gastos?` e `gastei mais em março ou abril` agora classificados corretamente
+
+---
+
 ## v2.5.2 — 2026-06-12
 
 ### Fix: header do HomeScreen mostrava nome errado em modo parceiro
