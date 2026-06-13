@@ -286,7 +286,7 @@ function localClassify(t) {
     return { intent: 'query', params: { subtype: 'investments', month } };
 
   // ── Apagar projeto ────────────────────────────────────────────────────────
-  if (/\b(apaga[r]?|exclu[ií][r]?|excluir|remov[ae][r]?|delet[ae][r]?|cancela[r]?)\b.{0,25}\b(projeto|meta|objetivo)\b/i.test(t)) {
+  if (/\b(apaga[r]?|exclu[ií][r]?|excluir|remov[ae][r]?|delet[ae][r]?|cancela[r]?|deleta[r]?)\b.{0,25}\b(projeto|meta|objetivo)\b/i.test(t)) {
     const nameRaw = t
       .replace(/apaga[r]?|exclu[ií][r]?|excluir|remov[ae][r]?|delet[ae][r]?|cancela[r]?|projeto|meta|objetivo/gi, '')
       .replace(/\b(o|a|os|as|esse|esta|este|meu|minha)\b/gi, '')
@@ -295,7 +295,7 @@ function localClassify(t) {
   }
 
   // ── Renomear projeto ──────────────────────────────────────────────────────
-  if (/renomei[ao]?\w*\b.{0,25}\b(projeto|meta)\b|\bmuda[r]?\s+o\s+nome\s+(do\s+projeto|da\s+meta)\b/i.test(t)) {
+  if (/renomei[ao]?\w*\b.{0,25}\b(projeto|meta)\b|\b(muda[r]?|edita[r]?)\s+o?\s*nome\s+(do\s+projeto|da\s+meta)\b|\bedita[r]?\s+nome\s+(do\s+)?projeto\b/i.test(t)) {
     const paraIdx = t.search(/\s(para|pra)\s/i);
     const beforePara = paraIdx >= 0 ? t.substring(0, paraIdx) : t;
     const afterPara = paraIdx >= 0 ? t.substring(paraIdx).replace(/^\s+(para|pra)\s+/i, '').trim() : null;
@@ -306,7 +306,7 @@ function localClassify(t) {
   }
 
   // ── Editar projeto (meta/mensal) ──────────────────────────────────────────
-  if (/muda[r]?\s+(a\s+meta|o\s+mensal|o\s+objetivo)|altera[r]?\s+(a\s+meta|o\s+mensal)|aumenta[r]?\s+(a\s+meta|o\s+objetivo)/i.test(t) &&
+  if (/muda[r]?\s+(a\s+meta|o\s+mensal|o\s+objetivo)|altera[r]?\s+(a\s+meta|o\s+mensal)|aumenta[r]?\s+(a\s+meta|o\s+objetivo)|edita[r]?\s+(a\s+meta|o\s+mensal|o\s+objetivo)/i.test(t) &&
       !/\b(despesa|gasto|conta|netflix|ifood|aluguel|internet|luz|agua|energia)\b/i.test(t)) {
     const numMatch = t.match(/\d+(?:[.,]\d{1,2})?/);
     const new_value = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
@@ -329,7 +329,7 @@ function localClassify(t) {
   }
 
   // ── Renomear despesa ──────────────────────────────────────────────────────
-  if ((/\brenomei[ao]?\w*\b|\bmuda[r]?\s+o\s+nome\s+(da|do)\s+\w/i.test(t)) &&
+  if ((/\brenomei[ao]?\w*\b|\b(muda[r]?|edita[r]?)\s+o?\s*nome\s+(da|do)\s+\w|\bedita[r]?\s+nome\s+(da|do)\s+\w/i.test(t)) &&
       !/\b(projeto|meta|objetivo)\b/i.test(t) &&
       !/\bmeu\s*nome\b|\bme\s*chamo\b|\bpode\s*me\s*chamar\b/i.test(t)) {
     const paraIdx = t.search(/\s(para|pra)\s/i);
@@ -342,7 +342,7 @@ function localClassify(t) {
   }
 
   // ── Editar valor da despesa ───────────────────────────────────────────────
-  if (/muda[r]?\s+o\s+valor|corrig[ie][r]?\s+o\s+valor|atualiz\w*\s+o\s+valor|altera[r]?\s+o\s+valor|novo\s+valor\s+(do|da)\b/i.test(t) &&
+  if (/muda[r]?\s+o\s+valor|corrig[ie][r]?\s+o\s+valor|atualiz\w*\s+o\s+valor|altera[r]?\s+o\s+valor|novo\s+valor\s+(do|da)\b|edita[r]?\s+o?\s*valor\s+(do|da)\b/i.test(t) &&
       !/\b(projeto|meta|objetivo|mensal)\b/i.test(t)) {
     const numMatch = t.match(/\d+(?:[.,]\d{1,2})?/);
     const new_value = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
