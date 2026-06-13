@@ -50,8 +50,8 @@ function detectFollowUp(text, lastQuery) {
   if (!lastQuery) return null;
   const t = text.toLowerCase().trim();
 
-  // Só considera follow-up se for curto OU começa com "e "
-  if (t.length > 35 && !FOLLOWUP_PREFIX.test(t)) return null;
+  // Só considera follow-up se for muito curto OU começa com "e "
+  if (t.length > 20 && !FOLLOWUP_PREFIX.test(t)) return null;
 
   const month = resolveFollowUpMonth(t);
   if (month) {
