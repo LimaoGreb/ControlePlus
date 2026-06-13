@@ -414,15 +414,40 @@ async function dispatchIntent(chatId, session, classified) {
   }
 
   if (intent === 'conclude_expense') {
+    const snapshot = await readUserSnapshot(chatId);
+    session.snapshot = snapshot;
+    const months = snapshot?.months || {};
+    const mi = new Date().getMonth();
+
+    if (params?.all) {
+      const pending = [];
+      for (const section of ['fixed', 'variable']) {
+        for (const item of (months[mi]?.[section] || [])) {
+          if (!item.concluded) pending.push({ mi, section, item });
+        }
+      }
+      if (pending.length === 0) {
+        await sendMessage(chatId, `✅ Não há despesas em aberto em ${MONTH_NAMES[mi]}.`);
+        session.step = 'done';
+        return;
+      }
+      const label = pending.map(m => `• *${m.item.name}* — R$ ${(m.item.value||0).toFixed(2)}`).join('\n');
+      session.step = 'confirming_cmd';
+      session.pendingCmd = {
+        type: 'CONCLUDE_EXPENSE',
+        params: { expense_name: null, monthIndex: mi, all: true },
+        label: `✅ Concluir *${pending.length} despesa(s)* de ${MONTH_NAMES[mi]}:\n${label}`,
+      };
+      await sendMessage(chatId, `${session.pendingCmd.label}\n\nConfirma? _(sim/não)_`);
+      return;
+    }
+
     const expenseName = (params?.expense_name || '').trim();
     if (!expenseName || expenseName.length < 2) {
       await sendMessage(chatId, `Qual despesa quer concluir? Ex: _"conclua a Netflix"_`);
       return;
     }
-    const snapshot = await readUserSnapshot(chatId);
-    session.snapshot = snapshot;
     const query = expenseName.toLowerCase();
-    const months = snapshot?.months || {};
     const matches = [];
     for (let mi = 0; mi < 12; mi++) {
       for (const section of ['fixed', 'variable']) {

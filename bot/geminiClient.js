@@ -292,8 +292,13 @@ function localClassify(t) {
     return { intent: 'reopen_expense', params: { expense_name: nameRaw.length >= 2 ? nameRaw : null, all: isAll } };
   }
 
-  // ── Bulk conclude (não suportado) — precisa vir ANTES do conclude individual ──
-  if (/\b(conclu[ií]|conclua|concluir)\b.{0,25}\b(todos?\s*(?:os\s*)?(?:meses?|gastos?|contas?)?|todas?\s*(?:as\s*)?(?:despesas?|contas?)?|tudo)\b|\b(todos?\s*os\s*meses?|todas?\s*as\s*despesas?|todas\s*as\s*contas)\b.{0,25}\b(conclu|concluir)\b|marca\w*.{0,25}\b(tudo|todos?\s+os\s+gastos?|todas?\s+as\s+despesas?)\b|\bfechar\b.{0,25}todos?\s+os\s+meses?\b/i.test(t)) {
+  // ── Bulk conclude (todas as despesas do mês atual) — precisa vir ANTES do conclude individual ──
+  if (/\b(conclu[ií]|conclua|concluir)\b.{0,25}\b(todos?\s*(?:os\s*)?(?:gastos?|contas?)?|todas?\s*(?:as\s*)?(?:despesas?|contas?)?|tudo)\b|\b(todas?\s*as\s*despesas?|todas\s*as\s*contas)\b.{0,25}\b(conclu|concluir)\b|marca\w*.{0,30}\b(tudo|todas?\b|todos?\s+os\s+gastos?|todas?\s+as\s+despesas?)\b/i.test(t) &&
+      !/todos?\s+os\s+meses?/i.test(t)) {
+    return { intent: 'conclude_expense', params: { all: true } };
+  }
+  // Fechar todos os meses ainda não é suportado
+  if (/\bfechar\b.{0,25}todos?\s+os\s+meses?\b|todos?\s+os\s+meses\b.{0,25}conclu/i.test(t)) {
     return { intent: 'unsupported', params: { feature: 'bulk_conclude' } };
   }
 
