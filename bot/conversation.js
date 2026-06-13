@@ -538,7 +538,7 @@ async function dispatchIntent(chatId, session, classified) {
   const lower2 = (typeof text === 'string' ? text : '').toLowerCase().trim();
   const isGreeting = /^(jarvis\b|oi\b|ol[aá]\b|e\s*a[ií]\b|bom\s*dia|boa\s*tarde|boa\s*noite|hey\b|opa\b|salve\b|tudo\s*bem|help\b|ajuda\b|\/start|inicio\b)/.test(lower2);
   if (!isGreeting) {
-    await sendMessage(chatId, `Hmm, não entendi 🤔 Pode reformular?\n\nExemplos:\n• _"como tá o mês?"_\n• _"quanto gastei no ifood esse mês?"_\n• _"conclua a Netflix"_`);
+    await sendMessage(chatId, `Não entendi muito bem. Pode falar de outro jeito?\n\n_"como tá o mês?"_ · _"quanto gastei no ifood?"_ · _"conclui a Netflix"_`);
     session.step = 'done';
     return;
   }
@@ -610,29 +610,29 @@ async function handleCollectingProject(chatId, text, session) {
   if (stage === 0) {
     const name = text.trim().replace(/[?!.,;]/g, '').trim();
     if (!name || name.length < 2) {
-      await sendMessage(chatId, '🎯 Nome muito curto. Tenta de novo! _(ex: "Viagem", "Carro novo")_');
+      await sendMessage(chatId, 'Nome muito curto. Como você quer chamar esse projeto?');
       return;
     }
     session.data.projectName = name;
     session.data.projectStage = 1;
-    await sendMessage(chatId, `🎯 Projeto *${name}*!\n\n💰 Qual o valor total da meta? _(ex: "8000" ou "R$ 5.000")_`);
+    await sendMessage(chatId, `*${name}* — boa escolha! 🎯\n\nQual é o valor total da meta?`);
     return;
   }
 
   if (stage === 1) {
     if (!num || num <= 0) {
-      await sendMessage(chatId, '💰 Não entendi o valor. Tenta: _"8000"_ ou _"R$ 5.000"_');
+      await sendMessage(chatId, 'Qual o valor da meta? Me manda assim: _8000_ ou _R$ 5.000_');
       return;
     }
     session.data.projectTarget = num;
     session.data.projectStage = 2;
-    await sendMessage(chatId, `💰 Meta: R$ ${num.toFixed(2)}\n\n📅 Quanto você pretende guardar por mês? _(ex: "300")_`);
+    await sendMessage(chatId, `Meta de *R$ ${num.toFixed(2)}*. \n\nQuanto você quer guardar por mês?`);
     return;
   }
 
   if (stage === 2) {
     if (!num || num <= 0) {
-      await sendMessage(chatId, '📅 Não entendi o valor. Tenta: _"300"_ ou _"500 reais"_');
+      await sendMessage(chatId, 'Quanto por mês? Me manda o valor: _300_ ou _500_');
       return;
     }
     session.data.projectMonthly = num;
@@ -653,7 +653,7 @@ async function confirmProject(chatId, session, name, target, monthly, saved = 0)
   const label = `🎯 *${name}*\n💰 Meta: R$ ${target.toFixed(2)}\n📅 Guardar: R$ ${monthly.toFixed(2)}/mês${savedStr}${timeStr ? `\n⏱ Estimado: ${timeStr}` : ''}`;
   session.step = 'confirming_cmd';
   session.pendingCmd = { type: 'ADD_PROJECT', params: { name, target, monthly, saved }, label };
-  await sendMessage(chatId, `Confirma o projeto:\n\n${label}\n\nConfirma? _(sim/não)_`);
+  await sendMessage(chatId, `Tudo certo, olha só:\n\n${label}\n\nConfirma? _(sim/não)_`);
 }
 
 // ─── Income collection ────────────────────────────────────────────────────────
@@ -761,14 +761,14 @@ async function askNextMissing(chatId, session) {
 
   if (!data.value) {
     session.askingFor = 'value';
-    await sendMessage(chatId, `💰 Quanto você gastou em *${data.name}*?`);
+    await sendMessage(chatId, `Qual foi o valor de *${data.name}*?`);
     return;
   }
 
   if (data.payment == null) {
     session.askingFor = 'payment';
     await sendMessage(chatId,
-      `💳 Como foi o pagamento? _(Pix, débito, crédito, Nubank...)_\nOu manda _"pular"_ para deixar em branco.`
+      `Como pagou? _(Pix, débito, Nubank, crédito...)_\nOu manda _"pular"_ pra deixar em branco.`
     );
     return;
   }
@@ -780,7 +780,7 @@ async function askNextMissing(chatId, session) {
       session.askingFor = 'creditCard';
       const list = cards.map(c => `• ${c.name}`).join('\n');
       await sendMessage(chatId,
-        `💳 No crédito — qual cartão?\n\n${list}\n\nOu manda _"pular"_ para Crédito genérico.`
+        `Qual cartão de crédito?\n\n${list}\n\nOu _"pular"_ pra deixar como Crédito genérico.`
       );
       return;
     }
@@ -791,7 +791,7 @@ async function askNextMissing(chatId, session) {
   if (data.dueDay === undefined) {
     session.askingFor = 'dueDay';
     await sendMessage(chatId,
-      `📅 Tem data de vencimento? _(ex: "dia 15")_\nOu manda _"pular"_ para deixar sem.`
+      `Tem data de vencimento? _(ex: dia 15)_\nOu _"pular"_ pra deixar sem.`
     );
     return;
   }
