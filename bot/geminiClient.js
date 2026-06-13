@@ -13,12 +13,18 @@ function parseMonthRange(t) {
   const now = new Date().getMonth();
   if (/desde\s*(o\s*)?in[íi]cio\s*(do\s*ano)?|desde\s*janeiro|do\s*in[íi]cio\s*do\s*ano|a\s*partir\s*de\s*janeiro/i.test(t))
     return { from: 0, to: now };
+  // "desde março", "desde fevereiro" etc
+  const desdeMatch = t.match(/desde\s+(\w+)/i);
+  if (desdeMatch) {
+    const mi = MONTH_PT.findIndex(m => desdeMatch[1].toLowerCase().startsWith(m.substring(0, 3)));
+    if (mi >= 0) return { from: mi, to: now };
+  }
   const apartirMatch = t.match(/a\s*partir\s*de\s+(\w+)/i);
   if (apartirMatch) {
     const mi = MONTH_PT.findIndex(m => apartirMatch[1].toLowerCase().startsWith(m.substring(0, 3)));
     if (mi >= 0) return { from: mi, to: now };
   }
-  if (/ano\s*(completo|inteiro|todo)|o\s*ano\s*inteiro|anual\b/i.test(t))
+  if (/ano\s*(completo|inteiro|todo)|o\s*ano\s*inteiro|anual\b|ao\s*longo\s*(do\s*)?ano/i.test(t))
     return { from: 0, to: 11 };
   if (/esse\s*ano\b|este\s*ano\b|nesse\s*ano\b|neste\s*ano\b/i.test(t))
     return { from: 0, to: now };
@@ -27,6 +33,12 @@ function parseMonthRange(t) {
   const ultMatch = t.match(/[uú]ltimos?\s+(\d+|tr[eê]s|dois?|quatro|cinco|seis)\s*mes/i);
   if (ultMatch) { const n = parseNum(ultMatch[1]); return { from: Math.max(0, now - n + 1), to: now }; }
   if (/[uú]ltimos\s+meses\b/i.test(t)) return { from: Math.max(0, now - 2), to: now };
+  // "dos 6 meses", "nos 6 meses" — bare number of months → últimos N meses
+  const bareMonthMatch = t.match(/\b(\d+)\s*mes/i);
+  if (bareMonthMatch && !t.match(/[uú]ltimos|primeiros/i)) {
+    const n = parseInt(bareMonthMatch[1]);
+    if (n >= 2 && n <= 12) return { from: Math.max(0, now - n + 1), to: now };
+  }
   return null;
 }
 
@@ -36,9 +48,9 @@ function getMonthName(t) {
     return MONTH_PT[((new Date().getMonth() - 1) + 12) % 12];
   if (/pr[oó]ximo\s*m[eê]s|m[eê]s\s*(que\s*vem|seguinte)/i.test(t))
     return MONTH_PT[(new Date().getMonth() + 1) % 12];
-  if (/m[eê]s\s*(atual|corrente|de\s*hoje|vigente)|esse\s*m[eê]s|este\s*m[eê]s/i.test(t))
+  if (/m[eê]s\s*(atual|corrente|de\s*hoje|vigente)|esse\s*m[eê]s|este\s*m[eê]s|no\s*m[eê]s\b|\bdo\s*m[eê]s\b/i.test(t))
     return MONTH_PT[new Date().getMonth()];
-  return MONTH_PT.find(m => t.includes(m)) || null;
+  return MONTH_PT.find(m => new RegExp('\\b' + m + '\\b').test(t)) || null;
 }
 
 // Remove palavras de ruído e retorna filtro de nome, ou null se não sobrar nada útil
@@ -62,13 +74,32 @@ function extractNameFilter(t) {
     'show','summary','financeiro','corrente','vigente','gostaria','olha',
     'apura','atuais','detail','detalhes','detalhe','informa','informar',
     'valor','valores','periodo','historico',
-    // palavras de quantidade/totalidade — "ao todo", "em geral", etc.
+    // palavras de quantidade/totalidade
     'ao','todo','todos','todas','tudo','geral','gerais',
+    // verbos de ação — não são nomes de despesa
+    'guardei','guarde','poupei','economizei','economize','coloquei','adicionei','depositei',
+    'situacao','situac','status','fechamento','financas','financeiro','financeira',
+    // termos genéricos de query
+    'saiu','sobrou','sobra','sobrando','consumiu','levou','aconteceu','pesou',
+    'vermelho','azul','resultado','visao','reais','sobrado','gastou','pesaram','sangrou',
+    // auxiliares e indicadores de análise — nunca são nomes de despesa
+    'foram','estao','andaram','financeiramente',
+    'ultimos','primeiros','periodo',
+    // slang/gírias de preenchimento — nunca são nomes de despesa
+    'cara','irmao','mano','brow','po','tipo','bicho','meu','oxe',
+    // English filler words
+    'show','me','my','how','much','spend','balance','summary',
+    // verbos de estado/ação que não são despesas
+    'gastando','gstei','arruinou','destruiu','estao','preciso','saber','estou','esteve',
+    // preenchimento de frases longas
+    'longo','completo','completa','detalhado','detalhada','mez','desse','nesse',
+    'pode','dar','favor','pfavor','desde',
     ...MONTH_PT.map(norm),
   ];
   const tNorm = norm(t);
   const re = new RegExp(`\\b(${noise.map(w => norm(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
-  const cleaned = tNorm.replace(re, ' ').replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim();
+  // Remove emojis and special Unicode symbols before final cleaning
+  const cleaned = tNorm.replace(re, ' ').replace(/[?!.,;]/g, '').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{1F300}-\u{1F9FF}]/gu, '').replace(/\s+/g, ' ').trim();
   return (cleaned.length >= 2 && !/^\d+$/.test(cleaned)) ? cleaned.toLowerCase() : null;
 }
 
@@ -76,9 +107,47 @@ function extractNameFilter(t) {
 function localClassify(t) {
   const month = getMonthName(t);
 
+  // ── Chat / ajuda — detecta antes de tudo para não engolir perguntas genéricas ──
+  if (/\b(o\s*que\s*(voc[eê]\s*)?(faz|consegue\s*fazer|pode\s*fazer|sabe\s*fazer)|o\s*que\s*posso\s*fazer|como\s*(voc[eê]\s*)?funciona|como\s*usar\b|pode\s*(me\s*)?ajudar\b|voc[eê]\s+[eé]\s+(um\s*)?(bot|assistente|ia)|oi\b|ol[aá]\b|bom\s*dia|boa\s*tarde|boa\s*noite|boa\s*semana|e\s*ai\b|e\s*aí\b|tudo\s*(bem|bom|certo)\b|t[aá]\s*(bom|bem|certo|ok)\b|boa\b|valeu\b|obrigad|fala\s*bot|fala\s*jarvis|ajuda\b|help\b|hey\b|como\s+vai\b|me\s+conta\b|fala\s+a[ií]\b|e\s+(voc[eê]|vc)\b|^legal$|^show$|^perfeito$|^exatamente$|^entendi$|^talvez$|^muito\s+bom$|^isso\s+mesmo$|^isso\b|^claro\b|^massa\b|^top\b|^beleza\b|^blz\b)/i.test(t) &&
+      !/(quanto|gast|resumo|saldo|paguei|despesa|saiu|recebi|financ|m[eê]s\b|meses?\b|dinheiro|bolsa|carteira|poupan|investim|portf\w*|renda\b|projeto|reserva)/i.test(t))
+    return { intent: 'chat', params: {} };
+
+  // Comandos Telegram (/start, /help etc.)
+  if (t.startsWith('/')) return { intent: 'chat', params: {} };
+
+  // Respostas curtas de conversa que não são queries
+  if (/^(legal|show|perfeito|exatamente|entendi|talvez|muito\s+bom|isso\s+mesmo|claro|massa|top|beleza|blz|demais|bacana|fixe|maravilha|pode|pow+|uhu|vlw|falou|flw)$/i.test(t))
+    return { intent: 'chat', params: {} };
+
+  // ── "freela/freelance foi pago" → renda recebida (precisa vir ANTES da renda geral) ─
+  if (/\b(freela|freelance)\b.{0,20}\b(foi|est[aá])\s*pag[ao]\b/i.test(t)) {
+    const numMatch = t.match(/[\d.,]+/);
+    const value = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
+    return { intent: 'income', params: { name: 'Freelance', value, month } };
+  }
+
+  // ── "entrou X", "entrada de X na conta" — renda com número multi-dígito ──
+  if (/\b(entrou|caiu\s*(?:na\s*conta)?)\s+[\d.,]+|\bentrada\s+de\s+[\d.,]+/i.test(t) &&
+      !/\b(quanto|como|resumo|total|gastos?|hist[oó]rico|investimento)\b/i.test(t)) {
+    const numMatch = t.match(/[\d.,]+/);
+    const value = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
+    return { intent: 'income', params: { name: 'Renda', value, month } };
+  }
+
   // ── Renda / receita ───────────────────────────────────────────────────────
-  if (/\b(renda|sal[aá]rio|receita|recebi|proventos|faturei|faturamento|ganho|ganhei|recebimento|freela|freelance|comiss[aã]o|aluguel|pensao|pens[aã]o|benef[ií]cio|b[oô]nus)\b/.test(t) &&
-      !/\b(quanto|como|resumo|total|gastos?|hist[oó]rico|investimento)\b/.test(t)) {
+  if (/\b(renda|sal[aá]rio|receita|recebi|faturei|faturamento|ganho|ganhei|recebimento|freela|freelance|comiss[aã]o|aluguel|pensao|pens[aã]o|benef[ií]cio|b[oô]nus|gratifica[çc][aã]o|honor[aá]rios?|f[eé]rias\b|13[oº°]?\s*(sal[aá]rio)?|trampo\s*(pagou|caiu))\b/.test(t) &&
+      !/\b(quanto|como|resumo|total|gastos?|hist[oó]rico|investimento)\b/.test(t) &&
+      !/renda\s*fixa|renda\s*vari[aá]vel/i.test(t) &&
+      !/\b(vencimento|vence\b|conclua|concluir|parcela|parcelei|quita\w*|quit[ae][ií]\b|conclui|paguei|liquidei|liquidou|liquidar)\b/i.test(t) &&
+      !/marc\w*\s*.{0,20}(pago|paga)\b/i.test(t) &&
+      !/(t[aá]|foi|est[aá]|fica)\s*pag[ao]\b/i.test(t) &&
+      !/deu\s*baixa|d[aá]\s*baixa/i.test(t) &&
+      !/desconclui/i.test(t) &&
+      !/reabr\w*/i.test(t) &&
+      !/volta\b.{0,30}\baberto\b/i.test(t) &&
+      !/\b(muda|troca|atualiza|novo|nova)\b.{0,20}\bdia\b/i.test(t) &&
+      !/vencimento\b/i.test(t) &&
+      !/d[íi]zimo|contribui/i.test(t)) {
     const numMatch = t.match(/(\d+(?:[.,]\d{1,2})?)/);
     const value = numMatch ? parseFloat(numMatch[1].replace(',', '.')) : null;
     const sourceMap = [
@@ -96,37 +165,44 @@ function localClassify(t) {
 
   // ── Adicionar cartão/forma de pagamento (não suportado via bot) ─────────────
   // Bloqueia antes do cardMatch genérico para não virar query by_payment
-  if (/\b(adicione?|adicionar|cria[rr]?|incluir?|nova?\s+forma|novo\s+cart)\b.{0,35}\b(cart[aã]o|forma\s*de\s*pagamento|m[eé]todo\s*de\s*pagamento|bandeira)\b/i.test(t) &&
+  if ((/\b(adicione?|adicionar|cria[rr]?|incluir?|nova?\s+forma|novo\s+cart)\b.{0,35}\b(cart[aã]o|forma\s*de\s*pagamento|m[eé]todo\s*de\s*pagamento|bandeira)\b/i.test(t) ||
+      /\bnovo\s+m[eé]todo\s*de\s*pagamento\b|\bbandeira\s*nova\b|\bnova\s*bandeira\b/i.test(t) ||
+      /\b(cart[aã]o|forma\s*de\s*pagamento|m[eé]todo)\b.{0,20}\b(novo|nova|adicionar|cadastrar|criar)\b/i.test(t)) &&
       !/\blimite\b/i.test(t)) {
     return { intent: 'unsupported', params: { feature: 'payment_method' } };
   }
 
   // ── Limite de cartão ─────────────────────────────────────────────────────
   if (/\blimite\b.{0,35}(cart[aã]o|cr[eé]dito|card)|(cart[aã]o|cr[eé]dito).{0,35}\blimite\b/i.test(t) ||
-      /\b(define|coloca|adiciona|ajusta|muda|atualiza)\b.{0,20}\blimite\b/i.test(t)) {
+      /\b(define|coloca|adiciona|ajusta|ajustar|muda|atualiza|quero|preciso|gostaria)\b.{0,30}\blimite\b/i.test(t) ||
+      /\bmeu\s+limite\b|\blimite\b.{0,25}(nubank|c6|picpay|\binter\b|next|bradesco|ita[uú]|santander|recargapay|pagbank|will|neon)/i.test(t)) {
     const numMatch = t.match(/\d+(?:[.,]\d{1,2})?/);
     const limit = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
-    const CARD_RE2 = /nubank|nu\b|c6|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will/;
+    const CARD_RE2 = /nubank|nu\b|c6|picpay|next|\binter\b|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will/;
     const cardMatch = t.match(CARD_RE2);
     return { intent: 'set_credit_limit', params: { card_name: cardMatch?.[0]?.trim() || null, limit } };
   }
 
   // ── Nome do usuário ──────────────────────────────────────────────────────
-  if (/\b(meu\s*nome\s*(é|eh|ser[aá]|vai\s*ser)|(me\s*chamo|pode\s*me\s*chamar)|(muda|troca|atualiza|coloca)\b.{0,15}\bnome\b)/i.test(t)) {
-    const nameMatch = t.match(/(?:(?:meu\s*nome\s*(?:é|eh|será|vai\s*ser)\s*)|(?:me\s*chamo\s*)|(?:pode\s*me\s*chamar\s*de\s*)|(?:(?:muda|troca|atualiza|coloca)\b.{0,15}(?:nome|pra|para)\s*))(\w+)/i);
+  if (/\b(meu\s*nome\s*(agora\s*)?(é|eh|ser[aá]|vai\s*ser)|(me\s*chamo|pode\s*me\s*chamar)|(muda|troca|atualiza|coloca)\b.{0,15}\bnome\b)/i.test(t)) {
+    const nameMatch = t.match(/(?:(?:meu\s*nome\s*(?:agora\s*)?(?:é|eh|será|vai\s*ser)\s*)|(?:me\s*chamo\s*)|(?:pode\s*me\s*chamar\s*de\s*)|(?:(?:muda|troca|atualiza|coloca)\b.{0,15}(?:nome|pra|para)\s*))(\w+)/i);
     return { intent: 'set_user_name', params: { name: nameMatch?.[1] || null } };
   }
 
   // ── Meta de contribuição / dízimo ───────────────────────────────────────
-  if (/\b(contribui[çc][aã]o|d[íi]zimo|doa[çc][aã]o)\b.{0,30}(\d+\s*%|porcent|percent)/i.test(t) ||
-      /\d+\s*%\s*.{0,15}\b(contribui[çc][aã]o|d[íi]zimo)\b/i.test(t)) {
+  if (/\b(contribui[çc][aã]o|d[íi]zimo|doa[çc][aã]o|percentual\s*(de\s*)?(?:d[íi]zimo|contribui))\b.{0,40}(\d+\s*%|porcent|percent|por\s*cento)/i.test(t) ||
+      /\b(define?|set|coloca|muda|atualiz)\b.{0,20}\b(\d+\s*%|porcent|percent|por\s*cento)\b.{0,20}\b(d[íi]zimo|contribui)/i.test(t) ||
+      /\b(d[íi]zimo|contribui[çc][aã]o|contribui\w*)\b.{0,10}(\d+\s*%?|\d+\s*por\s*cento|\d+\s*percent)/i.test(t) ||
+      /\d+\s*%\s*.{0,20}\b(contribui[çc][aã]o|d[íi]zimo)\b/i.test(t) ||
+      /\bpercentual\s*(de\s*)?(?:d[íi]zimo|contribui\w*)\s+\d+/i.test(t) ||
+      /\bcontribuir\b.{0,20}\d+\s*%/i.test(t)) {
     const pctMatch = t.match(/(\d+(?:[.,]\d{1,2})?)\s*%?/);
     const pct = pctMatch ? parseFloat(pctMatch[1].replace(',', '.')) : null;
     return { intent: 'set_contribution_pct', params: { pct } };
   }
 
   // ── Guardado em projeto (atualiza savings) ────────────────────────────────
-  if (/\b(guardei|guarde?|poupei|poupeie?|economizei|economiz|coloque[ií]|adicionei|deposite[ií]|coloca[nd]?o)\b.{0,30}\b(projeto|meta|poupan[çc]a|reserva|viagem|carro|casa|fundo)\b|\b(guardei|poupei|economizei)\b.{0,10}\b(pra|pro|para)\b/i.test(t)) {
+  if (/\b(guardei|guarde?|poupei|poupeie?|economizei|economiz|coloque[ií]|adicionei|deposite[ií]|coloca[nd]?o)\b.{0,30}\b(projeto|meta|poupan[çc]a|reserva|viagem|carro|casa|fundo)\b|\b(guardei|poupei|economizei)\b.{0,20}\b(pra|pro|para)\b/i.test(t)) {
     const numMatch = t.match(/\d+(?:[.,]\d{1,2})?/);
     const amount = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
     const stripped = t
@@ -139,30 +215,30 @@ function localClassify(t) {
   }
 
   // ── Toggle settings (investidor / contribuições) ──────────────────────────
-  if (/\b(ativa|ative|ativar|liga|ligar|habilita|habilitar|desativa|desative|desativar|desliga|desligar|desabilita|desabilitar)\b/i.test(t)) {
+  if (/\b(ativa+|ative|ativar|liga|ligar|habilita|habilitar|desativa|desative|desativar|desliga|desligar|desabilita|desabilitar|tirar|remover?|remove\b|eliminar?)\b/i.test(t)) {
     const isOn = !/\b(desativ|deslig|desabilit)\b/i.test(t);
     if (/\binvest/i.test(t)) return { intent: 'toggle_setting', params: { key: 'isInvestor', value: isOn } };
     if (/contribui|doa[çc]|d[íi]zimo|doacoes?/i.test(t)) return { intent: 'toggle_setting', params: { key: 'makesContributions', value: isOn } };
   }
 
   // ── Mudar foto / avatar ───────────────────────────────────────────────────
-  if (/\b(muda|mudar|troca|trocar|atualiza|atualizar|coloca|colocar|define|definir)\b.{0,20}\b(foto|avatar|imagem|perfil)\b|\bfoto\s*de\s*perfil\b|minha\s*foto\b/i.test(t))
+  if (/\b(muda|mudar|troca|trocar|atualiza|atualizar|coloca|colocar|define|definir)\b.{0,20}\b(foto|avatar|imagem|perfil)\b|\bfoto\s*de\s*perfil\b|minha\s*foto\b|nova\s*(foto|imagem|avatar)|(foto|imagem)\s*nova\b|\bquero\b.{0,15}(foto|avatar|imagem)\s*nova\b/i.test(t))
     return { intent: 'set_avatar', params: {} };
 
   // ── Exportar ──────────────────────────────────────────────────────────────
-  if (/exporta|exportar|planilha|csv|meus dados|baixar dados|relat[oó]rio/.test(t))
+  if (/exporta|exportar|planilha|csv|meus dados|baixar dados|relat[oó]rio\s*(mensal|anual|semanal|financeiro|dos\s*dados|de\s*gastos?)|baixa\w*\s*(o\s*hist[oó]rico|os\s*dados|os\s*gastos|os\s*meus\s*dados|meus\s*dados)|backup\s*dos?\s*dados|\bgera\w*\s*(o\s+)?relat[oó]rio\b|\bme\s*(d[aê]|manda)\s*(o\s+)?relat[oó]rio\b/.test(t))
     return { intent: 'export', params: {} };
 
   // ── Parcelar compra (ANTES do cardMatch — "parcelei no crédito" é parcela, não by_payment) ──
-  if (/parcel[eio]u?|parcel(ar|amento|ada?|ado)|\bem\s*\d+\s*(vezes|parcelas|meses?|[xX])\b|\d+\s*[xX]\s*(no|na|de|do)\b|financ(iar|iamento)\b|financiei\b|prestac|presta[çc]|credi[aá]rio\b/.test(t))
+  if (/parcel[eio]u?|parcel(ar|amento|ada?|ado)|comprei?\s*(em|no|na)\s*parcel|fiz\s*\d+\s*parcelas?\b|\bem\s*\d+\s*(vezes|parcelas|meses?|[xX])\b|\d+\s*[xX]\s*(no|na|de|do)\b|financ(iar|iamento)\b|financiei\b|prestac|presta[çc]|credi[aá]rio\b/.test(t))
     return { intent: 'add_installments', params: {} };
 
   // ── Mudar vencimento ──────────────────────────────────────────────────────
-  if (/vencimento|vence\s*(dia|no\s*dia|n[ao]\s*dia)|\bmuda\s*(o\s*)?venc|atualiz\w*\s*(o\s*)?venc|novo\s*vencimento|muda\s*o\s*dia/.test(t))
+  if (/vencimento|vence\s*(dia|no\s*dia|n[ao]\s*dia)|\bmuda\s*(o\s*)?venc|atualiz\w*\s*(o\s*)?venc|novo\s*vencimento|muda\s*o\s*dia|dia\s*de\s*pagamento\b|novo\s*dia\s*de\s*pagamento/.test(t))
     return { intent: 'update_due_date', params: {} };
 
   // ── Criar projeto / meta ─────────────────────────────────────────────────
-  if (/\b(cria|criar|adiciona|adicione|adicionar|novo|nova|cadastra|cadastrar)\b.{0,30}\b(projeto|meta|objetivo|poupan[çc]a|reserva)\b|\b(projeto|meta|objetivo)\b.{0,25}\b(novo|nova|cria|criar|adicionar)\b/i.test(t)) {
+  if (/\b(cria|criar|adiciona|adicione|adicionar|novo|nova|cadastra|cadastrar)\b.{0,30}\b(projeto|meta|objetivo|poupan[çc]a|reserva)\b|\b(projeto|meta|objetivo)\b.{0,25}\b(novo|nova|cria|criar|adicionar)\b|\bjuntar\s*(dinheiro\s*)?(pra|para|pro)\b/i.test(t)) {
     const nums = (t.match(/\d+(?:[.,]\d{1,2})?/g) || []).map(n => parseFloat(n.replace(',', '.')));
     const nameStripped = t
       .replace(/\b(cria|criar|adiciona|adicione|adicionar|novo|nova|cadastra|cadastrar|um|uma|projeto|meta|objetivo|poupan[çc]a|reserva|com|de|r\$|reais|guardando|guardado|mensais?|por\s*m[eê]s|j[aá])\b/gi, ' ')
@@ -175,12 +251,21 @@ function localClassify(t) {
     }};
   }
 
+  // ── Proventos/dividendos como RENDA (não investimento) ────────────────────
+  if (/\bproventos?\s*(chegaram?|caiu|ca[ií]ram?|entrou|entraram?|de\s+\d)|\bdividend\w*\s*(caiu|ca[ií]ram?|chegou|chegaram?|entrou|entraram?)\b/i.test(t) &&
+      !/\b(quanto|resumo|carteira|aporte|bolsa|portf[oó]lio|minha\s*carteira)\b/i.test(t)) {
+    const numMatch = t.match(/(\d+(?:[.,]\d{1,2})?)/);
+    const value = numMatch ? parseFloat(numMatch[1].replace(',', '.')) : null;
+    return { intent: 'income', params: { name: 'Proventos', value, month } };
+  }
+
   // ── Investimentos ─────────────────────────────────────────────────────────
-  if (/investimento|carteira|rendimento|aporte|aplica[çc][aã]o|quanto\s*(eu\s*)?investi|investid[ao]\b|tenho\s*investid|minha\s*carteira|\ba[çc][oõ]es?\b|fii\b|tesouro\b|cdb\b|lci\b|lca\b|cripto|bitcoin|btc\b|portf[oó]lio|holdings?\b|\binvest\b|\bativos?\b|renda\s*fixa\b|debentur\w*|previdenci\w*|\bselic\b|\bipca\b|fundo\s*de\s*investimento\b/.test(t))
+  if (/investimento|carteira|rendimento|aporte|aplica[çc][aã]o|minhas\s*aplica|quanto\s*(eu\s*)?investi|investid[ao]\b|tenho\s*investid|minha\s*carteira|\ba[çc][oõ]es?\b|fii\b|tesouro\b|cdb\b|lci\b|lca\b|cripto|bitcoin|btc\b|eth\b|ethereum|portf[oó]lio|holdings?\b|\binvest\w*\b|\bativos?\b|renda\s*fixa\b|renda\s*vari[aá]vel\b|debentur\w*|previd[eê]ncia\b|previdenci\w*|\bselic\b|\bipca\b|fundo\s*de\s*investimento\b|\bfundos?\b(?!\s*de\s*emerg)|dividend\w*|patrimoni\w*|patrim[oô]nio\b|\brentabilidade\b|\bbolsa\b|como\s*vai\s*a\s*bolsa|quanto\s*(rendeu|valorizou|cresceu|apliquei|est[aá]\s*rendendo|est[aá]\s*valendo|ta\s*valendo|ta\s*rendendo)|retorno\s*(mensal|acumulado|dos?\s*invest\w*)|proventos\b|how\s+(are|is)\b.{0,20}\binvest\w*/.test(t) &&
+      !/rendimento\s*do\s*per[ií]odo\b/i.test(t))
     return { intent: 'query', params: { subtype: 'investments', month } };
 
   // ── Projetos ──────────────────────────────────────────────────────────────
-  if (/projeto|metas?\b|objetivo|poupando|guardando|economiz|juntando\s*dinheiro|reserva\b/.test(t)) {
+  if (/projeto|metas?\b|objetivo|poupando|guardando|economiz|juntando\s*(dinheiro|pra|para|pro)\b|\bjuntando\b.{0,15}(comprar|carro|casa|viagem)|reserva\b|poupan[çc]a\b|fundo\s*de\s*emerg[eê]ncia|minhas\s*reservas|quanto\s*(j[aá]\s*)?guardei\b|quanto\s*(j[aá]\s*)?poupei\b|quanto\s*(j[aá]\s*)?reservei\b|quanto\s*falta\b|j[aá]\s*guardei|progresso\s*financeiro|j[aá]\s*alcancei/.test(t)) {
     const pStripped = t
       .replace(/\b(status|qual|como|esta[oa]|estao|estão|meus?|minhas?|quantos?|falta|do|da|de|em|no|na|o|a|projeto|projetos|meta|metas|objetivo|objetivos)\b/gi, ' ')
       .replace(/[?!.,]/g, '').replace(/\s+/g, ' ').trim();
@@ -189,7 +274,7 @@ function localClassify(t) {
   }
 
   // ── Reabrir / desconcluir despesa ─────────────────────────────────────────
-  if (/reabr[ae]|reabertur|desconclui|desmarqu?e?|reabrir|volta\s*(ao\s*)?aberto|n[aã]o\s*(est[aá]|foi)\s*pag|desfa[çz]/i.test(t)) {
+  if (/reabr[ae]|reabertur|desconclui|desmarqu?e?|reabrir|volta\b.{0,30}\baberto\b|n[aã]o\s*(est[aá]|foi)\s*pag|desfa[çz]|desmarcar\s+(tudo|todos?|todas?)/i.test(t)) {
     // "reabra todos os meses" → bulk de meses não suportado
     if (/\btodos?\s+os\s+meses?\b|\btodas?\s+os\s+meses?\b/i.test(t))
       return { intent: 'unsupported', params: { feature: 'bulk_reopen_months' } };
@@ -206,16 +291,16 @@ function localClassify(t) {
   }
 
   // ── Bulk conclude (não suportado) — precisa vir ANTES do conclude individual ──
-  if (/\b(conclu[ií]|conclua|concluir)\b.{0,25}\b(todos?\s*os\s*meses?|todas?\s*(?:as\s*)?despesas?|todos?\s*(?:os\s*)?gastos?|tudo)\b|\b(todos?\s*os\s*meses?|todas?\s*as\s*despesas?)\b.{0,25}\b(conclu|concluir)\b/i.test(t)) {
+  if (/\b(conclu[ií]|conclua|concluir)\b.{0,25}\b(todos?\s*(?:os\s*)?(?:meses?|gastos?|contas?)?|todas?\s*(?:as\s*)?(?:despesas?|contas?)?|tudo)\b|\b(todos?\s*os\s*meses?|todas?\s*as\s*despesas?|todas\s*as\s*contas)\b.{0,25}\b(conclu|concluir)\b|marca\w*.{0,25}\b(tudo|todos?\s+os\s+gastos?|todas?\s+as\s+despesas?)\b|\bfechar\b.{0,25}todos?\s+os\s+meses?\b/i.test(t)) {
     return { intent: 'unsupported', params: { feature: 'bulk_conclude' } };
   }
 
   // ── Concluir / marcar como pago ───────────────────────────────────────────
-  if (/conclu[ií]|conclua|concluir|\bmarqu?e?\b.*\b(pago|paga)\b|quitar?|quit[ae]|quitad[ao]\b|paguei\s*(o|a)\b|j[aá]\s*paguei|liquidar|liquidei|liquidou\b|(foi|t[aá]|est[aá]|fica)\s*pag[ao]\b|deu\s*baixa\b|d[aá]\s*baixa\b|finaliz(ei|ou|ado|ada)\b/.test(t)) {
-    if (!/quanto|total|saldo|resumo/.test(t)) {
+  if (/conclu[ií]|conclua|concluir|mar(?:c|qu)\w*\s*.{0,25}(pago|paga)\b|quitar?|quit[ae]|quitad[ao]\b|paguei\s*(o|a|da|do|na|no|minha|meu)\b|j[aá]\s*paguei|paguei\s+\w+|liquidar|liquidei|liquidou\b|(foi|t[aá]|est[aá]|fica)\s*pag[ao]\b|deu\s*baixa\b|d[aá]\s*baixa\b|finaliz(ei|ou|ado|ada)\b|foi\s*liquidado\b|limpei\b/.test(t)) {
+    if (!/quanto|total|saldo|resumo|o\s+que\s+paguei|o\s+que\s+eu\s+paguei/.test(t)) {
       const nameRaw = t
-        .replace(/\b(conclua|concluir|conclu[ií]|marqu?e?|quitar?|quit[ae]|j[aá]\s*paguei|paguei\s*(o|a)|liquidar|liquidei)\b/gi, '')
-        .replace(/\b(a\s+minha\s+despesa\b|minha\s+despesa\b|a\s+despesa\s+d[ao]?|o\s+gasto\s+d[ao]?|despesa\s+d[ao]?|a\s+conta\s+d[ao]?|como\s+pag[ao]|pra\s+mim|para\s+mim|jarvis)\b/gi, '')
+        .replace(/\b(conclua|concluir|conclu[ií]|mar(?:c|qu)\w*\s*(?:como\s*)?|marqu?e?|quitar?|quit[ae]|j[aá]\s*paguei|paguei\s*(o|a|da|do|na|no|minha|meu)?|liquidar|liquidei|deu\s*baixa|d[aá]\s*baixa|quitad[ao]|finaliz\w*|liquidou)\b/gi, '')
+        .replace(/\b(a\s+minha\s+despesa\b|minha\s+despesa\b|a\s+despesa\s+d[ao]?|o\s+gasto\s+d[ao]?|despesa\s+d[ao]?|a\s+conta\s+d[ao]?|como\s+pag[ao]?\b|pago\b|paga\b|pra\s+mim|para\s+mim|jarvis)\b/gi, '')
         // remove artigos soltos ("o ifood" → "ifood", "a netflix" → "netflix")
         .replace(/\b(o|a|os|as)\b/gi, '')
         .replace(/[?,!]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -226,29 +311,55 @@ function localClassify(t) {
 
   // ── Análise / feedback multi-mês ─────────────────────────────────────────
   const hasSingleMonth = /esse\s*m[eê]s|este\s*m[eê]s|m[eê]s\s*(atual|corrente|de\s*hoje)/i.test(t);
-  const hasRange = /desde|a\s*partir\s*de|primeiros?|[uú]ltimos?\s+(\d|tr[eê]s|dois?|quatro|meses)|ano\s*(completo|inteiro|todo)|o\s*ano|esse\s*ano|este\s*ano|desse\s*ano|hist[oó]rico|anual\b|trimest\w+|semest\w+/i.test(t);
-  if (!hasSingleMonth && /\bfeedback\b|an[aá]lise|analisa(r|me)?|avalia[çc][aã]o\b|como\s+(foi(ram)?|est[aá]|andam?)\s+(o\s*)?(ano|meses?|per[ií]odo)|resumo\s+d[eo]s?\s*(ano|per[ií]odo|trim\w*|semest\w*|primeiros?|[uú]ltimos?)|per[ií]odo|trimest\w+|semest\w+|primeiros?\s+\d+\s*mes|[uú]ltimos?\s+\d+\s*mes|[uú]ltimos?\s*meses\b|primeiros?\s+(tr[eê]s|dois?|quatro)|[uú]ltimos?\s+(tr[eê]s|dois?|quatro|meses)/i.test(t)) {
+  const hasRange = /desde|a\s*partir\s*de|primeiros?|[uú]ltimos?\s+(\d|tr[eê]s|dois?|quatro|meses)|ano\s*(completo|inteiro|todo)|o\s*ano|esse\s*ano|este\s*ano|desse\s*ano|hist[oó]rico|anual\b|trimest\w+|semest\w+|\b\d+\s*meses?\b/i.test(t);
+  if (!hasSingleMonth && /\bfeedback\b|an[aá]lise\b|analisa(r|me)?|avalia[çc][aã]o\b|como\s+(foi(ram)?|est[aá]|est[aã]o|estou|andam?|andei)\s+(o\s*|esse\s*|este\s*|desse\s*|nesse\s*)?(ano|meses?|per[ií]odo|finan[çc]\w*)|como\s+(est[aã]o|estou|andei|andam?).{0,25}(finan[çc]\w*|ano\b)|como\s+andei\b.{0,15}\bano\b|resumo\s+d[eo]s?\s*(ano|per[ií]odo|trim\w*|semest\w*|primeiros?|[uú]ltimos?)|resumo\b.{0,50}(ao\s+longo|desse\s+ano|esse\s+ano|o\s+ano)|como\s+foi\b.{0,30}finan[çc]\w*|per[ií]odo|trimest\w+|semest\w+|primeiros?\s+\d+\s*mes|[uú]ltimos?\s+\d+\s*mes|[uú]ltimos?\s*meses\b|primeiros?\s+(tr[eê]s|dois?|quatro)|[uú]ltimos?\s+(tr[eê]s|dois?|quatro|meses)|retrospectiva\b|evolu[çc][aã]o\s*finan[çc]\w*|tend[eê]ncia\s+(dos?\s*)?[uú]ltimos?|performance\s*finan[çc]\w*|balan[çc]o\s+(do\s*ano|dos?\s*[uú]ltimos?|dos?\s*meses?)|an[aá]lise\s*anual|feedback\s*anual|hist[oó]rico\s*anual|vis[aã]o\s*geral\s*(do\s*ano)?|rendimento\s*(do\s*per[ií]odo|mensal\b)|resumo\s*dos?\s*\d+\s*meses|primeiros?\s+\d\s*meses?\s*como/i.test(t)) {
     const range = hasRange ? parseMonthRange(t) : null;
+    // Se há um nome específico de despesa + range E sem keywords de análise → by_name_range
+    // (ex: "ifood nos últimos meses" → by_name_range; "análise dos últimos 4 meses" → analysis)
+    const hasExplicitAnalysisKeyword = /\bfeedback\b|an[aá]lise\b|analisa|avalia[çc]|tend[eê]ncia|evolu[çc]|retrospectiva|performance\b|balan[çc]o\b|relat[oó]rio\b/i.test(t);
+    if (!hasExplicitAnalysisKeyword) {
+      const analysisGeneric = ['tudo','mes','geral','resumo','total','saldo','gastos','despesas','quanto','dinheiro','como','periodo','financas','financeiro','financeira','ano','anual','situacao','foram','foi','estao','andaram','andei','inteiro','todo','toda','todos','todas','finanças','ultimos','primeiros','financeiramente'];
+      const analysisNameFilter = extractNameFilter(t);
+      const hasSpecificName = analysisNameFilter && analysisNameFilter.length >= 3
+        && !analysisGeneric.some(g => analysisNameFilter === g || analysisNameFilter.startsWith(g + ' ') || analysisNameFilter.endsWith(' ' + g));
+      if (hasSpecificName && range) {
+        return { intent: 'query', params: { subtype: 'by_name_range', fromMonth: range.from, toMonth: range.to, filter: analysisNameFilter } };
+      }
+    }
     if (range || /ano|primeiros?|[uú]ltimos?|desde|per[ií]odo|trimest|semest/i.test(t)) {
       const r = range || { from: 0, to: new Date().getMonth() };
       return { intent: 'query', params: { subtype: 'analysis', fromMonth: r.from, toMonth: r.to } };
+    }
+    // Com keyword de análise explícita mas sem range → retorna analysis do ano atual
+    if (/\bfeedback\b|an[aá]lise\b|analisa|evolu[çc]|retrospectiva|performance\s*financ|tend[eê]ncia/i.test(t)) {
+      const now = new Date().getMonth();
+      return { intent: 'query', params: { subtype: 'analysis', fromMonth: 0, toMonth: now } };
     }
     return { intent: 'query', params: { subtype: 'summary', month: MONTH_PT[new Date().getMonth()] } };
   }
 
   // ── Por semana ────────────────────────────────────────────────────────────
-  if (/\bsemana\b|semanais?\b/.test(t))
+  if (/\bsemana\b|semanais?\b|semanal\b|[uú]ltimos?\s*(\d+\s*)?(dias?)\b|gastos?\s*recentes?\b|o\s*que\s*saiu\s*nos?\s*[uú]ltimos?\s*dias?/.test(t))
     return { intent: 'query', params: { subtype: 'by_week', month: null } };
 
   // ── Comparativo (ANTES de biggest — "gastei mais no X vs mês passado" é compare) ─
-  const CARD_RE = /nubank|nu\b|c6\s*bank|c6\b|picpay|next|inter|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will\s*bank|will\b|pix|d[eé]bito|cr[eé]dito/;
-  if (/comparativo|comparar|compar[aeo]\w*|\bvs\.?\b|\bversus\b|diferen[çc]a|\bdif\b|compara[çc][aã]o|evolu[çcií]\w*|evoluiu|\bcontra\b|m[eê]s\s*a\s*m[eê]s/i.test(t) ||
+  const CARD_RE = /nubank|\bnu\b|c6\s*bank|\bc6\b|picpay|next|\binter\b|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will\s*bank|\bwill\b|pix|d[eé]bito|cr[eé]dito/;
+  if ((/comparativo|comparar|compar[aeo]\w*|\bvs\.?\b|\bversus\b|diferen[çc]a|\bdif\b|compara[çc][aã]o|evoluiu|\bcontra\b|m[eê]s\s*a\s*m[eê]s/i.test(t) ||
+      /evolu[çcií]\w*/i.test(t) && !/evolu[çc][aã]o\s*(financ|dos?\s*gast|mensal)/i.test(t)) ||
+      /varia[çc][aã]o\b|crescimento\s*(dos?\s*)?gastos?|o\s*que\s*mudou\b|pior\s*ou\s*melhor|melhor\s*ou\s*pior|mais\s*ou\s*menos\s*(que|do)\b|maiores?\s*ou\s*menores?\b|piorou\s*ou\s*melhorou\b|melhorou\s*ou\s*piorou\b/i.test(t) ||
+      /\b(cresci|reduzi|diminu[ií]|aumentei|melhorei|piorei).{0,20}\b(gast|m[eê]s|esse|passado|anterior)/i.test(t) ||
+      /gastei\s+mais\s+em\b.{0,20}\bou\b/i.test(t) ||
+      /\b(\w+)\s+(foi|est[aá])\s+(pior|melhor)\s+(que|do\s*que|em\s*rela[çc][aã]o\s*a)\b/i.test(t) ||
+      /melhorou\s*em\s*rela[çc][aã]o\s*a|piorou\s*em\s*rela[çc][aã]o\s*a/i.test(t) ||
+      /m[eê]s\s*passado\s+foi\s+(pior|melhor)|esse\s*m[eê]s\s+(t[aá]|est[aá])\s+(melhor|pior)/i.test(t) ||
       (/mais\b/.test(t) && /anterior|passado/.test(t) && CARD_RE.test(t)) ||
       (/gastei\b/.test(t) && /m[eê]s\s*(passado|anterior)/.test(t) && /esse\s*m[eê]s|m[eê]s\s*atual|agora/.test(t)) ||
-      (/\b(cresceu|subiu|baixou|diminuiu|aumentou|reduziu|mudou|variou|piorou|melhorou|tend[eê]ncia)\b/i.test(t) && (CARD_RE.test(t) || /m[eê]s\s*(passado|anterior)|anterior|passado\b/i.test(t)))) {
+      (/gastei\s+mais\b/.test(t) && /ou\s*menos|que\s*o\s*m[eê]s\s*(passado|anterior)/i.test(t)) ||
+      (/gastei\s+mais\b/.test(t) && CARD_RE.test(t) && /em\s*(cr[eé]dito|d[eé]bito|pix)\b/i.test(t)) ||
+      (/\b(cresceu|subiu|baixou|diminuiu|aumentou|reduziu|mudou|variou|piorou|melhorou|tend[eê]ncia|aumentei|diminuí|diminui\b|melhorei|piorei)\b/i.test(t) && (CARD_RE.test(t) || /m[eê]s\s*(passado|anterior)|anterior|passado\b/i.test(t) || /gastos?/i.test(t)))) {
     const now = new Date().getMonth();
     const months = [];
-    MONTH_PT.forEach((m, i) => { if (t.includes(m)) months.push(i); });
+    MONTH_PT.forEach((m, i) => { if (new RegExp('\\b' + m + '\\b').test(t)) months.push(i); });
     if (/m[eê]s\s*(passado|anterior|[uú]ltimo)|[uú]ltimo\s*m[eê]s/i.test(t))
       months.unshift(((now - 1) + 12) % 12);
     if (/esse\s*m[eê]s|este\s*m[eê]s|m[eê]s\s*(atual|corrente)/i.test(t))
@@ -260,10 +371,34 @@ function localClassify(t) {
   }
 
   // ── Maiores gastos ────────────────────────────────────────────────────────
-  if (/maior(es)?|\btop\b|pior(es)?\s*gasto|mais\s*(caro|cara|altos?|elevados?|significativos?|pesados?|expressivos?)|o\s*que\s+mais\s*(gast|custou|tirou|levou|consumiu)|gastei?\s*mais\b|mais\s*pesado|saiu\s*mais\b|custou\s*mais|m[aá]ximo\b|principais?\s*(gasto|despesa)|apertou|me\s*apertou/.test(t))
+  if (/maior(es)?|\btop\b|pior(es)?\s*gasto|mais\s*(caro|cara|altos?|elevados?|significativos?|pesados?|expressivos?|gastos?\b|despesas?\b)|o\s*que\s+mais\s*(gast|custou|tirou|levou|consumiu|saiu|pesou|foi\b)|mais\s*pesado|saiu\s*mais\b|mais\s*saiu\b|mais\s*pesou\b|custou\s*mais|m[aá]ximo\b|principais?\s*(gasto|despesa)|apertou|me\s*apertou|o\s*que\s+(sangrou|levou\s*mais\s*dinheiro)|vil[aã]o\s*(do\s*m[eê]s)?|onde\s*(foi|saiu|escapou)\s*mais|gastos?\s*que\s*pesaram?|o\s*que\s*pesou\b|onde\s*escapou/.test(t) ||
+      (/gastei?\s*mais\b/.test(t) && !/ou\s*menos|que\s*o\s*m[eê]s\s*(passado|anterior)|em\s*cr[eé]dito|\s+ou\s+\w+/i.test(t)))
     return { intent: 'query', params: { subtype: 'biggest', month } };
 
-  const hasQuery = /quanto|qto\b|gast|resumo|total|como\s*(t[aá]|foi|est[aá]|estou|anda\b)|estou\s*(bem|mal)\b|t[aá]\s*(o\s*m[eê]s|bem\b|bom\b)|t[oô]\s*bem\b|financeiramente\b|financ\w*|queria\s*(ver|saber)|me\s*(fala|mostra|diz|passa|traz)\b|saldo|sobr[ao]u|sobr\b|sobrando|balanç|balanco|situac|dinheiro|fechamento|mensal|o\s+que\b|oq\b|paguei\b|saiu\b|foi\s*(pro|pra|para)\b|hist[oó]rico|desde\b|nos\s+[uú]ltimos|extrato\b|despesas?\b|valor\b|anual\b/.test(t);
+  // ── By name + range sem hasQuery (ex: "ifood esse ano", "netflix a partir de janeiro") ─
+  // Só dispara se NÃO há keywords de análise/overview — essas caem no bloco analysis abaixo
+  if (!/\bfeedback\b|an[aá]lise|analisa\w*|avalia[çc]|per[ií]odo\b|trimest\w+|semest\w+|tend[eê]ncia|evolu[çc]|retrospectiva|performance\b|balan[çc]\w*|relat[oó]rio\b|rendimento\s*do\s*per/i.test(t)) {
+    const earlyRange = parseMonthRange(t);
+    const earlyHist = /hist[oó]rico/i.test(t);
+    if (earlyRange || earlyHist) {
+      const earlyFilter = extractNameFilter(t);
+      const earlyGeneric = ['tudo','mes','geral','resumo','total','saldo','gastos','despesas','quanto','dinheiro','saiu','financas','financeiro','financeira','como','ano','anual','situacao','foram','foi','estao','andaram','andei','financeiramente','ultimos','primeiros','periodo','inteiro','todo','toda','estou','esteve','desde','finanças'];
+      const earlySpecific = earlyFilter && earlyFilter.length >= 3
+        && !earlyGeneric.some(g => earlyFilter === g || earlyFilter.startsWith(g + ' ') || earlyFilter.endsWith(' ' + g));
+      if (earlySpecific) {
+        const r = earlyRange || { from: 0, to: new Date().getMonth() };
+        return { intent: 'query', params: { subtype: 'by_name_range', fromMonth: r.from, toMonth: r.to, filter: earlyFilter } };
+      }
+    }
+  }
+
+  const hasQuery = /quanto|qto\b|gast|gst\w+|resum\w*|total|como\s*(t[aá]|foi|est[aá]|estou|anda\b)|estou\s*(bem|mal)\b|t[aá]\s*(o\s*m[eê]s|bem\b|bom\b)|t[oô]\s*(bem\b|no\s*(vermelho|azul))|financeiramente\b|financ\w*|queria\s*(ver|saber)|me\s*(fala|mostra|diz|passa|traz)\b|saldo|sobr[ao]u|sobr\b|sobrando|balanç|balanco|situac|dinheiro|fechamento|mensal|o\s+que\b|oq\b|paguei\b|saiu\b|foi\s*(pro|pra|para)\b|hist[oó]rico|desde\b|nos\s+[uú]ltimos|extrato\b|despesas?\b|valor\b|anual\b|vis[aã]o\s*(geral)?\b|resultado\s*do\s*m[eê]s|resultado\s*(financeiro)?\b|no\s*(vermelho|azul)\b|consumiu\b|quero\s*ver\b|o\s*m[eê]s\b|\bhow\s+much\b|\bmy\s+(spending|balance|summary|monthly)\b|\bshow\s+me\b|arruinou\b|destruiu\b/.test(t);
+
+  // ── "fechei/limpei a conta" → conclude (precisa vir ANTES de by_payment) ──
+  if (/\b(fechei|limpei)\b.{0,20}\b(conta|fatura)\b/i.test(t)) {
+    const nameRaw = t.replace(/\b(fechei|limpei|a|o|os|as|conta|fatura|do|da|de|dos|das|minha|meu)\b/gi, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    return { intent: 'conclude_expense', params: { expense_name: nameRaw.length >= 2 ? nameRaw : null } };
+  }
 
   // ── Por cartão / forma de pagamento ──────────────────────────────────────
   const cardMatch = t.match(CARD_RE);
@@ -274,7 +409,7 @@ function localClassify(t) {
   // ── Por nome / categoria ──────────────────────────────────────────────────
   if (hasQuery) {
     const nameFilter = extractNameFilter(t);
-    const genericTerms = ['tudo','mes','geral','resumo','total','saldo','balanço','balanco','gastos','despesas','quanto','qto','dinheiro','situacao','fechamento','financas','como','ficou','totais','balanc','estou','historico'];
+    const genericTerms = ['tudo','mes','geral','resumo','total','saldo','balanço','balanco','gastos','despesas','quanto','qto','dinheiro','situacao','fechamento','financas','como','ficou','totais','balanc','estou','historico','saiu','sobrou','sobra','sobrando','consumiu','levou','aconteceu','pesou','financeira','financeiro','vermelho','azul','resultado','visao','reais','sobrado','gastou','resume','resumao','quantos','anda','bolso','cara','irmao','mano','brow','po','ta','to','to','relatorio','balance','spending','summary','monthly'];
     const isGeneric = !nameFilter || nameFilter.length < 3
       || genericTerms.some(g => nameFilter === g || nameFilter.startsWith(g + ' ') || nameFilter.endsWith(' ' + g));
     if (!isGeneric) {
@@ -293,12 +428,21 @@ function localClassify(t) {
   // ── Fallback: mensagem curta com mês → tenta extrair nome ou retorna summary ─
   if (month && t.length <= 30) {
     const nameFilter = extractNameFilter(t);
-    const genericTerms = ['tudo','mes','geral','resumo','total','saldo','gastos','despesas','quanto','qto','dinheiro','extrato','resumao','fala','mostra','diz','ver','anda'];
+    const genericTerms = ['tudo','mes','geral','resumo','total','saldo','gastos','despesas','quanto','qto','dinheiro','extrato','resumao','fala','mostra','diz','ver','anda','situacao','situac','status','financeiro','como','fechamento','balanco'];
     const isGeneric = !nameFilter || nameFilter.length < 2
       || genericTerms.some(g => nameFilter === g || nameFilter.startsWith(g + ' ') || nameFilter.endsWith(' ' + g));
     if (!isGeneric)
       return { intent: 'query', params: { subtype: 'by_name', month, filter: nameFilter } };
     return { intent: 'query', params: { subtype: 'summary', month } };
+  }
+
+  // ── Fallback ultra-curto: nome de despesa sozinho (ex: "netflix?", "ifood") ─
+  // Só dispara para mensagens de UMA palavra (sem espaço), evitando frases de chat
+  if (t.length <= 14 && !t.includes(' ')) {
+    const bare = t.replace(/[?!.,;]/g, '').trim();
+    const GREET = /^(oi|ol[aá]|ok|sim|n[aã]o|bom|bem|boa|t[aá]|hey|valeu|obrigad\w*|certo|bl[sz]|beleza|hm+|opa|eae|eai|bora|legal|show|perfeito|exatamente|entendi|talvez|claro|massa|top|vlw|falou|flw|uhu|nope|yep|yeah|nah|pow+)$/i;
+    if (bare.length >= 3 && !GREET.test(bare))
+      return { intent: 'query', params: { subtype: 'by_name', month: null, filter: bare } };
   }
 
   return null; // ambíguo — tenta Gemini
