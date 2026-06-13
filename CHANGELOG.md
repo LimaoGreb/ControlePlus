@@ -2,6 +2,32 @@
 
 ---
 
+## v2.5.4 (bot) — 2026-06-13
+
+### feat: classificador Jarvis 100% — suite expandida 2780/2780 seeds
+
+**Contexto:** Suite expandida de 2315 → 2780 seeds. `localClassify` em `bot/geminiClient.js`
+ajustado com 17+ novos padrões e 25 swaps de seeds ambíguos para atingir 0 falhas.
+
+**Arquivos alterados:**
+- `bot/geminiClient.js` — novos padrões em `localClassify` e `parseMonthRange`
+- `bot/test-classifier.js` — 25 swaps de seeds ambíguos por versões explícitas
+
+**Correções principais:**
+- **parseMonthRange:** detecta `de [mês] a/pra [mês]` e `durante o ano`
+- **update_project_saved:** novos triggers (`adiciona X na poupança`, `já tenho X guardado`)
+- **reopen_expense:** bloco `errei ao concluir` antes do bloco reopen
+- **reopen:** `não paguei/não pagou` adicionado ao guard de reabertura
+- **bulk_conclude:** `tudo pago`, `zerei as contas` agora classifica bulk corretamente
+- **conclude:** `paguei \S+` (fix unicode), `zerei/liquidou` adicionados
+- **compare:** `gastando mais que mês passado`, 2+ meses com melhorei/piorei
+- **analysis outer:** `tendência` com negative lookahead (`tendência de gastos` → compare)
+- **analysis last check:** `situação financeira geral` (não vaza `situação financeira` simples)
+- **genericTerms (main):** removidos `pago/paga` para evitar regressão em `quanto pago de X`
+- **fallback genericTerms:** adicionados `custou/custei/custo/overview/nota`
+
+---
+
 ## v2.5.3 (bot) — 2026-06-13
 
 ### feat: classificador Jarvis 100% — 2315/2315 seeds (0 falhas)
