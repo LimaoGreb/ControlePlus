@@ -175,9 +175,11 @@ function localClassify(t) {
   // ── Limite de cartão ─────────────────────────────────────────────────────
   if (/\blimite\b.{0,35}(cart[aã]o|cr[eé]dito|card)|(cart[aã]o|cr[eé]dito).{0,35}\blimite\b/i.test(t) ||
       /\b(define|coloca|adiciona|ajusta|ajustar|muda|atualiza|quero|preciso|gostaria)\b.{0,30}\blimite\b/i.test(t) ||
-      /\bmeu\s+limite\b|\blimite\b.{0,25}(nubank|c6|picpay|\binter\b|next|bradesco|ita[uú]|santander|recargapay|pagbank|will|neon)/i.test(t)) {
-    const numMatch = t.match(/\d+(?:[.,]\d{1,2})?/);
-    const limit = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
+      /\bmeu\s+limite\b|\blimite\b.{0,25}(nubank|c6|picpay|\binter\b|next|bradesco|ita[uú]|santander|recargapay|pagbank|will|neon)/i.test(t) ||
+      /(remov[ae]|zera|limpa|tira|retira|apaga|cancela)\s+(o\s+|a\s+|esse\s+|este\s+|meu\s+)?limite/i.test(t)) {
+    const isRemove = /(remov[ae]|zera|limpa|tira|retira|apaga|cancela)\s+(o\s+|a\s+|esse\s+|este\s+|meu\s+)?limite/i.test(t);
+    const numMatch = !isRemove ? t.match(/\d+(?:[.,]\d{1,2})?/) : null;
+    const limit = isRemove ? 0 : (numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null);
     const CARD_RE2 = /nubank|nu\b|c6|picpay|next|\binter\b|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will/;
     const cardMatch = t.match(CARD_RE2);
     return { intent: 'set_credit_limit', params: { card_name: cardMatch?.[0]?.trim() || null, limit } };

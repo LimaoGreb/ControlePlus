@@ -127,7 +127,9 @@ export async function handleMessage(chatId, text, firstName) {
   }
 
   // IDLE / DONE — tenta parser local primeiro (rápido, sem API)
-  const parsed = await parseExpenseMessage(text);
+  // Guard: "remova o limite de X no Y" tem número mas não é despesa
+  const isLimitCmd = /(remov[ae]|zera|limpa|tira|retira)\s+(o\s+|a\s+|esse\s+|este\s+|meu\s+)?limite/i.test(text);
+  const parsed = isLimitCmd ? null : await parseExpenseMessage(text);
   if (parsed?.isExpense) {
     const snapshot = await readUserSnapshot(chatId);
     session.snapshot = snapshot;
@@ -185,11 +187,13 @@ async function dispatchIntent(chatId, session, classified) {
       await sendMessage(chatId, `💳 Qual cartão você quer definir o limite?\nEx: _"define limite de 2000 no Nubank"_`);
       return;
     }
-    if (!limit) {
+    if (limit == null) {
       await sendMessage(chatId, `💳 Qual o limite do *${card_name}*? _(ex: "2000")_`);
       return;
     }
-    const label = `💳 Limite de *${card_name}* → R$ ${limit.toFixed(2)}`;
+    const label = limit === 0
+      ? `💳 Remover limite do *${card_name}*`
+      : `💳 Limite de *${card_name}* → R$ ${limit.toFixed(2)}`;
     session.step = 'confirming_cmd';
     session.pendingCmd = { type: 'SET_PAYMENT_LIMIT', params: { card_name, limit }, label };
     await sendMessage(chatId, `${label}\n\nConfirma? _(sim/não)_`);
