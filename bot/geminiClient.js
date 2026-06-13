@@ -285,6 +285,40 @@ function localClassify(t) {
       !/rendimento\s*do\s*per[ií]odo\b/i.test(t))
     return { intent: 'query', params: { subtype: 'investments', month } };
 
+  // ── Apagar projeto ────────────────────────────────────────────────────────
+  if (/\b(apaga[r]?|exclu[ií][r]?|excluir|remov[ae][r]?|delet[ae][r]?|cancela[r]?)\b.{0,25}\b(projeto|meta|objetivo)\b/i.test(t)) {
+    const nameRaw = t
+      .replace(/apaga[r]?|exclu[ií][r]?|excluir|remov[ae][r]?|delet[ae][r]?|cancela[r]?|projeto|meta|objetivo/gi, '')
+      .replace(/\b(o|a|os|as|esse|esta|este|meu|minha)\b/gi, '')
+      .replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim() || null;
+    return { intent: 'delete_project', params: { project_name: nameRaw } };
+  }
+
+  // ── Renomear projeto ──────────────────────────────────────────────────────
+  if (/renomei[ao]?\w*\b.{0,25}\b(projeto|meta)\b|\bmuda[r]?\s+o\s+nome\s+(do\s+projeto|da\s+meta)\b/i.test(t)) {
+    const paraIdx = t.search(/\s(para|pra)\s/i);
+    const beforePara = paraIdx >= 0 ? t.substring(0, paraIdx) : t;
+    const afterPara = paraIdx >= 0 ? t.substring(paraIdx).replace(/^\s+(para|pra)\s+/i, '').trim() : null;
+    const projName = beforePara
+      .replace(/renomei[ao]?\w*|muda[r]?\s+o\s+nome\s+(do|da)|do\s+projeto|da\s+meta|nome\s+(do|da)/gi, '')
+      .replace(/\b(o|a)\b/gi, '').replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim() || null;
+    return { intent: 'rename_project', params: { project_name: projName, new_name: afterPara } };
+  }
+
+  // ── Editar projeto (meta/mensal) ──────────────────────────────────────────
+  if (/muda[r]?\s+(a\s+meta|o\s+mensal|o\s+objetivo)|altera[r]?\s+(a\s+meta|o\s+mensal)|aumenta[r]?\s+(a\s+meta|o\s+objetivo)/i.test(t) &&
+      !/\b(despesa|gasto|conta|netflix|ifood|aluguel|internet|luz|agua|energia)\b/i.test(t)) {
+    const numMatch = t.match(/\d+(?:[.,]\d{1,2})?/);
+    const new_value = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
+    const isMonthly = /mensal|por\s*m[eê]s/i.test(t);
+    const field = isMonthly ? 'monthly' : 'target';
+    const nameRaw = t
+      .replace(/muda[r]?\s+(a\s+meta|o\s+mensal|o\s+objetivo)|altera[r]?\s+(a\s+meta|o\s+mensal)|aumenta[r]?\s+(a\s+meta|o\s+objetivo)|do\s+projeto|da\s+meta|para|pra/gi, '')
+      .replace(/\d+(?:[.,]\d+)?/g, '').replace(/r\$|reais|mensais?|por\s*m[eê]s/gi, '')
+      .replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim() || null;
+    return { intent: 'edit_project', params: { project_name: nameRaw, field, new_value } };
+  }
+
   // ── Projetos ──────────────────────────────────────────────────────────────
   if (!/\bgastando\b.{0,30}\b(demais|muito|pouco)\b|\bbastando\b|\bou\s+gastando\b/i.test(t) && /projeto|metas?\b|objetivo|poupando|guardando|economiz|juntando\s*(dinheiro|pra|para|pro)\b|\bjuntando\b.{0,15}(comprar|carro|casa|viagem)|reserva\b|poupan[çc]a\b|fundo\s*de\s*emerg[eê]ncia|minhas\s*reservas|quanto\s*(j[aá]\s*)?guardei\b|quanto\s*(j[aá]\s*)?poupei\b|quanto\s*(j[aá]\s*)?reservei\b|quanto\s*falta\b|j[aá]\s*guardei|progresso\s*financeiro|j[aá]\s*alcancei/.test(t)) {
     const pStripped = t
@@ -292,6 +326,72 @@ function localClassify(t) {
       .replace(/[?!.,]/g, '').replace(/\s+/g, ' ').trim();
     const pFilter = pStripped.length >= 2 ? pStripped : null;
     return { intent: 'query', params: { subtype: 'projects', month, filter: pFilter } };
+  }
+
+  // ── Renomear despesa ──────────────────────────────────────────────────────
+  if ((/\brenomei[ao]?\w*\b|\bmuda[r]?\s+o\s+nome\s+(da|do)\s+\w/i.test(t)) &&
+      !/\b(projeto|meta|objetivo)\b/i.test(t) &&
+      !/\bmeu\s*nome\b|\bme\s*chamo\b|\bpode\s*me\s*chamar\b/i.test(t)) {
+    const paraIdx = t.search(/\s(para|pra)\s/i);
+    const beforePara = paraIdx >= 0 ? t.substring(0, paraIdx) : t;
+    const afterPara = paraIdx >= 0 ? t.substring(paraIdx).replace(/^\s+(para|pra)\s+/i, '').trim() : null;
+    const expName = beforePara
+      .replace(/renomei[ao]?\w*|muda[r]?\s+o\s+nome\s+(da|do)|nome\s+(da|do)/gi, '')
+      .replace(/\b(o|a)\b/gi, '').replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim() || null;
+    return { intent: 'rename_expense', params: { expense_name: expName, new_name: afterPara } };
+  }
+
+  // ── Editar valor da despesa ───────────────────────────────────────────────
+  if (/muda[r]?\s+o\s+valor|corrig[ie][r]?\s+o\s+valor|atualiz\w*\s+o\s+valor|altera[r]?\s+o\s+valor|novo\s+valor\s+(do|da)\b/i.test(t) &&
+      !/\b(projeto|meta|objetivo|mensal)\b/i.test(t)) {
+    const numMatch = t.match(/\d+(?:[.,]\d{1,2})?/);
+    const new_value = numMatch ? parseFloat(numMatch[0].replace(',', '.')) : null;
+    const nameRaw = t
+      .replace(/muda[r]?\s+o\s+valor\s+(do|da)|corrig[ie][r]?\s+o\s+valor\s+(do|da)|atualiz\w*\s+o\s+valor\s+(do|da)|altera[r]?\s+o\s+valor\s+(do|da)|novo\s+valor\s+(do|da)/gi, '')
+      .replace(/muda[r]?\s+o\s+valor|corrig[ie][r]?\s+o\s+valor|atualiz\w*\s+o\s+valor|altera[r]?\s+o\s+valor/gi, '')
+      .replace(/\s+(para|pra)\s+.*/i, '').replace(/do\s+|da\s+|de\s+|o\s+|a\s+/gi, '')
+      .replace(/\d+(?:[.,]\d+)?/g, '').replace(/r\$|reais/gi, '')
+      .replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim() || null;
+    return { intent: 'edit_expense', params: { expense_name: nameRaw, field: 'value', new_value } };
+  }
+
+  // ── Editar pagamento da despesa ───────────────────────────────────────────
+  if (/muda[r]?\s+o\s+pagamento|altera[r]?\s+o\s+pagamento|troca[r]?\s+o\s+pagamento|muda[r]?\s+a\s+forma\s+de\s+pag\w*/i.test(t)) {
+    const PAYMENTS = [[/pix/i,'Pix'],[/d[eé]bito/i,'Débito'],[/cr[eé]dito/i,'Crédito'],[/dinheiro/i,'Dinheiro'],[/boleto/i,'Boleto']];
+    let new_payment = null;
+    for (const [re, label] of PAYMENTS) { if (re.test(t)) { new_payment = label; break; } }
+    const nameRaw = t
+      .replace(/muda[r]?\s+o\s+pagamento\s+(do|da)|altera[r]?\s+o\s+pagamento\s+(do|da)|troca[r]?\s+o\s+pagamento\s+(do|da)|muda[r]?\s+a\s+forma\s+de\s+pag\w*\s+(do|da)/gi, '')
+      .replace(/muda[r]?\s+o\s+pagamento|altera[r]?\s+o\s+pagamento|troca[r]?\s+o\s+pagamento|muda[r]?\s+a\s+forma\s+de\s+pag\w*/gi, '')
+      .replace(/\s+(para|pra)\s+.*/i, '').replace(/do\s+|da\s+|de\s+|o\s+|a\s+/gi, '')
+      .replace(/pix|d[eé]bito|cr[eé]dito|dinheiro|boleto/gi, '')
+      .replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim() || null;
+    return { intent: 'edit_expense', params: { expense_name: nameRaw, field: 'payment', new_payment } };
+  }
+
+  // ── Apagar despesa ────────────────────────────────────────────────────────
+  if (/\b(apaga[r]?|exclu[ií][r]?|excluir|remov[ae][r]?|delet[ae][r]?)\b.{0,25}\b(a|o)\s+\w/i.test(t) &&
+      !/\b(projeto|meta|objetivo|cart[aã]o|forma\s*de\s*pagamento|m[eé]todo)\b/i.test(t) &&
+      !/\blimite\b/i.test(t)) {
+    const nameRaw = t
+      .replace(/apaga[r]?|exclu[ií][r]?|excluir|remov[ae][r]?|delet[ae][r]?/gi, '')
+      .replace(/\b(o|a|os|as|esse|esta|este|essa|meu|minha)\b/gi, '')
+      .replace(/\b(do\s+m[eê]s|nesse\s+m[eê]s|desse\s+m[eê]s|esse\s+m[eê]s)\b/gi, '')
+      .replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim() || null;
+    return { intent: 'delete_expense', params: { expense_name: nameRaw } };
+  }
+
+  // ── Mover despesa (fixo ↔ variável) ──────────────────────────────────────
+  if (/\b(pass[ae][r]?\b|mov[ae][r]?\b|converte[r]?\b|torna[r]?\b|transform\w*)\b.{0,40}\b(fix[ao]|vari[aá]vel)\b/i.test(t)) {
+    const toFixed = /\bfix[ao]\b/i.test(t);
+    const to_section = toFixed ? 'fixed' : 'variable';
+    const nameRaw = t
+      .replace(/pass[ae][r]?|mov[ae][r]?|converte[r]?|torna[r]?|transform\w*/gi, '')
+      .replace(/\b(para|pra|em|como)\b.{0,20}(despesa\s+)?(fix[ao]|vari[aá]vel)\b/gi, '')
+      .replace(/\b(fixa|fixo|vari[aá]vel|despesa|gasto)\b/gi, '')
+      .replace(/\b(o|a|os|as|esse|esta|este|essa|meu|minha)\b/gi, '')
+      .replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim() || null;
+    return { intent: 'move_expense', params: { expense_name: nameRaw, to_section } };
   }
 
   // ── "errei ao concluir X" → reopen (precisa vir ANTES do reopen geral) ────
@@ -595,6 +695,47 @@ EXEMPLOS:
 "exporta meus dados" → {"intent":"export","params":{}}
 "oi jarvis" → {"intent":"chat","params":{}}
 "ajuda" → {"intent":"chat","params":{}}
+
+"rename_expense" — renomear uma despesa existente
+  expense_name (nome atual), new_name (nome novo)
+Exemplos:
+"renomeia a netflix para disney plus" → {"intent":"rename_expense","params":{"expense_name":"netflix","new_name":"disney plus"}}
+"muda o nome do aluguel para Aluguel Novo" → {"intent":"rename_expense","params":{"expense_name":"aluguel","new_name":"Aluguel Novo"}}
+
+"edit_expense" — editar valor ou forma de pagamento de uma despesa
+  expense_name, field: "value"|"payment", new_value (número), new_payment (texto)
+Exemplos:
+"muda o valor da netflix para 55" → {"intent":"edit_expense","params":{"expense_name":"netflix","field":"value","new_value":55}}
+"muda o pagamento do aluguel para pix" → {"intent":"edit_expense","params":{"expense_name":"aluguel","field":"payment","new_payment":"Pix"}}
+
+"delete_expense" — remover uma despesa
+  expense_name
+Exemplos:
+"apaga a netflix" → {"intent":"delete_expense","params":{"expense_name":"netflix"}}
+"exclui o ifood" → {"intent":"delete_expense","params":{"expense_name":"ifood"}}
+
+"move_expense" — mover despesa entre fixo e variável
+  expense_name, to_section: "fixed"|"variable"
+Exemplos:
+"passa a netflix para fixa" → {"intent":"move_expense","params":{"expense_name":"netflix","to_section":"fixed"}}
+"muda o aluguel pra variável" → {"intent":"move_expense","params":{"expense_name":"aluguel","to_section":"variable"}}
+
+"rename_project" — renomear um projeto/meta
+  project_name (nome atual), new_name (nome novo)
+Exemplos:
+"renomeia o projeto viagem para Férias" → {"intent":"rename_project","params":{"project_name":"viagem","new_name":"Férias"}}
+
+"edit_project" — editar meta ou mensal de um projeto
+  project_name, field: "target"|"monthly"|"saved", new_value (número)
+Exemplos:
+"muda a meta do projeto carro para 30000" → {"intent":"edit_project","params":{"project_name":"carro","field":"target","new_value":30000}}
+"altera o mensal da viagem para 500" → {"intent":"edit_project","params":{"project_name":"viagem","field":"monthly","new_value":500}}
+
+"delete_project" — apagar um projeto/meta
+  project_name
+Exemplos:
+"apaga o projeto viagem" → {"intent":"delete_project","params":{"project_name":"viagem"}}
+"exclui a meta carro" → {"intent":"delete_project","params":{"project_name":"carro"}}
 
 Retorne apenas o JSON, nada mais.`;
 

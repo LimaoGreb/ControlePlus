@@ -22,19 +22,23 @@ function getDb() {
 }
 
 export default function JarvisSyncManager() {
-  const { data, addItem, updateItem, addInstallments } = useData();
-  const { telegramChatId, investments, projects, userName, paymentMethods, setIsInvestor, setMakesContributions, addProjectFull, setAvatar, setPaymentLimit, setUserName, setContributionGoalPct, updateProject } = useSettings();
+  const { data, addItem, updateItem, addInstallments, removeItem, concludeAllItems } = useData();
+  const { telegramChatId, investments, projects, userName, paymentMethods, setIsInvestor, setMakesContributions, addProjectFull, setAvatar, setPaymentLimit, setUserName, setContributionGoalPct, updateProject, removeProject } = useSettings();
 
   const dataRef = useRef(data);
   const addItemRef = useRef(addItem);
   const updateItemRef = useRef(updateItem);
   const addInstallmentsRef = useRef(addInstallments);
+  const removeItemRef = useRef(removeItem);
+  const concludeAllItemsRef = useRef(concludeAllItems);
   const settingsOpsRef = useRef({});
   dataRef.current = data;
   addItemRef.current = addItem;
   updateItemRef.current = updateItem;
   addInstallmentsRef.current = addInstallments;
-  settingsOpsRef.current = { setIsInvestor, setMakesContributions, addProjectFull, setAvatar, setPaymentLimit, setUserName, setContributionGoalPct, updateProject, paymentMethods, projects };
+  removeItemRef.current = removeItem;
+  concludeAllItemsRef.current = concludeAllItems;
+  settingsOpsRef.current = { setIsInvestor, setMakesContributions, addProjectFull, setAvatar, setPaymentLimit, setUserName, setContributionGoalPct, updateProject, removeProject, paymentMethods, projects };
 
   const snapshotTimer = useRef(null);
 
@@ -73,7 +77,7 @@ export default function JarvisSyncManager() {
       for (const [cmdId, cmd] of Object.entries(commands)) {
         if (cmd.status !== 'pending') continue;
         try {
-          const result = await executeCommand(cmd, dataRef.current, addItemRef.current, updateItemRef.current, addInstallmentsRef.current, settingsOpsRef.current);
+          const result = await executeCommand(cmd, dataRef.current, addItemRef.current, updateItemRef.current, addInstallmentsRef.current, removeItemRef.current, concludeAllItemsRef.current, settingsOpsRef.current);
           await update(ref(db, `jarvis/${telegramChatId}/commands/${cmdId}`), {
             status: 'done',
             result,
@@ -95,7 +99,7 @@ export default function JarvisSyncManager() {
   return null;
 }
 
-async function executeCommand(cmd, data, addItem, updateItem, addInstallments, settings = {}) {
+async function executeCommand(cmd, data, addItem, updateItem, addInstallments, removeItem, concludeAllItems, settings = {}) {
   if (cmd.type === 'REOPEN_EXPENSE') {
     const { expense_name, monthIndex, all } = cmd.params;
     const months = data?.months || {};
@@ -238,6 +242,177 @@ async function executeCommand(cmd, data, addItem, updateItem, addInstallments, s
     if (!settings.setAvatar) throw new Error('setAvatar não disponível');
     settings.setAvatar(avatar);
     return { kind: avatar?.kind };
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function findInMonths(query, monthIndex, sections = ['fixed', 'variable']) {
+    const months = data?.months || {};
+    const q = (query || '').toLowerCase();
+    const start = monthIndex != null ? monthIndex : 0;
+    const end = monthIndex != null ? monthIndex : 11;
+    const hits = [];
+    for (let mi = start; mi <= end; mi++) {
+      for (const section of sections) {
+        for (const item of (months[mi]?.[section] || [])) {
+          if ((item.name || '').toLowerCase().includes(q)) hits.push({ mi, section, item });
+        }
+      }
+    }
+    return hits;
+  }
+
+  // ── RENAME_EXPENSE ──────────────────────────────────────────────────────────
+  if (cmd.type === 'RENAME_EXPENSE') {
+    const { expense_name, new_name, monthIndex } = cmd.params;
+    if (!new_name) throw new Error('Nome novo não informado.');
+    const hits = findInMonths(expense_name, monthIndex != null ? monthIndex : null);
+    if (!hits.length) throw new Error(`Nenhuma despesa encontrada com "${expense_name}".`);
+    for (const { mi, section, item } of hits) updateItem(mi, section, item.id, 'name', new_name);
+    return { updated: hits.length, old_name: expense_name, new_name };
+  }
+
+  // ── EDIT_EXPENSE_VALUE ──────────────────────────────────────────────────────
+  if (cmd.type === 'EDIT_EXPENSE_VALUE') {
+    const { expense_name, new_value, monthIndex } = cmd.params;
+    if (new_value == null) throw new Error('Valor não informado.');
+    const hits = findInMonths(expense_name, monthIndex != null ? monthIndex : null);
+    if (!hits.length) throw new Error(`Nenhuma despesa encontrada com "${expense_name}".`);
+    for (const { mi, section, item } of hits) updateItem(mi, section, item.id, 'value', new_value);
+    return { updated: hits.length, expense_name, new_value };
+  }
+
+  // ── EDIT_EXPENSE_PAYMENT ────────────────────────────────────────────────────
+  if (cmd.type === 'EDIT_EXPENSE_PAYMENT') {
+    const { expense_name, new_payment, monthIndex } = cmd.params;
+    if (!new_payment) throw new Error('Forma de pagamento não informada.');
+    const hits = findInMonths(expense_name, monthIndex != null ? monthIndex : null);
+    if (!hits.length) throw new Error(`Nenhuma despesa encontrada com "${expense_name}".`);
+    for (const { mi, section, item } of hits) updateItem(mi, section, item.id, 'payment', new_payment);
+    return { updated: hits.length, expense_name, new_payment };
+  }
+
+  // ── DELETE_EXPENSE ──────────────────────────────────────────────────────────
+  if (cmd.type === 'DELETE_EXPENSE') {
+    const { expense_name, monthIndex, all } = cmd.params;
+    const sections = ['fixed', 'variable'];
+    const months = data?.months || {};
+    const start = monthIndex != null ? monthIndex : 0;
+    const end = monthIndex != null ? monthIndex : 11;
+    let deleted = 0;
+    for (let mi = start; mi <= end; mi++) {
+      for (const section of sections) {
+        const items = [...(months[mi]?.[section] || [])];
+        for (const item of items) {
+          const match = all || (item.name || '').toLowerCase().includes((expense_name || '').toLowerCase());
+          if (match) { removeItem(mi, section, item.id); deleted++; }
+        }
+      }
+    }
+    if (deleted === 0) throw new Error(`Nenhuma despesa encontrada com "${expense_name}".`);
+    return { deleted, expense_name };
+  }
+
+  // ── MOVE_EXPENSE ────────────────────────────────────────────────────────────
+  if (cmd.type === 'MOVE_EXPENSE') {
+    const { expense_name, to_section, monthIndex } = cmd.params;
+    const from_section = to_section === 'fixed' ? 'variable' : 'fixed';
+    const hits = findInMonths(expense_name, monthIndex != null ? monthIndex : null, [from_section]);
+    if (!hits.length) {
+      const label = from_section === 'fixed' ? 'despesas fixas' : 'despesas variáveis';
+      throw new Error(`"${expense_name}" não encontrado(a) em ${label}.`);
+    }
+    for (const { mi, section, item } of hits) {
+      addItem(mi, to_section, item.name, item.value, item.payment);
+      removeItem(mi, section, item.id);
+    }
+    return { moved: hits.length, expense_name, to_section };
+  }
+
+  // ── RENAME_PROJECT ──────────────────────────────────────────────────────────
+  if (cmd.type === 'RENAME_PROJECT') {
+    const { project_name, new_name } = cmd.params;
+    if (!new_name) throw new Error('Nome novo não informado.');
+    const q = (project_name || '').toLowerCase();
+    const proj = (settings.projects || []).find(p => p.name.toLowerCase().includes(q) || q.includes(p.name.toLowerCase()));
+    if (!proj) throw new Error(`Projeto "${project_name}" não encontrado.`);
+    settings.updateProject(proj.id, 'name', new_name);
+    return { id: proj.id, old_name: proj.name, new_name };
+  }
+
+  // ── EDIT_PROJECT ────────────────────────────────────────────────────────────
+  if (cmd.type === 'EDIT_PROJECT') {
+    const { project_name, field, new_value } = cmd.params;
+    if (new_value == null) throw new Error('Valor não informado.');
+    if (!['target', 'monthly', 'saved'].includes(field)) throw new Error(`Campo inválido: ${field}`);
+    const q = (project_name || '').toLowerCase();
+    const proj = (settings.projects || []).find(p => p.name.toLowerCase().includes(q) || q.includes(p.name.toLowerCase()));
+    if (!proj) throw new Error(`Projeto "${project_name}" não encontrado.`);
+    settings.updateProject(proj.id, field, new_value);
+    return { id: proj.id, project_name: proj.name, field, new_value };
+  }
+
+  // ── DELETE_PROJECT ──────────────────────────────────────────────────────────
+  if (cmd.type === 'DELETE_PROJECT') {
+    const { project_name } = cmd.params;
+    const q = (project_name || '').toLowerCase();
+    const proj = (settings.projects || []).find(p => p.name.toLowerCase().includes(q) || q.includes(p.name.toLowerCase()));
+    if (!proj) throw new Error(`Projeto "${project_name}" não encontrado.`);
+    if (!settings.removeProject) throw new Error('removeProject não disponível — atualize o app.');
+    settings.removeProject(proj.id);
+    return { id: proj.id, project_name: proj.name };
+  }
+
+  // ── BULK_CONCLUDE_MONTH ─────────────────────────────────────────────────────
+  if (cmd.type === 'BULK_CONCLUDE_MONTH') {
+    const { monthIndex, value = true } = cmd.params;
+    const mi = monthIndex ?? new Date().getMonth();
+    concludeAllItems(mi, value);
+    return { monthIndex: mi, value };
+  }
+
+  // ── ADD_CONTRIBUTION ────────────────────────────────────────────────────────
+  if (cmd.type === 'ADD_CONTRIBUTION') {
+    const { name, value, monthIndex } = cmd.params;
+    if (!value || value <= 0) throw new Error('Valor inválido para contribuição.');
+    const mi = monthIndex ?? new Date().getMonth();
+    addItem(mi, 'contributions', name || 'Contribuição', value, null);
+    return { name, value, monthIndex: mi };
+  }
+
+  // ── DELETE_INCOME ───────────────────────────────────────────────────────────
+  if (cmd.type === 'DELETE_INCOME') {
+    const { income_name, monthIndex } = cmd.params;
+    const months = data?.months || {};
+    const start = monthIndex != null ? monthIndex : 0;
+    const end = monthIndex != null ? monthIndex : 11;
+    let deleted = 0;
+    const q = (income_name || '').toLowerCase();
+    for (let mi = start; mi <= end; mi++) {
+      const items = [...(months[mi]?.incomes || [])];
+      for (const item of items) {
+        if ((item.name || '').toLowerCase().includes(q)) { removeItem(mi, 'incomes', item.id); deleted++; }
+      }
+    }
+    if (deleted === 0) throw new Error(`Nenhuma renda encontrada com "${income_name}".`);
+    return { deleted, income_name };
+  }
+
+  // ── EDIT_INCOME_VALUE ───────────────────────────────────────────────────────
+  if (cmd.type === 'EDIT_INCOME_VALUE') {
+    const { income_name, new_value, monthIndex } = cmd.params;
+    if (new_value == null) throw new Error('Valor não informado.');
+    const months = data?.months || {};
+    const start = monthIndex != null ? monthIndex : 0;
+    const end = monthIndex != null ? monthIndex : 11;
+    let updated = 0;
+    const q = (income_name || '').toLowerCase();
+    for (let mi = start; mi <= end; mi++) {
+      for (const item of (months[mi]?.incomes || [])) {
+        if ((item.name || '').toLowerCase().includes(q)) { updateItem(mi, 'incomes', item.id, 'value', new_value); updated++; }
+      }
+    }
+    if (updated === 0) throw new Error(`Nenhuma renda encontrada com "${income_name}".`);
+    return { updated, income_name, new_value };
   }
 
   throw new Error(`Comando desconhecido: ${cmd.type}`);

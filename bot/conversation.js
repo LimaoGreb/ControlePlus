@@ -518,6 +518,141 @@ async function dispatchIntent(chatId, session, classified) {
     return;
   }
 
+  // ── Renomear despesa ──────────────────────────────────────────────────────
+  if (intent === 'rename_expense') {
+    const { expense_name, new_name } = params || {};
+    if (!expense_name || expense_name.length < 2) {
+      await sendMessage(chatId, `✏️ Qual despesa quer renomear? Ex: _"renomeia a netflix para Disney Plus"_`);
+      return;
+    }
+    if (!new_name || new_name.length < 2) {
+      await sendMessage(chatId, `✏️ Qual o novo nome para *${expense_name}*?`);
+      return;
+    }
+    const label = `✏️ *${expense_name}* → *${new_name}*`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'RENAME_EXPENSE', params: { expense_name, new_name }, label };
+    await sendMessage(chatId, `Renomear despesa:\n\n${label}\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
+  // ── Editar despesa (valor ou pagamento) ──────────────────────────────────
+  if (intent === 'edit_expense') {
+    const { expense_name, field, new_value, new_payment } = params || {};
+    if (!expense_name || expense_name.length < 2) {
+      await sendMessage(chatId, `✏️ Qual despesa quer editar? Ex: _"muda o valor da netflix para 55"_`);
+      return;
+    }
+    if (field === 'value') {
+      if (new_value == null) {
+        await sendMessage(chatId, `💰 Qual o novo valor de *${expense_name}*?`);
+        return;
+      }
+      const R = (v) => `R$ ${v.toFixed(2)}`;
+      const label = `💰 *${expense_name}* → ${R(new_value)}`;
+      session.step = 'confirming_cmd';
+      session.pendingCmd = { type: 'EDIT_EXPENSE_VALUE', params: { expense_name, new_value }, label };
+      await sendMessage(chatId, `Atualizar valor:\n\n${label}\n\nConfirma? _(sim/não)_`);
+    } else if (field === 'payment') {
+      if (!new_payment) {
+        await sendMessage(chatId, `💳 Qual a nova forma de pagamento de *${expense_name}*? _(Pix, débito, Nubank, crédito...)_`);
+        return;
+      }
+      const label = `💳 *${expense_name}* → ${new_payment}`;
+      session.step = 'confirming_cmd';
+      session.pendingCmd = { type: 'EDIT_EXPENSE_PAYMENT', params: { expense_name, new_payment }, label };
+      await sendMessage(chatId, `Atualizar pagamento:\n\n${label}\n\nConfirma? _(sim/não)_`);
+    } else {
+      await sendMessage(chatId, `✏️ O que quer editar em *${expense_name}*?\n\n_"muda o valor"_ ou _"muda o pagamento"_?`);
+    }
+    return;
+  }
+
+  // ── Apagar despesa ────────────────────────────────────────────────────────
+  if (intent === 'delete_expense') {
+    const { expense_name } = params || {};
+    if (!expense_name || expense_name.length < 2) {
+      await sendMessage(chatId, `🗑️ Qual despesa quer apagar? Ex: _"apaga a netflix"_`);
+      return;
+    }
+    const label = `🗑️ Apagar *${expense_name}* de todos os meses`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'DELETE_EXPENSE', params: { expense_name }, label };
+    await sendMessage(chatId, `${label}\n\n⚠️ _Esta ação não pode ser desfeita._\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
+  // ── Mover despesa (fixo ↔ variável) ──────────────────────────────────────
+  if (intent === 'move_expense') {
+    const { expense_name, to_section } = params || {};
+    if (!expense_name || expense_name.length < 2) {
+      await sendMessage(chatId, `🔀 Qual despesa quer mover? Ex: _"passa a netflix para fixa"_`);
+      return;
+    }
+    if (!to_section) {
+      await sendMessage(chatId, `🔀 Mover *${expense_name}* para fixo ou variável?`);
+      return;
+    }
+    const dest = to_section === 'fixed' ? 'Fixas' : 'Variáveis';
+    const label = `🔀 *${expense_name}* → Despesas ${dest}`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'MOVE_EXPENSE', params: { expense_name, to_section }, label };
+    await sendMessage(chatId, `${label}\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
+  // ── Renomear projeto ──────────────────────────────────────────────────────
+  if (intent === 'rename_project') {
+    const { project_name, new_name } = params || {};
+    if (!project_name || project_name.length < 2) {
+      await sendMessage(chatId, `✏️ Qual projeto quer renomear? Ex: _"renomeia o projeto viagem para Férias"_`);
+      return;
+    }
+    if (!new_name || new_name.length < 2) {
+      await sendMessage(chatId, `✏️ Qual o novo nome para o projeto *${project_name}*?`);
+      return;
+    }
+    const label = `✏️ Projeto *${project_name}* → *${new_name}*`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'RENAME_PROJECT', params: { project_name, new_name }, label };
+    await sendMessage(chatId, `${label}\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
+  // ── Editar projeto (meta ou mensal) ──────────────────────────────────────
+  if (intent === 'edit_project') {
+    const { project_name, field, new_value } = params || {};
+    if (!project_name || project_name.length < 2) {
+      await sendMessage(chatId, `🎯 Qual projeto quer editar? Ex: _"muda a meta do projeto carro para 30000"_`);
+      return;
+    }
+    if (new_value == null) {
+      await sendMessage(chatId, `🎯 Qual o novo valor para o projeto *${project_name}*?`);
+      return;
+    }
+    const R = (v) => `R$ ${v.toFixed(2)}`;
+    const fieldLabel = field === 'monthly' ? 'mensal' : field === 'saved' ? 'guardado' : 'meta';
+    const label = `🎯 *${project_name}* — ${fieldLabel}: ${R(new_value)}`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'EDIT_PROJECT', params: { project_name, field: field || 'target', new_value }, label };
+    await sendMessage(chatId, `${label}\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
+  // ── Apagar projeto ────────────────────────────────────────────────────────
+  if (intent === 'delete_project') {
+    const { project_name } = params || {};
+    if (!project_name || project_name.length < 2) {
+      await sendMessage(chatId, `🗑️ Qual projeto quer apagar? Ex: _"apaga o projeto viagem"_`);
+      return;
+    }
+    const label = `🗑️ Apagar projeto *${project_name}*`;
+    session.step = 'confirming_cmd';
+    session.pendingCmd = { type: 'DELETE_PROJECT', params: { project_name }, label };
+    await sendMessage(chatId, `${label}\n\n⚠️ _O progresso guardado também será perdido._\n\nConfirma? _(sim/não)_`);
+    return;
+  }
+
   // Comandos não suportados via bot (gerenciados direto no app)
   if (intent === 'unsupported') {
     const feature = params?.feature;
@@ -1024,6 +1159,32 @@ async function handleConfirmingCommand(chatId, text, session) {
       await sendMessage(chatId, `✅ *Meta de contribuição atualizada!*\n\n${cmd.label}\n\n_Aplicado no Controle+_ 💜`);
     } else if (cmd.type === 'UPDATE_PROJECT_SAVED') {
       await sendMessage(chatId, `✅ *Projeto atualizado!*\n\n${cmd.label}\n\n_Guardado atualizado no Controle+_ 🎯`);
+    } else if (cmd.type === 'RENAME_EXPENSE') {
+      await sendMessage(chatId, `✅ *Despesa renomeada!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ ✏️`);
+    } else if (cmd.type === 'EDIT_EXPENSE_VALUE') {
+      await sendMessage(chatId, `✅ *Valor atualizado!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 💰`);
+    } else if (cmd.type === 'EDIT_EXPENSE_PAYMENT') {
+      await sendMessage(chatId, `✅ *Pagamento atualizado!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 💳`);
+    } else if (cmd.type === 'DELETE_EXPENSE') {
+      const count = result?.deleted || 1;
+      await sendMessage(chatId, `🗑️ *${count} despesa(s) apagada(s)!*\n\n${cmd.label}\n\n_Removido do Controle+_ ✅`);
+    } else if (cmd.type === 'MOVE_EXPENSE') {
+      await sendMessage(chatId, `🔀 *Despesa movida!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ ✅`);
+    } else if (cmd.type === 'RENAME_PROJECT') {
+      await sendMessage(chatId, `✅ *Projeto renomeado!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ ✏️`);
+    } else if (cmd.type === 'EDIT_PROJECT') {
+      await sendMessage(chatId, `✅ *Projeto atualizado!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 🎯`);
+    } else if (cmd.type === 'DELETE_PROJECT') {
+      await sendMessage(chatId, `🗑️ *Projeto apagado!*\n\n${cmd.label}\n\n_Removido do Controle+_ ✅`);
+    } else if (cmd.type === 'BULK_CONCLUDE_MONTH') {
+      const action = result?.value === false ? 'reabertas' : 'concluídas';
+      await sendMessage(chatId, `✅ *Todas as despesas ${action}!*\n\n_Atualizado no Controle+_ 🚀`);
+    } else if (cmd.type === 'ADD_CONTRIBUTION') {
+      await sendMessage(chatId, `✅ *Contribuição adicionada!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 💜`);
+    } else if (cmd.type === 'DELETE_INCOME') {
+      await sendMessage(chatId, `🗑️ *Renda removida!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ ✅`);
+    } else if (cmd.type === 'EDIT_INCOME_VALUE') {
+      await sendMessage(chatId, `✅ *Renda atualizada!*\n\n${cmd.label}\n\n_Atualizado no Controle+_ 💰`);
     }
   } catch (e) {
     console.error('[Jarvis] comando error:', e.message);
