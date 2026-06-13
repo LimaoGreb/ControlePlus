@@ -3,7 +3,7 @@
     "name": "Controle+",
     "slug": "FinanceApp",
     "scheme": "com.mautic.financeapp",
-    "version": "2.5.2",
+    "version": "2.5.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -23,7 +23,7 @@
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "package": "com.mautic.financeapp",
-      "versionCode": 32,
+      "versionCode": 33,
       "intentFilters": [
         {
           "action": "VIEW",
