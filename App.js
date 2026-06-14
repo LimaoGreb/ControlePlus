@@ -51,13 +51,23 @@ class TabErrorBoundary extends React.Component {
     this.state = { hasError: false };
   }
   static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error, info) {
+    console.error('[TabErrorBoundary] erro capturado:', error?.message || String(error));
+    console.error('[TabErrorBoundary] stack:', info?.componentStack);
+  }
   render() {
     if (this.state.hasError) {
       return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 }}>
           <Ionicons name="warning-outline" size={44} color="#F5A524" />
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>Algo deu errado nesta aba.</Text>
-          <Text style={{ color: '#888', fontSize: 13, textAlign: 'center' }}>Volte e tente abrir novamente.</Text>
+          <Text style={{ color: '#888', fontSize: 13, textAlign: 'center' }}>Tente novamente ou volte e reabra.</Text>
+          <TouchableOpacity
+            onPress={() => this.setState({ hasError: false })}
+            style={{ marginTop: 8, paddingHorizontal: 24, paddingVertical: 11, backgroundColor: '#F5A524', borderRadius: 14 }}
+          >
+            <Text style={{ color: '#000', fontWeight: '800', fontSize: 14 }}>Tentar novamente</Text>
+          </TouchableOpacity>
         </View>
       );
     }

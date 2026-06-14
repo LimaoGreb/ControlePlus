@@ -192,7 +192,10 @@ export function useSharedData() {
 // Wrapper usado APENAS na aba Casal — faz useData() retornar dados do casal
 // sem alterar o DataContext das abas pessoais.
 export function SharedMonthData({ children }) {
-  const { sharedContextValue, ready } = useSharedData();
+  const ctx = useSharedData();
+  // Guarda extra: se por algum motivo o contexto for nulo (fora do provider), retorna View vazia.
+  if (!ctx) return <View style={{ flex: 1 }} />;
+  const { sharedContextValue, ready } = ctx;
   // Retorna View vazia (nunca null) — null pode causar crash no React Navigation
   if (!ready || !sharedContextValue?.data) return <View style={{ flex: 1 }} />;
   return (

@@ -44,14 +44,14 @@ function findProject(projects, query) {
 }
 
 // Fallback via servidor: classifica com Gemini quando localClassify retorna null.
-async function classifyViaServer(text) {
+async function classifyViaServer(text, history = []) {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(`${BOT_SERVER_URL}/cap-classify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, history: history.slice(-6) }),
       signal: controller.signal,
     });
     clearTimeout(timer);
@@ -63,7 +63,7 @@ async function classifyViaServer(text) {
   }
 }
 
-export async function processMessage(text, contextData, dataOps, settingsOps) {
+export async function processMessage(text, contextData, dataOps, settingsOps, history = []) {
   const { data, investments, projects, paymentMethods, userName } = contextData;
   const snapshot = buildSnapshot(data, investments, projects, paymentMethods, userName);
   const n = (userName || 'você').split(' ')[0]; // primeiro nome
@@ -90,7 +90,7 @@ export async function processMessage(text, contextData, dataOps, settingsOps) {
 
   // ── 3. Fallback Gemini via servidor (quando localClassify retorna null) ─────
   if (!classified) {
-    classified = await classifyViaServer(text);
+    classified = await classifyViaServer(text, history);
   }
 
   if (!classified) {

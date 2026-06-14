@@ -78,9 +78,9 @@ app.get('/', (req, res) => res.json({ status: 'Jarvis online' }));
 // Chave API fica só no servidor — o app não precisa guardar nada sensível.
 app.post('/cap-classify', async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, history } = req.body;
     if (!text || typeof text !== 'string') return res.status(400).json({ error: 'text required' });
-    const result = await classifyIntent(text.slice(0, 500));
+    const result = await classifyIntent(text.slice(0, 500), Array.isArray(history) ? history : []);
     res.json({ result });
   } catch (e) {
     console.error('[Cap classify]', e.message);

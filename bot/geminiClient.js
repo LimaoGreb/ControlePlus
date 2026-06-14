@@ -740,18 +740,26 @@ Exemplos:
 
 Retorne apenas o JSON, nada mais.`;
 
-export async function classifyIntent(text) {
+export async function classifyIntent(text, history = []) {
   const local = localClassify(text.toLowerCase());
   if (local) return local;
 
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { intent: 'chat', params: {} };
   try {
+    // Monta contexto de histórico para ajudar o Gemini a resolver referências ("e esse mês?", "e as variáveis?")
+    let historyCtx = '';
+    if (history && history.length > 0) {
+      historyCtx = '\n\nHistórico recente da conversa:\n' +
+        history.map(h => `${h.role === 'user' ? 'Usuário' : 'Assistente'}: ${String(h.text || '').slice(0, 200)}`).join('\n') +
+        '\n';
+    }
+    const fullPrompt = PROMPT + historyCtx + '\n\nMensagem atual: ' + text;
     const res = await fetch(`${GEMINI_URL}?key=${key}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: PROMPT + '\n\nMensagem: ' + text }] }],
+        contents: [{ parts: [{ text: fullPrompt }] }],
         generationConfig: { temperature: 0, maxOutputTokens: 300 },
       }),
     });

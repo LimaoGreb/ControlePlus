@@ -2,6 +2,29 @@
 
 ---
 
+## v2.11.0 — 2026-06-14
+
+### feat: Cap com memória de conversa + avatar atualizado + chips corrigidos + diagnóstico Casal
+
+**Cap — Memória de conversa:**
+- `src/screens/ChatScreen.js` — `historyRef = useRef([])` guarda turnos `{role, text}`. Cada `send()` passa `historyRef.current.slice(-10)` para `processMessage` e empurra o par user/bot no ref após a resposta (máx 10 entradas).
+- `src/screens/ChatScreen.js` — Botão 🗑 no header chama `clearConversation()`: reseta mensagens e zera `historyRef`.
+- `src/services/jarvisLocal.js` — `processMessage(text, ctx, ops, settings, history=[])` e `classifyViaServer(text, history=[])` aceitam e repassam o histórico.
+- `bot/server.js` — `/cap-classify` extrai `history` do body e passa para `classifyIntent`.
+- `bot/geminiClient.js` — `classifyIntent(text, history=[])` monta `historyCtx` com as últimas mensagens e injeta no prompt Gemini, permitindo referências contextuais ("e esse mês?", "e as variáveis?").
+
+**Cap — Avatar:**
+- `src/screens/ChatScreen.js` — Avatar atualizado para `Gemini_Generated_Image_lebrn5lebrn5lebr.png` (mascote do Cap nos assets).
+
+**Cap — Chips de sugestão rápida:**
+- `src/screens/ChatScreen.js` — `alignItems: 'center'` adicionado no `contentContainerStyle` do ScrollView dos chips, corrigindo esticamento vertical no estado inicial.
+
+**Aba Casal — Diagnóstico de crash:**
+- `App.js` — `TabErrorBoundary.componentDidCatch` loga o erro real: `[TabErrorBoundary] erro capturado: ...`. Adicionado botão "Tentar novamente".
+- `src/context/SharedDataContext.js` — `SharedMonthData` retorna `<View/>` (nunca null) quando `ctx` é nulo ou dados ainda não carregaram.
+
+---
+
 ## v2.10.0 — 2026-06-14
 
 ### fix: Crash Modo Casal + UX lock + Cap chips + avatar do Cap + ícone robô

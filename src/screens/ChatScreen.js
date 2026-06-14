@@ -46,7 +46,7 @@ function BotText({ text, colors }) {
   );
 }
 
-const CAP_AVATAR = require('../../assets/cap-avatar.png');
+const CAP_AVATAR = require('../../assets/Gemini_Generated_Image_lebrn5lebrn5lebr.png');
 
 function CapAvatarImg({ style }) {
   return <Image source={CAP_AVATAR} style={[styles.avatar, style]} resizeMode="cover" />;
@@ -145,6 +145,8 @@ export default function ChatScreen() {
   const listRef = useRef(null);
   const capInitRef = useRef(false);
   const capLenRef = useRef(0);
+  // Histórico de conversa (máx 10 turnos) para o Cap manter contexto entre mensagens.
+  const historyRef = useRef([]);
 
   // ─── Integração CapContext ─────────────────────────────────────────────────
   useEffect(() => {
@@ -174,6 +176,14 @@ export default function ChatScreen() {
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   }, []);
+
+  const clearConversation = useCallback(() => {
+    const newGreeting = `Oi ${firstName}! 👋 Conversa reiniciada. O que posso fazer por você?`;
+    setMessages([mkMsg('bot', newGreeting)]);
+    setPendingOp(null);
+    setInputText('');
+    historyRef.current = [];
+  }, [firstName]);
 
   // ─── Envio de mensagem ─────────────────────────────────────────────────────
   const send = useCallback((rawText) => {
@@ -212,7 +222,7 @@ export default function ChatScreen() {
           const contextData = { data, investments, projects, paymentMethods, userName };
           const dataOps    = { addItem, updateItem, removeItem };
           const settingsOps = { setUserName, setIsInvestor, setMakesContributions, addProjectFull, updateProject, removeProject, setContributionGoalPct };
-          const result = await processMessage(text, contextData, dataOps, settingsOps);
+          const result = await processMessage(text, contextData, dataOps, settingsOps, historyRef.current.slice(-10));
           botText = result.botText;
           if (result.pendingOp) setPendingOp(result.pendingOp);
         } catch (e) {
@@ -220,6 +230,13 @@ export default function ChatScreen() {
           botText = 'Eita, deu um erro aqui. Tenta de novo!';
         }
       }
+
+      // Mantém histórico para contexto (máx 10 entradas = 5 turnos)
+      historyRef.current = [
+        ...historyRef.current,
+        { role: 'user', text },
+        { role: 'bot', text: botText },
+      ].slice(-10);
 
       push('bot', botText);
       setLoading(false);
@@ -256,6 +273,13 @@ export default function ChatScreen() {
             <Text style={[styles.pendingTxt, { color: colors.primary }]}>Aguardando confirmação</Text>
           </View>
         )}
+        <TouchableOpacity
+          onPress={clearConversation}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ marginLeft: 8 }}
+        >
+          <Ionicons name="trash-outline" size={20} color={colors.textMuted} />
+        </TouchableOpacity>
       </View>
 
       {/* Lista de mensagens */}
@@ -349,7 +373,7 @@ const styles = StyleSheet.create({
   italic: { fontStyle: 'italic' },
 
   chipsWrap: { flexShrink: 0 },
-  chips: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
+  chips: { paddingHorizontal: 12, paddingVertical: 8, gap: 8, alignItems: 'center' },
   chip: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, flexShrink: 0 },
   chipTxt: { fontSize: 11, fontWeight: '600' },
 
