@@ -105,10 +105,10 @@ export default function ItemRow({
       {
         borderColor: isOverdue ? '#CC0000' : colors.border,
         borderWidth: isOverdue ? 2 : 1,
-        backgroundColor: colors.card,
+        backgroundColor: isLocked ? (colors.cardAlt ?? colors.border + '30') : colors.card,
         borderRadius: 12,
         overflow: 'hidden',
-        opacity: isLocked ? 0.82 : 1,
+        opacity: isLocked ? 0.55 : 1,
       },
     ]}>
       {isOverdue && (
@@ -168,39 +168,41 @@ export default function ItemRow({
 
       {((swipeable && onChangeDueDay) || (showPayment && paymentMethods.length > 0)) && (
         <View style={styles.chipsRow}>
-          {swipeable && onChangeDueDay && !isLocked && (
-            <DueDayChip dueDay={item.dueDay} onChange={onChangeDueDay} color={accent} />
-          )}
-          {showPayment && (concluded || isLocked)
-            ? (() => {
-                const sel = paymentMethods.find((pm) => pm.name === item.payment);
-                if (!sel) return null;
-                const bank = getBankForPayment(sel);
-                return (
-                  <View style={[styles.chip, { backgroundColor: bank?.color || accent, borderColor: bank?.color || accent }]}>
-                    {bank && <BankBadge bank={bank} size={18} />}
-                    <Text style={[styles.chipText, { color: '#fff' }]}>{sel.name}</Text>
-                  </View>
-                );
-              })()
-            : showPayment && paymentMethods.map((pm) => {
-                const selected = item.payment === pm.name;
-                const bank = getBankForPayment(pm);
-                const chipColor = selected ? (bank?.color || accent) : 'transparent';
-                const borderColor = selected ? (bank?.color || accent) : (bank?.color ? bank.color + '55' : colors.border);
-                const textColor = selected ? '#fff' : (bank?.color || colors.textSecondary);
-                return (
-                  <TouchableOpacity
-                    key={pm.id}
-                    onPress={() => handleChipPress(pm)}
-                    style={[styles.chip, { backgroundColor: chipColor, borderColor }]}
-                  >
-                    {bank && !selected && <BankBadge bank={bank} size={20} />}
-                    {selected && <Ionicons name="checkmark" size={13} color="#fff" />}
-                    <Text style={[styles.chipText, { color: textColor }]}>{pm.name}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+          <View style={styles.chipsLeft}>
+            {swipeable && onChangeDueDay && !isLocked && (
+              <DueDayChip dueDay={item.dueDay} onChange={onChangeDueDay} color={accent} />
+            )}
+            {showPayment && (concluded || isLocked)
+              ? (() => {
+                  const sel = paymentMethods.find((pm) => pm.name === item.payment);
+                  if (!sel) return null;
+                  const bank = getBankForPayment(sel);
+                  return (
+                    <View style={[styles.chip, { backgroundColor: bank?.color || accent, borderColor: bank?.color || accent }]}>
+                      {bank && <BankBadge bank={bank} size={18} />}
+                      <Text style={[styles.chipText, { color: '#fff' }]}>{sel.name}</Text>
+                    </View>
+                  );
+                })()
+              : showPayment && paymentMethods.map((pm) => {
+                  const selected = item.payment === pm.name;
+                  const bank = getBankForPayment(pm);
+                  const chipColor = selected ? (bank?.color || accent) : 'transparent';
+                  const borderColor = selected ? (bank?.color || accent) : (bank?.color ? bank.color + '55' : colors.border);
+                  const textColor = selected ? '#fff' : (bank?.color || colors.textSecondary);
+                  return (
+                    <TouchableOpacity
+                      key={pm.id}
+                      onPress={() => handleChipPress(pm)}
+                      style={[styles.chip, { backgroundColor: chipColor, borderColor }]}
+                    >
+                      {bank && !selected && <BankBadge bank={bank} size={20} />}
+                      {selected && <Ionicons name="checkmark" size={13} color="#fff" />}
+                      <Text style={[styles.chipText, { color: textColor }]}>{pm.name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+          </View>
           {unlocked && lockConditionMet && !concluded && (
             <TouchableOpacity
               onPress={() => { hapticSuccess(); setUnlocked(false); }}
@@ -284,10 +286,11 @@ const styles = StyleSheet.create({
   value: { width: 118 },
   trash: { paddingLeft: 8, paddingVertical: 6 },
   lockBtn: { paddingLeft: 10, paddingVertical: 6, opacity: 0.55 },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginLeft: 16 },
+  chipsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, marginLeft: 16, marginRight: 8 },
+  chipsLeft: { flex: 1, flexDirection: 'row', flexWrap: 'wrap' },
   chip: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7, marginRight: 8, marginBottom: 6, gap: 6 },
   chipText: { fontSize: 13, fontWeight: '700' },
-  confirmBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 6, gap: 4 },
+  confirmBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, gap: 4, marginLeft: 8 },
   confirmBtnTxt: { fontSize: 11, fontWeight: '700' },
   action: { justifyContent: 'center', width: 100, paddingHorizontal: 14, borderRadius: 10, marginBottom: 10 },
   actionText: { color: '#fff', fontSize: 12, fontWeight: '800', marginTop: 2 },

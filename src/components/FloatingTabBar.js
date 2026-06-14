@@ -1,8 +1,8 @@
 // Barra de navegação flutuante (estilo moderno/minimalista): destacada das bordas,
 // cantos arredondados, com a aba ativa em "pílula" colorida.
 // Badge dourado no ícone do Cap indica mensagens não lidas.
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useCapMessages } from '../context/CapContext';
@@ -11,6 +11,15 @@ export default function FloatingTabBar({ state, descriptors, navigation }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { unreadCount } = useCapMessages();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  if (keyboardVisible) return null;
 
   return (
     <View style={[styles.wrap, { bottom: insets.bottom + 8 }]} pointerEvents="box-none">

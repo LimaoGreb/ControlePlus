@@ -30,24 +30,24 @@ export default function DonutProgress({ pct = 0, size = 96, stroke, color, label
           origin={`${center}, ${center}`}
         />
       </Svg>
-      <View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center', paddingHorizontal: sw + 6, overflow: 'hidden' }}>
         {emoji ? (
           <>
-            <Text style={{ fontSize: Math.round(size * 0.27), lineHeight: Math.round(size * 0.32) }}>{emoji}</Text>
-            <Text style={{ fontSize: Math.round(size * 0.145), fontWeight: '900', color: c, marginTop: 2 }}>
+            <Text style={{ fontSize: Math.round(size * 0.25), lineHeight: Math.round(size * 0.3) }}>{emoji}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: Math.round(size * 0.135), fontWeight: '900', color: c, marginTop: 2, textAlign: 'center' }}>
               {Math.round(clamped)}%
             </Text>
-            <Text style={{ fontSize: Math.round(size * 0.095), color: colors.textMuted, fontWeight: '700' }}>
+            <Text numberOfLines={1} style={{ fontSize: Math.round(size * 0.085), color: colors.textMuted, fontWeight: '700', textAlign: 'center' }}>
               da meta
             </Text>
           </>
         ) : (
           <>
-            <Text style={{ fontSize: Math.round(size * 0.23), fontWeight: '900', color: colors.text }}>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: Math.round(size * 0.22), fontWeight: '900', color: colors.text, textAlign: 'center' }}>
               {Math.round(clamped)}%
             </Text>
             {label ? (
-              <Text style={{ fontSize: Math.round(size * 0.105), fontWeight: '700', color: colors.textMuted, marginTop: -2 }}>
+              <Text numberOfLines={1} style={{ fontSize: Math.round(size * 0.1), fontWeight: '700', color: colors.textMuted, marginTop: -2, textAlign: 'center' }}>
                 {label}
               </Text>
             ) : null}

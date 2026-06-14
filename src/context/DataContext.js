@@ -9,6 +9,9 @@ import React, {
 import { loadData, saveData, replaceData } from '../services/storage';
 
 export const DataContext = createContext(null);
+// Contexto dedicado para a aba Casal — prioridade sobre DataContext em useData().
+// Não afeta nenhuma outra tela; SharedMonthData é o único provider deste contexto.
+export const CasalDataContext = createContext(null);
 
 let idCounter = 0;
 function uid(prefix) {
@@ -211,6 +214,8 @@ export function DataProvider({ children }) {
 }
 
 export function useData() {
+  const casalCtx = useContext(CasalDataContext);
+  if (casalCtx) return casalCtx;
   const ctx = useContext(DataContext);
   if (!ctx) throw new Error('useData deve ser usado dentro de DataProvider');
   return ctx;

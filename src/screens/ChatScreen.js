@@ -2,16 +2,19 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
   ScrollView, StyleSheet, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Animated, Image,
+  ActivityIndicator, Animated, Image, ImageBackground, Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { useData } from '../context/DataContext';
 import { useSettings } from '../context/SettingsContext';
 import { useCapMessages } from '../context/CapContext';
 import { useVoiceChat } from '../hooks/useVoiceChat';
 import { processMessage } from '../services/jarvisLocal';
+
+const CAP_BG = require('../../assets/imagem de fundo do cap.png');
 
 // ─── Sugestões rápidas ────────────────────────────────────────────────────────
 const CHIPS = [
@@ -48,8 +51,12 @@ function BotText({ text, colors }) {
 
 const CAP_AVATAR = require('../../assets/Gemini_Generated_Image_lebrn5lebrn5lebr.png');
 
-function CapAvatarImg({ style }) {
-  return <Image source={CAP_AVATAR} style={[styles.avatar, style]} resizeMode="cover" />;
+function CapAvatarImg() {
+  return (
+    <View style={styles.avatarWrap}>
+      <Image source={CAP_AVATAR} style={styles.avatarImg} resizeMode="cover" />
+    </View>
+  );
 }
 
 // ─── Bolha de mensagem ────────────────────────────────────────────────────────
@@ -117,6 +124,46 @@ function MicButton({ listening, onPress, colors }) {
         <Ionicons name={listening ? 'mic' : 'mic-outline'} size={20} color="#fff" />
       </Animated.View>
     </TouchableOpacity>
+  );
+}
+
+// ─── Waveform estilo WhatsApp quando gravando áudio ──────────────────────────
+function WaveformRecorder({ colors, onStop }) {
+  const bars = useRef([
+    new Animated.Value(0.3), new Animated.Value(0.7), new Animated.Value(0.5),
+    new Animated.Value(0.9), new Animated.Value(0.4), new Animated.Value(0.6),
+    new Animated.Value(0.25),
+  ]).current;
+
+  useEffect(() => {
+    const loops = bars.map((anim, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, { toValue: 1.0, duration: 280 + i * 55, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0.15, duration: 280 + i * 55, useNativeDriver: true }),
+        ])
+      )
+    );
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, []);
+
+  return (
+    <View style={[styles.waveformBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+      <View style={[styles.recDot, { backgroundColor: '#E53935' }]} />
+      <Text style={[styles.recLabel, { color: '#E53935' }]}>Gravando...</Text>
+      <View style={styles.waveformBars}>
+        {bars.map((anim, i) => (
+          <Animated.View
+            key={i}
+            style={[styles.waveBar, { backgroundColor: '#E53935', transform: [{ scaleY: anim }] }]}
+          />
+        ))}
+      </View>
+      <TouchableOpacity onPress={onStop} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Ionicons name="close-circle" size={28} color={colors.textMuted} />
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -251,6 +298,23 @@ export default function ChatScreen() {
     onTranscript: useCallback((text) => send(text), [send]),
   });
 
+  // ─── Esconde tab bar quando teclado aparece ────────────────────────────────
+  const navigation = useNavigation();
+  useEffect(() => {
+    const parent = navigation.getParent();
+    const show = Keyboard.addListener('keyboardDidShow', () => {
+      parent?.setOptions({ tabBarStyle: { display: 'none' } });
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      parent?.setOptions({ tabBarStyle: { display: 'flex' } });
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+      parent?.setOptions({ tabBarStyle: { display: 'flex' } });
+    };
+  }, [navigation]);
+
   const tabBarClearance = insets.bottom + 80;
 
   return (
@@ -261,7 +325,9 @@ export default function ChatScreen() {
     >
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <Image source={CAP_AVATAR} style={styles.headerAvatar} resizeMode="cover" />
+        <View style={styles.headerAvatarWrap}>
+          <Image source={CAP_AVATAR} style={styles.headerAvatarImg} resizeMode="cover" />
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Cap</Text>
           <Text style={[styles.headerSub, { color: listening ? '#E53935' : colors.textMuted }]}>
@@ -282,65 +348,73 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Lista de mensagens */}
-      <FlatList
-        ref={listRef}
-        data={messages}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => <MessageBubble msg={item} colors={colors} />}
-        contentContainerStyle={[styles.list, { paddingBottom: 12 }]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        onContentSizeChange={scrollToEnd}
-      />
-
-      {loading && <TypingIndicator colors={colors} />}
-
-      {/* Chips de sugestão */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chips}
-        style={[styles.chipsWrap, { backgroundColor: colors.background }]}
-        keyboardShouldPersistTaps="always"
-      >
-        {CHIPS.map(chip => (
-          <TouchableOpacity
-            key={chip.label}
-            onPress={() => send(chip.text)}
-            style={[styles.chip, { backgroundColor: colors.card, borderColor: colors.border }]}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.chipTxt, { color: colors.textSecondary }]}>{chip.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Barra de input */}
-      <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: tabBarClearance }]}>
-        <MicButton listening={listening} onPress={toggleMic} colors={colors} />
-
-        <TextInput
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder={pendingOp ? 'Digite sim ou não...' : 'Pergunte algo...'}
-          placeholderTextColor={colors.textMuted}
-          style={[styles.input, { color: colors.text, backgroundColor: colors.inputBg || colors.background, borderColor: colors.border }]}
-          multiline
-          maxLength={300}
-          returnKeyType="default"
-          blurOnSubmit={false}
+      {/* Lista de mensagens com fundo */}
+      <ImageBackground source={CAP_BG} style={{ flex: 1 }} imageStyle={{ opacity: 0.07 }} resizeMode="cover">
+        <FlatList
+          ref={listRef}
+          data={messages}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => <MessageBubble msg={item} colors={colors} />}
+          contentContainerStyle={[styles.list, { paddingBottom: 12 }]}
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={scrollToEnd}
         />
+        {loading && <TypingIndicator colors={colors} />}
+      </ImageBackground>
 
-        <TouchableOpacity
-          onPress={() => send(inputText)}
-          disabled={!inputText.trim() || loading}
-          activeOpacity={0.75}
-          style={[styles.sendBtn, { backgroundColor: inputText.trim() && !loading ? colors.primary : colors.border }]}
+      {/* Chips de sugestão — fixos acima do input */}
+      {!listening && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chips}
+          style={[styles.chipsWrap, { backgroundColor: colors.background }]}
+          keyboardShouldPersistTaps="always"
         >
-          <Ionicons name="send" size={18} color="#fff" />
-        </TouchableOpacity>
-      </View>
+          {CHIPS.map(chip => (
+            <TouchableOpacity
+              key={chip.label}
+              onPress={() => send(chip.text)}
+              style={[styles.chip, { backgroundColor: colors.card, borderColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.chipTxt, { color: colors.textSecondary }]}>{chip.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Waveform (gravando) ou barra de input normal */}
+      {listening ? (
+        <WaveformRecorder colors={colors} onStop={toggleMic} />
+      ) : (
+        <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: tabBarClearance }]}>
+          <MicButton listening={false} onPress={toggleMic} colors={colors} />
+
+          <TextInput
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder={pendingOp ? 'Digite sim ou não...' : 'Pergunte algo...'}
+            placeholderTextColor={colors.textMuted}
+            style={[styles.input, { color: colors.text, backgroundColor: colors.inputBg || colors.background, borderColor: colors.border }]}
+            multiline
+            maxLength={300}
+            returnKeyType="default"
+            blurOnSubmit={false}
+          />
+
+          <TouchableOpacity
+            onPress={() => send(inputText)}
+            disabled={!inputText.trim() || loading}
+            activeOpacity={0.75}
+            style={[styles.sendBtn, { backgroundColor: inputText.trim() && !loading ? colors.primary : colors.border }]}
+          >
+            <Ionicons name="send" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -353,7 +427,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1,
   },
-  headerAvatar: { width: 38, height: 38, borderRadius: 19 },
+  headerAvatarWrap: { width: 38, height: 38, borderRadius: 19, overflow: 'hidden' },
+  headerAvatarImg: { width: 38, height: 38 },
   headerTitle: { fontSize: 16, fontWeight: '800' },
   headerSub: { fontSize: 11, fontWeight: '500' },
   pendingBadge: { marginLeft: 'auto', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
@@ -363,7 +438,8 @@ const styles = StyleSheet.create({
 
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 8 },
   msgRowUser: { flexDirection: 'row-reverse' },
-  avatar: { width: 30, height: 30, borderRadius: 15, flexShrink: 0 },
+  avatarWrap: { width: 30, height: 30, borderRadius: 15, overflow: 'hidden', flexShrink: 0 },
+  avatarImg: { width: 30, height: 30 },
   bubble: { maxWidth: '78%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleBot: { borderWidth: 1, borderBottomLeftRadius: 4 },
   bubbleUser: { borderBottomRightRadius: 4 },
@@ -397,4 +473,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     marginBottom: 1,
   },
+
+  waveformBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 16,
+    borderTopWidth: 1,
+  },
+  recDot: { width: 10, height: 10, borderRadius: 5 },
+  recLabel: { fontSize: 13, fontWeight: '700', minWidth: 80 },
+  waveformBars: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, height: 36 },
+  waveBar: { width: 4, height: 28, borderRadius: 2 },
 });

@@ -9,7 +9,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DataContext } from './DataContext';
+import { DataContext, CasalDataContext } from './DataContext';
 import { YEAR } from '../data/initialData';
 
 const SHARED_KEY = `@casal:dados:${YEAR}`;
@@ -189,19 +189,18 @@ export function useSharedData() {
   return useContext(SharedCtx);
 }
 
-// Wrapper usado APENAS na aba Casal — faz useData() retornar dados do casal
-// sem alterar o DataContext das abas pessoais.
+// Wrapper usado APENAS na aba Casal — faz useData() retornar dados compartilhados
+// via CasalDataContext (contexto dedicado), SEM tocar no DataContext principal.
+// Isso evita qualquer conflito de override com o DataProvider raiz.
 export function SharedMonthData({ children }) {
   const ctx = useSharedData();
-  // Guarda extra: se por algum motivo o contexto for nulo (fora do provider), retorna View vazia.
   if (!ctx) return <View style={{ flex: 1 }} />;
   const { sharedContextValue, ready } = ctx;
-  // Retorna View vazia (nunca null) — null pode causar crash no React Navigation
   if (!ready || !sharedContextValue?.data) return <View style={{ flex: 1 }} />;
   return (
-    <DataContext.Provider value={sharedContextValue}>
+    <CasalDataContext.Provider value={sharedContextValue}>
       {children}
-    </DataContext.Provider>
+    </CasalDataContext.Provider>
   );
 }
 

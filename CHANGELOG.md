@@ -2,6 +2,29 @@
 
 ---
 
+## v2.12.0 — 2026-06-14
+
+### fix: Modo Casal + UX Cap + UI refinamentos gerais
+
+**Modo Casal — Fix arquitetural:**
+- `src/context/DataContext.js` — `CasalDataContext = createContext(null)` criado como contexto dedicado. `useData()` verifica `CasalDataContext` primeiro, eliminando conflito com `DataProvider` raiz.
+- `src/context/SharedDataContext.js` — `SharedMonthData` agora provê `CasalDataContext.Provider` (NÃO sobrescreve `DataContext`). Evita o erro de throw em `useData()` quando o contexto ficava null por timing.
+
+**Cap — Fundo, avatar circular, waveform, nav bar:**
+- `src/screens/ChatScreen.js` — Background image `assets/imagem de fundo do cap.png` via `ImageBackground` (opacity 0.07). Avatar com `View overflow:'hidden'` para crop circular no Android. `WaveformRecorder` component: 7 barras animadas com `Animated.loop+sequence+scaleY` substituem o input quando `listening=true`. Chips só aparecem quando não está gravando.
+- `src/components/FloatingTabBar.js` — `Keyboard.addListener` oculta toda a tab bar quando teclado está visível (`return null`); restaura ao fechar.
+
+**ItemRow — locked card + confirmBtn:**
+- `src/components/ItemRow.js` — Card bloqueado: `opacity: 0.55`, `backgroundColor: colors.cardAlt`. Botão "Confirmar" movido para a direita do `chipsRow` via estrutura `chipsLeft (flex:1) + confirmBtn (marginLeft:8)`.
+
+**IncomeSection — Remove retângulo externo:**
+- `src/components/IncomeSection.js` — Collapsible removido. Seção renda agora renderiza flat (header linha + ItemRows diretos), eliminando o card-dentro-de-card.
+
+**DonutProgress — Fix overflow de texto:**
+- `src/components/DonutProgress.js` — Container de texto recebe `paddingHorizontal: sw + 6` e `overflow:'hidden'`. Todos os texts com `numberOfLines={1}` + `adjustsFontSizeToFit` onde necessário.
+
+---
+
 ## v2.11.0 — 2026-06-14
 
 ### feat: Cap com memória de conversa + avatar atualizado + chips corrigidos + diagnóstico Casal
