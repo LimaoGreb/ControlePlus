@@ -118,15 +118,15 @@ export function SharedDataProvider({ children }) {
     if (!toReplicate.length) return 0;
     setData((prev) => {
       const months = { ...(prev || EMPTY).months };
-      for (let mi = 0; mi < 12; mi++) {
-        if (mi === monthIndex) continue;
+      for (let mi = monthIndex + 1; mi < 12; mi++) {
         const m = ensureMonth(months[mi]);
         let updated = [...m.incomes];
         toReplicate.forEach((src) => {
           const key = src.name.toLowerCase().trim();
-          const idx = updated.findIndex((it) => it.name.toLowerCase().trim() === key);
-          if (idx >= 0) updated[idx] = { ...updated[idx], value: src.value };
-          else updated.push({ id: uid('incomes'), name: src.name, value: src.value, payment: null });
+          const alreadyExists = updated.some((it) => it.name.toLowerCase().trim() === key);
+          if (!alreadyExists) {
+            updated.push({ id: uid('incomes'), name: src.name, value: src.value, payment: null });
+          }
         });
         months[mi] = { ...m, incomes: updated };
       }
@@ -137,22 +137,22 @@ export function SharedDataProvider({ children }) {
 
   // ── Projetos do casal ──
   const addCoupleProject = () =>
-    setData((prev) => ({
-      ...prev,
-      projects: [...(prev.projects || []), { id: uid('proj'), name: '', target: 0, monthly: 0, saved: 0 }],
-    }));
+    setData((prev) => {
+      const base = prev || EMPTY;
+      return { ...base, projects: [...(base.projects || []), { id: uid('proj'), name: '', target: 0, monthly: 0, saved: 0 }] };
+    });
 
   const updateCoupleProject = (id, field, value) =>
-    setData((prev) => ({
-      ...prev,
-      projects: (prev.projects || []).map((p) => p.id === id ? { ...p, [field]: value } : p),
-    }));
+    setData((prev) => {
+      const base = prev || EMPTY;
+      return { ...base, projects: (base.projects || []).map((p) => p.id === id ? { ...p, [field]: value } : p) };
+    });
 
   const removeCoupleProject = (id) =>
-    setData((prev) => ({
-      ...prev,
-      projects: (prev.projects || []).filter((p) => p.id !== id),
-    }));
+    setData((prev) => {
+      const base = prev || EMPTY;
+      return { ...base, projects: (base.projects || []).filter((p) => p.id !== id) };
+    });
 
   // Recebe dados do Firebase e aplica localmente (sem re-trigger do push).
   const importSharedData = (newData) => {
@@ -191,8 +191,8 @@ export function useSharedData() {
 // Wrapper usado APENAS na aba Casal — faz useData() retornar dados do casal
 // sem alterar o DataContext das abas pessoais.
 export function SharedMonthData({ children }) {
-  const { sharedContextValue } = useSharedData();
-  if (!sharedContextValue) return null;
+  const { sharedContextValue, ready } = useSharedData();
+  if (!ready || !sharedContextValue?.data) return null;
   return (
     <DataContext.Provider value={sharedContextValue}>
       {children}

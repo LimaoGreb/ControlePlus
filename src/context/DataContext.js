@@ -147,24 +147,21 @@ export function DataProvider({ children }) {
     }));
   };
 
-  // Replica as fontes de renda passadas para os outros 11 meses.
-  // Se o mês destino já tem uma renda com o mesmo nome → atualiza o valor.
-  // Se não tem → adiciona. Não apaga rendas exclusivas do mês destino.
+  // Replica as fontes de renda para os meses SEGUINTES ao monthIndex.
+  // Não replica para meses anteriores. Não duplica: se o mês destino
+  // já tem uma renda com o mesmo nome, ignora (não sobrescreve).
   const replicateIncomeToAllMonths = (monthIndex, sourceIncomes) => {
     const toReplicate = (sourceIncomes || []).filter((it) => it.value > 0);
     if (!toReplicate.length) return 0;
     setData((prev) => {
       const months = { ...prev.months };
-      for (let mi = 0; mi < 12; mi++) {
-        if (mi === monthIndex) continue;
+      for (let mi = monthIndex + 1; mi < 12; mi++) {
         const m = ensureMonth(months[mi]);
         let updated = [...m.incomes];
         toReplicate.forEach((src) => {
           const key = src.name.toLowerCase().trim();
-          const idx = updated.findIndex((it) => it.name.toLowerCase().trim() === key);
-          if (idx >= 0) {
-            updated[idx] = { ...updated[idx], value: src.value };
-          } else {
+          const alreadyExists = updated.some((it) => it.name.toLowerCase().trim() === key);
+          if (!alreadyExists) {
             updated.push({ id: uid('incomes'), name: src.name, value: src.value, payment: null });
           }
         });

@@ -39,9 +39,14 @@ export function monthHasData(month) {
 }
 
 // Lista de despesas "concluíveis" (fixas + variáveis + contribuições).
+// Exclui ghosts de parcela (isInstallmentRef) — não são concluíveis.
 export function expenseItems(month) {
   const m = month || {};
-  return [...(m.fixed || []), ...(m.variable || []), ...(m.contributions || [])];
+  return [
+    ...(m.fixed || []).filter((it) => !it.isInstallmentRef),
+    ...(m.variable || []).filter((it) => !it.isInstallmentRef),
+    ...(m.contributions || []),
+  ];
 }
 
 // Quantas despesas concluídas / total.

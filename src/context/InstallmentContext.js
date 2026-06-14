@@ -37,7 +37,7 @@ export function InstallmentProvider({ children }) {
 
 function InstallmentModal({ payload, onClose }) {
   const { colors } = useTheme();
-  const { addInstallments, removeItem } = useData();
+  const { addItem, addInstallments, removeItem } = useData();
   const { monthIndex, section, itemId, name, value } = payload;
 
   const [parcelas, setParcelas] = useState(2);
@@ -78,7 +78,14 @@ function InstallmentModal({ payload, onClose }) {
       return;
     }
     addInstallments(monthIndex, name || 'Compra', valorParcela, parcelas, payload.payment);
-    removeItem(monthIndex, section, itemId); // tira a despesa do mês da compra (vai pras faturas)
+    removeItem(monthIndex, section, itemId);
+    // Ghost ref no mês da compra: referência visual, value=0, não conta nos totais
+    addItem(monthIndex, section, name || 'Compra', 0, payload.payment, {
+      isInstallmentRef: true,
+      installmentCount: parcelas,
+      installmentValue: valorParcela,
+      installmentStartMonth: firstMonth,
+    });
     onClose();
     const faltou = parcelas - fits;
     Alert.alert(

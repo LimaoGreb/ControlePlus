@@ -16,11 +16,14 @@ import VariableExpensesSection from './VariableExpensesSection';
 import ContributionsSection from './ContributionsSection';
 import CompleteMonthButton from './CompleteMonthButton';
 
-export default function MonthContent({ monthIndex, header = null, scrollRef = null, hideIncome = false, searchTerm = '' }) {
+export default function MonthContent({ monthIndex, header = null, scrollRef = null, hideIncome = false, searchTerm = '', additionalIncome = 0 }) {
   const { colors } = useTheme();
   const { data } = useData();
   const { makesContributions, contributionGoalPct } = useSettings();
-  const month = (data.months && data.months[monthIndex]) || {
+
+  if (!data) return null;
+
+  const month = data.months?.[monthIndex] || {
     incomes: [],
     fixed: [],
     variable: [],
@@ -28,6 +31,16 @@ export default function MonthContent({ monthIndex, header = null, scrollRef = nu
     completed: false,
   };
   const totals = monthTotals(month);
+  const isCasal = additionalIncome > 0;
+  const displayTotals = isCasal
+    ? {
+        ...totals,
+        rendaTotal: additionalIncome,
+        sobraTotal: additionalIncome - totals.outflowTotal,
+        percentGasto: (totals.outflowTotal / additionalIncome) * 100,
+        percentSobra: 100 - (totals.outflowTotal / additionalIncome) * 100,
+      }
+    : totals;
 
   const q = searchTerm.trim().toLowerCase();
   const filteredFixed = q ? month.fixed.filter((it) => it.name.toLowerCase().includes(q)) : month.fixed;
@@ -85,13 +98,13 @@ export default function MonthContent({ monthIndex, header = null, scrollRef = nu
           </>
         ) : (
           <>
-            <MonthlySummaryCard totals={totals} />
-            <InsightCards monthIndex={monthIndex} month={month} />
+            <MonthlySummaryCard totals={displayTotals} />
+            {!isCasal && <InsightCards monthIndex={monthIndex} month={month} />}
             <MonthCharts month={month} />
 
             {!hideIncome && <IncomeSection monthIndex={monthIndex} month={month} />}
-            <FixedExpensesSection monthIndex={monthIndex} month={month} />
-            <VariableExpensesSection monthIndex={monthIndex} month={month} />
+            <FixedExpensesSection monthIndex={monthIndex} month={month} allowInstallments={!isCasal} />
+            <VariableExpensesSection monthIndex={monthIndex} month={month} allowInstallments={!isCasal} />
             {makesContributions && (
               <ContributionsSection monthIndex={monthIndex} month={month} goalPct={contributionGoalPct} />
             )}

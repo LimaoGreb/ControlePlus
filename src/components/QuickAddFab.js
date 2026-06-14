@@ -23,7 +23,9 @@ import { useSettings } from '../context/SettingsContext';
 import { contrastText } from '../utils/colorUtils';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
 import { formatBRL } from '../utils/currency';
+import { getBankForPayment } from '../data/banks';
 import CurrencyInput from './CurrencyInput';
+import BankBadge from './BankBadge';
 
 export default function QuickAddFab({ monthIndex }) {
   const { colors } = useTheme();
@@ -198,13 +200,19 @@ export default function QuickAddFab({ monthIndex }) {
                     <View style={styles.chips}>
                       {paymentMethods.map((pm) => {
                         const sel = payment === pm.name;
+                        const bank = getBankForPayment(pm);
+                        const chipBg = sel ? (bank?.color || colors.primary) : 'transparent';
+                        const chipBorder = sel ? (bank?.color || colors.primary) : (bank?.color ? bank.color + '55' : colors.border);
+                        const chipText = sel ? '#fff' : (bank?.color || colors.textSecondary);
                         return (
                           <TouchableOpacity
                             key={pm.id}
                             onPress={() => setPayment(sel ? null : pm.name)}
-                            style={[styles.chip, { backgroundColor: sel ? colors.primary : 'transparent', borderColor: sel ? colors.primary : colors.border }]}
+                            style={[styles.chip, { backgroundColor: chipBg, borderColor: chipBorder }]}
                           >
-                            <Text style={[styles.chipText, { color: sel ? contrastText(colors.primary) : colors.textSecondary }]}>{pm.name}</Text>
+                            {bank && !sel && <BankBadge bank={bank} size={20} />}
+                            {sel && <Ionicons name="checkmark" size={13} color="#fff" />}
+                            <Text style={[styles.chipText, { color: chipText }]}>{pm.name}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -267,7 +275,7 @@ const styles = StyleSheet.create({
   parcelasNum: { fontSize: 22, fontWeight: '900', marginHorizontal: 20, minWidth: 50, textAlign: 'center' },
   parcelaInfo: { fontSize: 13, fontWeight: '600', flex: 1, textAlign: 'right' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
-  chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, marginBottom: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7, marginRight: 8, marginBottom: 8, gap: 6 },
   chipText: { fontSize: 13, fontWeight: '700' },
   addBtn: { height: 54, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   addText: { fontSize: 17, fontWeight: '800' },

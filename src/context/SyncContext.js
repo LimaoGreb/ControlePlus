@@ -273,12 +273,14 @@ export function SyncProvider({ children }) {
       AsyncStorage.removeItem(PARTNER_PERSONAL_KEY),
       AsyncStorage.removeItem(PARTNER_AVATAR_KEY),
       AsyncStorage.removeItem(LOCAL_TS_KEY),
+      AsyncStorage.removeItem(PARTNER_NAME_KEY),
     ]);
     setCoupleCode(null);
     setStatus('idle');
     setLastSync(null);
     setPartnerPersonalData(null);
     setPartnerAvatar(null);
+    setPartnerNameRaw('');
     setActiveProfile('mine');
     localTs.current = 0;
   }, []);

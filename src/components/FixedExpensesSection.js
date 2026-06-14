@@ -8,7 +8,7 @@ import { monthTotals } from '../utils/calculations';
 import { MONTH_NAMES } from '../data/initialData';
 import ExpensesSection from './ExpensesSection';
 
-export default function FixedExpensesSection({ monthIndex, month, forceOpen = false }) {
+export default function FixedExpensesSection({ monthIndex, month, forceOpen = false, allowInstallments = true }) {
   const { colors } = useTheme();
   const { copyFixedFromPrevious } = useData();
   const totals = monthTotals(month);
@@ -55,6 +55,7 @@ export default function FixedExpensesSection({ monthIndex, month, forceOpen = fa
       addLabel="Adicionar despesa fixa"
       extraButton={forceOpen ? null : copyButton}
       forceOpen={forceOpen}
+      allowInstallments={allowInstallments}
     />
   );
 }

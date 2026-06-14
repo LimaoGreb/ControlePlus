@@ -249,6 +249,7 @@ export default function CasalScreen({ navigation }) {
           scrollRef={scrollRef}
           header={header}
           hideIncome
+          additionalIncome={combinedIncome}
         />
       </SharedMonthData>
       {partnerPersonalData && (

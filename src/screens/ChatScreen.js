@@ -1,13 +1,16 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
-  ScrollView, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
+  ScrollView, StyleSheet, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useData } from '../context/DataContext';
 import { useSettings } from '../context/SettingsContext';
+import { useCapMessages } from '../context/CapContext';
+import { useVoiceChat } from '../hooks/useVoiceChat';
 import { processMessage } from '../services/jarvisLocal';
 
 // ─── Sugestões rápidas ────────────────────────────────────────────────────────
@@ -82,6 +85,41 @@ function TypingIndicator({ colors }) {
   );
 }
 
+// ─── Botão mic com pulso quando ouvindo ──────────────────────────────────────
+function MicButton({ listening, onPress, colors }) {
+  const pulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (listening) {
+      const anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1.35, duration: 550, useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 1.0,  duration: 550, useNativeDriver: true }),
+        ])
+      );
+      anim.start();
+      return () => anim.stop();
+    }
+    pulse.setValue(1);
+  }, [listening, pulse]);
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.75} style={styles.micWrap}>
+      <Animated.View
+        style={[
+          styles.micBtn,
+          {
+            backgroundColor: listening ? '#E53935' : colors.border,
+            transform: [{ scale: pulse }],
+          },
+        ]}
+      >
+        <Ionicons name={listening ? 'mic' : 'mic-outline'} size={20} color="#fff" />
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
 let _id = 0;
 const mkMsg = (from, text) => ({ id: String(_id++), from, text });
 
@@ -95,24 +133,49 @@ export default function ChatScreen() {
     setUserName, setIsInvestor, setMakesContributions,
     addProjectFull, updateProject, removeProject, setContributionGoalPct,
   } = useSettings();
+  const { messages: capMsgs, markAllRead, ready: capReady } = useCapMessages();
 
-  const greeting = `Oi ${(userName || 'você').split(' ')[0]}! 👋 Sou o *Cap*.\nMe pergunte qualquer coisa sobre seus dados — ou mande um comando direto.`;
+  const firstName = (userName || 'você').split(' ')[0];
+  const greeting = `Oi ${firstName}! 👋 Sou o *Cap*.\nMe pergunte qualquer coisa — ou toque no 🎤 para falar!`;
 
   const [messages, setMessages] = useState([mkMsg('bot', greeting)]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingOp, setPendingOp] = useState(null);
   const listRef = useRef(null);
+  const capInitRef = useRef(false);
+  const capLenRef = useRef(0);
+
+  // ─── Integração CapContext ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!capReady || capInitRef.current) return;
+    capInitRef.current = true;
+    capLenRef.current = capMsgs.length;
+    const unread = capMsgs.filter(m => !m.read);
+    if (unread.length > 0) {
+      setMessages(prev => [...prev, ...unread.map(m => mkMsg('bot', m.text))]);
+    }
+    markAllRead();
+  }, [capReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!capReady || !capInitRef.current) return;
+    if (capMsgs.length <= capLenRef.current) return;
+    const newMsgs = capMsgs.slice(capLenRef.current);
+    capLenRef.current = capMsgs.length;
+    setMessages(prev => [...prev, ...newMsgs.map(m => mkMsg('bot', m.text))]);
+    markAllRead();
+  }, [capMsgs.length, capReady, markAllRead]);
 
   const push = useCallback((from, text) => {
     setMessages(prev => [...prev, mkMsg(from, text)]);
   }, []);
 
   const scrollToEnd = useCallback(() => {
-    // Aguarda o frame para garantir que o item foi adicionado ao layout.
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   }, []);
 
+  // ─── Envio de mensagem ─────────────────────────────────────────────────────
   const send = useCallback((rawText) => {
     const text = (rawText || '').trim();
     if (!text || loading) return;
@@ -121,22 +184,22 @@ export default function ChatScreen() {
     setLoading(true);
     scrollToEnd();
 
-    const lower = text.toLowerCase();
-    const isYes = /^(sim|ok|pode|isso|certo|confirma|s|yes|vai lá)$/i.test(lower);
-    const isNo  = /^(n[aã]o|nao|não|cancela|cancelar|para|não|n)$/i.test(lower);
+    const isYes = /^(sim|ok|pode|isso|certo|confirma|s|yes|vai lá)$/i.test(text);
+    const isNo  = /^(n[aã]o|nao|não|cancela|cancelar|para|n)$/i.test(text);
 
     setTimeout(async () => {
+      let botText = '';
       if (pendingOp) {
         if (isYes) {
           try {
             pendingOp.fn();
-            push('bot', pendingOp.successText);
+            botText = pendingOp.successText;
           } catch (e) {
             console.warn('[Cap chat] exec error:', e);
-            push('bot', `⚠️ Ocorreu um erro: ${e.message || 'tenta de novo.'}`);
+            botText = `⚠️ Ocorreu um erro: ${e.message || 'tenta de novo.'}`;
           }
         } else if (isNo) {
-          push('bot', 'OK, cancelado! 😊');
+          botText = 'OK, cancelado! 😊';
         } else {
           push('bot', 'Responde *sim* para confirmar ou *não* para cancelar. 😊');
           setLoading(false);
@@ -144,31 +207,33 @@ export default function ChatScreen() {
           return;
         }
         setPendingOp(null);
-        setLoading(false);
-        scrollToEnd();
-        return;
+      } else {
+        try {
+          const contextData = { data, investments, projects, paymentMethods, userName };
+          const dataOps    = { addItem, updateItem, removeItem };
+          const settingsOps = { setUserName, setIsInvestor, setMakesContributions, addProjectFull, updateProject, removeProject, setContributionGoalPct };
+          const result = await processMessage(text, contextData, dataOps, settingsOps);
+          botText = result.botText;
+          if (result.pendingOp) setPendingOp(result.pendingOp);
+        } catch (e) {
+          console.warn('[Cap chat] processMessage error:', e);
+          botText = 'Eita, deu um erro aqui. Tenta de novo!';
+        }
       }
 
-      try {
-        const contextData = { data, investments, projects, paymentMethods, userName };
-        const dataOps    = { addItem, updateItem, removeItem };
-        const settingsOps = { setUserName, setIsInvestor, setMakesContributions, addProjectFull, updateProject, removeProject, setContributionGoalPct };
-        const result = await processMessage(text, contextData, dataOps, settingsOps);
-        push('bot', result.botText);
-        if (result.pendingOp) setPendingOp(result.pendingOp);
-      } catch (e) {
-        console.warn('[Cap chat] processMessage error:', e);
-        push('bot', 'Eita, deu um erro aqui. Tenta de novo!');
-      }
-
+      push('bot', botText);
       setLoading(false);
       scrollToEnd();
-    }, 300); // pausa natural antes de responder
+    }, 300);
   }, [loading, pendingOp, data, investments, projects, paymentMethods, userName,
       addItem, updateItem, removeItem, setUserName, setIsInvestor, setMakesContributions,
       addProjectFull, updateProject, removeProject, setContributionGoalPct, push, scrollToEnd]);
 
-  // A FloatingTabBar é position:absolute, então reservamos espaço no fundo.
+  // ─── Voz (STT apenas) ─────────────────────────────────────────────────────
+  const { listening, toggleMic } = useVoiceChat({
+    onTranscript: useCallback((text) => send(text), [send]),
+  });
+
   const tabBarClearance = insets.bottom + 80;
 
   return (
@@ -177,14 +242,16 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      {/* Header interno — aparece abaixo do cabeçalho do navigator */}
+      {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={[styles.headerAvatar, { backgroundColor: colors.primary }]}>
           <Text style={styles.headerAvatarTxt}>C</Text>
         </View>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Cap</Text>
-          <Text style={[styles.headerSub, { color: colors.textMuted }]}>Assistente financeiro</Text>
+          <Text style={[styles.headerSub, { color: listening ? '#E53935' : colors.textMuted }]}>
+            {listening ? '🎤 Ouvindo...' : 'Assistente financeiro'}
+          </Text>
         </View>
         {pendingOp && (
           <View style={[styles.pendingBadge, { backgroundColor: colors.primary + '22' }]}>
@@ -205,7 +272,6 @@ export default function ChatScreen() {
         onContentSizeChange={scrollToEnd}
       />
 
-      {/* "Digitando…" */}
       {loading && <TypingIndicator colors={colors} />}
 
       {/* Chips de sugestão */}
@@ -228,8 +294,10 @@ export default function ChatScreen() {
         ))}
       </ScrollView>
 
-      {/* Barra de input — fica ACIMA da FloatingTabBar */}
+      {/* Barra de input */}
       <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: tabBarClearance }]}>
+        <MicButton listening={listening} onPress={toggleMic} colors={colors} />
+
         <TextInput
           value={inputText}
           onChangeText={setInputText}
@@ -241,6 +309,7 @@ export default function ChatScreen() {
           returnKeyType="default"
           blurOnSubmit={false}
         />
+
         <TouchableOpacity
           onPress={() => send(inputText)}
           disabled={!inputText.trim() || loading}
@@ -285,15 +354,18 @@ const styles = StyleSheet.create({
 
   chipsWrap: { flexShrink: 0 },
   chips: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
-  chip: {
-    borderRadius: 20, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7, flexShrink: 0,
-  },
+  chip: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7, flexShrink: 0 },
   chipTxt: { fontSize: 12.5, fontWeight: '600' },
 
   inputBar: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
-    paddingHorizontal: 12, paddingTop: 10,
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    paddingHorizontal: 10, paddingTop: 10,
     borderTopWidth: 1,
+  },
+  micWrap: { paddingBottom: 1 },
+  micBtn: {
+    width: 42, height: 42, borderRadius: 21,
+    alignItems: 'center', justifyContent: 'center',
   },
   input: {
     flex: 1, borderWidth: 1, borderRadius: 22,

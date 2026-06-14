@@ -16,7 +16,7 @@ function fmtDigits(digits) {
   return `${rStr},${String(c).padStart(2, '0')}`;
 }
 
-export default function CurrencyInput({ value, onChangeValue, editable = true, overdue = false, style }) {
+export default function CurrencyInput({ value, onChangeValue, editable = true, overdue = false, style, onFocus: externalOnFocus, onBlur: externalOnBlur }) {
   const { colors } = useTheme();
   const [rawDigits, setRawDigits] = useState('');
   const [focused, setFocused] = useState(false);
@@ -32,6 +32,7 @@ export default function CurrencyInput({ value, onChangeValue, editable = true, o
   const handleFocus = () => {
     setFocused(true);
     setRawDigits(''); // limpa para o usuário começar do zero
+    externalOnFocus?.();
   };
 
   const handleChange = (text) => {
@@ -41,7 +42,10 @@ export default function CurrencyInput({ value, onChangeValue, editable = true, o
     onChangeValue(parseInt(digits || '0', 10) / 100);
   };
 
-  const handleBlur = () => setFocused(false);
+  const handleBlur = () => {
+    setFocused(false);
+    externalOnBlur?.();
+  };
 
   // Durante foco: mostra o que está sendo digitado.
   // Fora de foco: mostra o valor externo formatado.

@@ -2,6 +2,100 @@
 
 ---
 
+## v2.9.1 (hotfix) — 2026-06-14
+
+### fix: Renda sem swipe, replicar só pra frente, sem limite e startup instantâneo
+
+**Arquivos alterados:**
+- `src/components/IncomeSection.js` — (1) Removido `swipeable`/`onToggleConcluded`/`concludeLabel`/`reopenLabel` dos itens de renda (arrastar não faz sentido em renda). (2) Removido limite de 4 fontes (`MAX_INCOMES` excluído). (3) Texto do botão "Replicar nos meses seguintes" e texto do dialog atualizados.
+- `src/context/DataContext.js` — `replicateIncomeToAllMonths`: loop agora começa em `monthIndex + 1` (só meses futuros). Dedup por nome: se já existe uma renda com o mesmo nome no mês destino, ignora (não sobrescreve nem duplica).
+- `src/context/SharedDataContext.js` — Mesmo ajuste de `replicateIncomeToAllMonths`.
+- `src/services/jarvisLocal.js` — Bug: `edit_expense` com `field='payment'` salvava `pm.id` em vez de `pm.name`. Corrigido para `pmName`.
+- `App.js` — `expo-splash-screen`: `preventAutoHideAsync()` no módulo, `hideAsync()` só quando `themeReady && dataReady && settingsReady`. Elimina o spinner branco visível entre o splash e o app (startup parecia Expo Go).
+- `package.json` — Adicionado `expo-splash-screen: ~0.29.22`.
+
+---
+
+## v2.9.0 (build) — 2026-06-14
+
+### feat: Lock automático de card + ghost ref de parcela
+
+**Arquivos alterados:**
+- `src/components/ItemRow.js` — (reescrito) Lock automático: quando nome + valor + pagamento preenchidos, card trava (opacity 0.82, ícone 🔒, inputs não editáveis). Segurar 2s desbloqueia (haptic). Blur de ambos os inputs com debounce 200ms + `focusCount` ref → re-trava ao clicar fora. `chipPressed` ref evita re-lock ao trocar chip de pagamento. Early return para `isInstallmentRef`: renderiza card fantasma com borda dashed, nome, e tag "💳 Contabiliza a partir de [Mês] · Nx de R$X".
+- `src/components/CurrencyInput.js` — props `onFocus` e `onBlur` opcionais repassadas ao handler interno, necessárias para o `focusCount` do lock.
+- `src/context/InstallmentContext.js` — `confirmarParcelar` agora também chama `addItem` com `isInstallmentRef: true`, `value: 0`, `installmentCount`, `installmentValue`, `installmentStartMonth` no mês da compra. O `removeItem` original ainda tira a despesa "real" do mês.
+- `src/utils/calculations.js` — `expenseItems` filtra `isInstallmentRef: true` para não contar o ghost no progresso "X/Y despesas pagas" nem bloquear a conclusão do mês.
+
+---
+
+## v2.8.1 (hotfix) — 2026-06-14
+
+### fix: Auditoria completa do Modo Casal — 9 bugs corrigidos
+
+**Arquivos alterados:**
+- `src/components/MonthContent.js` — (1) Crash null: `data?.months?.[monthIndex]` + early return `if (!data) return null`. (2) `additionalIncome` prop: substitui `rendaTotal`/`sobraTotal`/`percentGasto`/`percentSobra` no `displayTotals` para o `MonthlySummaryCard` mostrar renda combinada. (3) `InsightCards` oculto no Casal (evita falso positivo "renda não registrada"). (4) `allowInstallments={!isCasal}` passado para FixedExpenses e VariableExpenses.
+- `src/context/SharedDataContext.js` — (5) `SharedMonthData`: guard `!ready || !sharedContextValue?.data` impede render antes de carregar AsyncStorage. (6) `addCoupleProject/updateCoupleProject/removeCoupleProject`: `(prev || EMPTY)` em vez de `prev` (evita perda do campo `months` se prev for null).
+- `src/screens/CasalScreen.js` — (7) Passa `additionalIncome={combinedIncome}` ao `MonthContent` do Casal.
+- `src/components/FixedExpensesSection.js` — (8) Prop `allowInstallments = true`, repassa ao `ExpensesSection`.
+- `src/components/VariableExpensesSection.js` — (8) Idem.
+- `src/components/ExpensesSection.js` — (8) Prop `allowInstallments = true`; `handlePayment` não chama `requestInstallment` quando false. Evita parcelas indo para dados pessoais em vez dos compartilhados.
+- `src/context/SyncContext.js` — (9) `disconnect()` limpa `PARTNER_NAME_KEY` e reseta `partnerNameRaw`.
+
+---
+
+## v2.8.0 (app) — 2026-06-14
+
+### feat: Chat por voz no Cap (STT + TTS)
+
+**Novas libs instaladas:**
+- `expo-speech` ~13.0.1 — TTS nativo (offline, engine do dispositivo)
+- `expo-speech-recognition` ^56.0.1 — STT via Google Speech API (Android nativo)
+
+**Novos arquivos:**
+- `src/hooks/useVoiceChat.js` — hook que encapsula STT e TTS. Expõe `listening`, `speaking`, `toggleMic`, `speak`. `onTranscript(text)` callback chamado quando reconhecimento finaliza. Remove markdown e emojis antes de falar (TTS fica natural). Permissão de microfone pedida no primeiro uso.
+
+**Arquivos alterados:**
+- `src/screens/ChatScreen.js` — botão 🎤 à esquerda do input (pulsa quando ouvindo, fica azul/primário quando falando). Banner contextual abaixo da lista mostra "🎤 Pode falar..." ou "🔊 Cap respondendo em voz...". Header dinâmico ("Ouvindo..." / "Falando..."). Respostas do Cap são faladas automaticamente quando input veio por voz (`voiceWasLast`). Tap no mic para, tap novamente recomeça.
+- `app.json` — plugin `expo-speech-recognition` configurado com permissões PT-BR + `androidSpeechServicePackages` apontando para Google. version 2.8.0, versionCode 36.
+
+**Fluxo de voz:**
+1. Tap no 🎤 → pede permissão (1ª vez) → começa a ouvir
+2. Usuário fala → transcreve → manda como mensagem para o Cap
+3. Cap processa e responde → fala a resposta em voz
+4. Tap no 🎤 em qualquer momento → interrompe ouvindo ou falando
+
+---
+
+## v2.7.0 (app) — 2026-06-13
+
+### feat: Sistema de notificações funcional + Cap com badge de mensagens
+
+**Novos arquivos:**
+- `src/context/CapContext.js` — Context com `messages[]`, `unreadCount`, `addCapMessage`, `markAllRead`. Persiste em AsyncStorage (`@cap_messages_v1`, máx 300 msgs).
+
+**Arquivos reescritos:**
+- `src/services/notifications.js` — Reescrita completa. Agora agenda por despesa individual com IDs persistidos em `@notif_ids_v3`. Exporta `scheduleExpenseNotifications(expense, mi, year)` e `cancelExpenseNotifications(expenseId)`. Escalonamento: 7d antes (1 notif, 9h), 3d (2 notifs, 8h+19h), 1d (3 notifs, 8h+14h+20h), dia do vcto (4 notifs, 7h+11h+16h+21h) — mensagens em escala crescente de urgência.
+- `src/components/NotificationsManager.js` — Reescrita completa. Boot: `rescheduleDueReminders` + `checkCapDueMessages`. Mudança de dados: diff entre `prevData` e `nextData` (só reagenda o que mudou). AppState foreground: recheck msgs Cap (throttle 6h). Detecta: item novo com dueDay, dueDay mudado, despesa concluída (cancela push), despesa reaberta (reagenda), item removido (cancela push).
+- `src/components/FloatingTabBar.js` — Badge dourado no ícone do Cap com contagem de msgs não lidas (via `useCapMessages()`). Some ao abrir o chat.
+- `src/screens/ChatScreen.js` — Integrado com CapContext: ao abrir, injeta msgs não lidas na conversa e chama `markAllRead()`. Enquanto aberto, novas msgs do Cap aparecem em tempo real.
+
+**Arquivos alterados:**
+- `App.js` — `import { CapProvider }`, envolvido todo o provider tree interno com `<CapProvider>`.
+
+**Fixes do sistema anterior:**
+- Notificações de despesas concluídas não eram canceladas (sem IDs persistidos, cancel-all derrubava tudo na próxima abertura). Agora cada despesa tem seus IDs salvos.
+- Full-reschedule em todo change de dados causava race condition. Agora só o que mudou é atualizado.
+
+**Chaves AsyncStorage usadas:**
+- `@notif_ids_v3` — IDs de notificações por despesa
+- `@cap_messages_v1` — Feed de msgs do Cap
+- `@cap_sent_v2` — Controle de msgs já enviadas por proximidade (evita duplicar)
+- `@cap_last_check` — Timestamp da última checagem de vencimentos
+
+**Próximo bump de versão:** atualizar `app.json` para `2.7.0` / versionCode `35` antes de gerar APK.
+
+---
+
 ## v2.6.0 (app) — 2026-06-13
 
 ### feat: Jarvis Chat nativo — assistente financeiro dentro do app

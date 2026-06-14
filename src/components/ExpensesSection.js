@@ -22,6 +22,7 @@ export default function ExpensesSection({
   addLabel,
   extraButton,
   forceOpen = false,
+  allowInstallments = true,
 }) {
   const { colors } = useTheme();
   const { addItem, removeItem, updateItem } = useData();
@@ -39,7 +40,7 @@ export default function ExpensesSection({
   // crédito (e já tiver valor), abre a janela de parcelamento.
   const handlePayment = (item, pmName) => {
     updateItem(monthIndex, section, item.id, 'payment', pmName);
-    if (!pmName) return;
+    if (!pmName || !allowInstallments) return;
     const pm = paymentMethods.find((m) => m.name === pmName);
     if (pm && pm.isCredit && Number(item.value) > 0) {
       requestInstallment({

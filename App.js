@@ -1,6 +1,6 @@
-// Raiz do app: providers (SafeArea, Tema, Configurações, Dados) + navegação.
-import React from 'react';
-import { View, Text, ActivityIndicator, StatusBar, Platform, UIManager, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StatusBar, Platform, UIManager, TouchableOpacity } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { DataProvider, useData } from './src/context/DataContext';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
+import { CapProvider } from './src/context/CapContext';
 import { InstallmentProvider } from './src/context/InstallmentContext';
 import { SyncProvider } from './src/context/SyncContext';
 import { GoogleAuthProvider } from './src/context/GoogleAuthContext';
@@ -41,6 +42,10 @@ import HeaderMenu from './src/components/HeaderMenu';
 import WelcomeBack from './src/components/WelcomeBack';
 import { useSync } from './src/context/SyncContext';
 import { MONTH_NAMES, YEAR } from './src/data/initialData';
+
+// Mantém o splash nativo visível enquanto os contextos carregam (AsyncStorage).
+// Sem isso, o app mostraria um spinner branco entre o splash e o conteúdo.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Habilita animação de layout (accordion) no Android.
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -209,13 +214,16 @@ function Navigation() {
   const { ready: dataReady } = useData();
   const { ready: settingsReady, userName } = useSettings();
 
-  if (!themeReady || !dataReady || !settingsReady) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  const appReady = themeReady && dataReady && settingsReady;
+
+  useEffect(() => {
+    if (appReady) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [appReady]);
+
+  // Splash nativo ainda visível enquanto não está pronto — não renderiza nada.
+  if (!appReady) return null;
 
   // Primeiro acesso: sem nome definido -> tela de boas-vindas (aparece só uma vez).
   if (!userName || !userName.trim()) {
@@ -265,6 +273,7 @@ export default function App() {
       <ThemeProvider>
         <SettingsProvider>
           <DataProvider>
+            <CapProvider>
             <SharedDataProvider>
             <SyncProvider>
             <GoogleAuthProvider>
@@ -278,6 +287,7 @@ export default function App() {
             </GoogleAuthProvider>
             </SyncProvider>
             </SharedDataProvider>
+            </CapProvider>
           </DataProvider>
         </SettingsProvider>
       </ThemeProvider>

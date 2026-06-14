@@ -1,13 +1,16 @@
 // Barra de navegação flutuante (estilo moderno/minimalista): destacada das bordas,
 // cantos arredondados, com a aba ativa em "pílula" colorida.
+// Badge dourado no ícone do Cap indica mensagens não lidas.
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
+import { useCapMessages } from '../context/CapContext';
 
 export default function FloatingTabBar({ state, descriptors, navigation }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { unreadCount } = useCapMessages();
 
   return (
     <View style={[styles.wrap, { bottom: insets.bottom + 8 }]} pointerEvents="box-none">
@@ -41,6 +44,9 @@ export default function FloatingTabBar({ state, descriptors, navigation }) {
             }
           };
 
+          const isCapTab = route.name === 'Cap';
+          const showBadge = isCapTab && unreadCount > 0;
+
           return (
             <TouchableOpacity
               key={route.key}
@@ -52,6 +58,13 @@ export default function FloatingTabBar({ state, descriptors, navigation }) {
             >
               <View style={styles.iconWrap}>
                 {icon}
+                {showBadge && (
+                  <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.badgeTxt}>
+                      {unreadCount > 9 ? '9+' : String(unreadCount)}
+                    </Text>
+                  </View>
+                )}
               </View>
               <Text
                 numberOfLines={1}
@@ -98,4 +111,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: { fontSize: 10, marginTop: 3 },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeTxt: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+    lineHeight: 16,
+  },
 });

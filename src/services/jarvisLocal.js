@@ -318,13 +318,12 @@ export async function processMessage(text, contextData, dataOps, settingsOps) {
     if (field === 'payment') {
       if (!new_payment) return { botText: `Qual a nova forma de pagamento de *${found.item.name}*, ${n}?`, pendingOp: null };
       const pm = (paymentMethods || []).find(p => p.name.toLowerCase().includes(new_payment.toLowerCase()));
-      const pmId = pm?.id || null;
-      const pmLabel = pm?.name || new_payment;
+      const pmName = pm?.name || new_payment;
       return {
-        botText: `💳 *${found.item.name}* → pagamento *${pmLabel}*\n\nConfirma? _(sim/não)_`,
+        botText: `💳 *${found.item.name}* → pagamento *${pmName}*\n\nConfirma? _(sim/não)_`,
         pendingOp: {
-          fn: () => dataOps.updateItem(found.mi, found.section, found.item.id, 'payment', pmId),
-          successText: `✅ Pagamento de *${found.item.name}* → *${pmLabel}*! Atualizado, ${n}!`,
+          fn: () => dataOps.updateItem(found.mi, found.section, found.item.id, 'payment', pmName),
+          successText: `✅ Pagamento de *${found.item.name}* → *${pmName}*! Atualizado, ${n}!`,
         },
       };
     }
