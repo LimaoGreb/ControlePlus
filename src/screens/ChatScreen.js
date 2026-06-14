@@ -50,7 +50,7 @@ function MessageBubble({ msg, colors }) {
     <View style={[styles.msgRow, isUser && styles.msgRowUser]}>
       {!isUser && (
         <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-          <Text style={styles.avatarTxt}>J</Text>
+          <Text style={styles.avatarTxt}>C</Text>
         </View>
       )}
       <View style={[
@@ -73,7 +73,7 @@ function TypingIndicator({ colors }) {
   return (
     <View style={styles.msgRow}>
       <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-        <Text style={styles.avatarTxt}>J</Text>
+        <Text style={styles.avatarTxt}>C</Text>
       </View>
       <View style={[styles.bubbleBot, styles.bubble, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <ActivityIndicator size="small" color={colors.primary} />
@@ -96,7 +96,7 @@ export default function ChatScreen() {
     addProjectFull, updateProject, removeProject, setContributionGoalPct,
   } = useSettings();
 
-  const greeting = `Oi ${(userName || 'você').split(' ')[0]}! 👋 Sou o *Jarvis*.\nMe pergunte qualquer coisa sobre seus dados — ou mande um comando direto.`;
+  const greeting = `Oi ${(userName || 'você').split(' ')[0]}! 👋 Sou o *Cap*.\nMe pergunte qualquer coisa sobre seus dados — ou mande um comando direto.`;
 
   const [messages, setMessages] = useState([mkMsg('bot', greeting)]);
   const [inputText, setInputText] = useState('');
@@ -132,7 +132,7 @@ export default function ChatScreen() {
             pendingOp.fn();
             push('bot', pendingOp.successText);
           } catch (e) {
-            console.warn('[Jarvis chat] exec error:', e);
+            console.warn('[Cap chat] exec error:', e);
             push('bot', `⚠️ Ocorreu um erro: ${e.message || 'tenta de novo.'}`);
           }
         } else if (isNo) {
@@ -157,7 +157,7 @@ export default function ChatScreen() {
         push('bot', result.botText);
         if (result.pendingOp) setPendingOp(result.pendingOp);
       } catch (e) {
-        console.warn('[Jarvis chat] processMessage error:', e);
+        console.warn('[Cap chat] processMessage error:', e);
         push('bot', 'Ocorreu um erro inesperado. Tenta de novo!');
       }
 
@@ -180,10 +180,10 @@ export default function ChatScreen() {
       {/* Header interno — aparece abaixo do cabeçalho do navigator */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={[styles.headerAvatar, { backgroundColor: colors.primary }]}>
-          <Text style={styles.headerAvatarTxt}>J</Text>
+          <Text style={styles.headerAvatarTxt}>C</Text>
         </View>
         <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Jarvis</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Cap</Text>
           <Text style={[styles.headerSub, { color: colors.textMuted }]}>Assistente financeiro</Text>
         </View>
         {pendingOp && (

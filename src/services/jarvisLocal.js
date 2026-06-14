@@ -58,7 +58,7 @@ export function processMessage(text, contextData, dataOps, settingsOps) {
   if (intent === 'chat') {
     const first = (userName || 'você').split(' ')[0];
     return {
-      botText: `Oi ${first}! 👋 Aqui você pode consultar e controlar suas finanças.\n\n📊 _"como tá o mês?"_\n💸 _"maiores gastos de junho"_\n✅ _"conclua a Netflix"_\n💰 _"recebi 3000 de salário"_\n🎯 _"cria projeto viagem meta 8000"_`,
+      botText: `Oi ${first}! 👋 Aqui é o *Cap*, seu capitão financeiro.\n\n📊 _"como tá o mês?"_\n💸 _"maiores gastos de junho"_\n✅ _"conclua a Netflix"_\n💰 _"recebi 3000 de salário"_\n🎯 _"cria projeto viagem meta 8000"_`,
       pendingOp: null,
     };
   }

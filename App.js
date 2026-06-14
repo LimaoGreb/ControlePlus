@@ -104,7 +104,7 @@ function Tabs() {
             Investir: 'trending-up-outline',
             Casal: 'heart-outline',
             Projetos: 'flag-outline',
-            Jarvis: 'chatbubble-ellipses-outline',
+            Cap: 'chatbubble-ellipses-outline',
           };
           return <Ionicons name={icons[route.name]} size={size} color={color} />;
         },
@@ -145,9 +145,9 @@ function Tabs() {
         options={{ title: 'Projetos', tabBarLabel: 'Projetos' }}
       />
       <Tab.Screen
-        name="Jarvis"
+        name="Cap"
         component={ChatScreen}
-        options={{ headerShown: false, tabBarLabel: 'Jarvis' }}
+        options={{ headerShown: false, tabBarLabel: 'Cap' }}
       />
     </Tab.Navigator>
   );
