@@ -101,8 +101,15 @@ export default function ProjectCard({ project, onChangeName, onChangeField, onRe
         <View style={styles.infoCol}>
           {mode === 'aporte' ? (
             <>
-              {s.saved > 0 && (
+              {s.saved > 0 ? (
                 <InfoBlock label="Guardado" value={formatBRL(s.saved)} valueColor={colors.positive} colors={colors} />
+              ) : showSaved ? (
+                <InfoBlock label="Guardado" value={formatBRL(0)} valueColor={colors.textMuted} colors={colors} />
+              ) : (
+                <TouchableOpacity onPress={() => setShowSaved(true)} activeOpacity={0.6} style={styles.infoBlock}>
+                  <Text style={[styles.infoLabel, { color: colors.textMuted }]}>GUARDADO</Text>
+                  <Text style={[styles.infoValue, { color: colors.textMuted }]}>—</Text>
+                </TouchableOpacity>
               )}
               {!s.done && (
                 <InfoBlock label="Falta" value={formatBRL(s.remaining)} colors={colors} />
@@ -191,8 +198,8 @@ export default function ProjectCard({ project, onChangeName, onChangeField, onRe
         </View>
       </View>
 
-      {/* Já guardado — oculto quando zero; aparece ao tocar no botão */}
-      {(showSaved || hasSaved) ? (
+      {/* Já guardado — aparece ao tocar no "—" do infoCol ou quando já tem valor */}
+      {(showSaved || hasSaved) && (
         <View style={[styles.fields, { marginTop: 12 }]}>
           <View style={styles.field}>
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Já guardado</Text>
@@ -200,11 +207,6 @@ export default function ProjectCard({ project, onChangeName, onChangeField, onRe
           </View>
           <View style={styles.field} />
         </View>
-      ) : (
-        <TouchableOpacity style={styles.addSavedBtn} onPress={() => setShowSaved(true)} activeOpacity={0.7}>
-          <Ionicons name="wallet-outline" size={14} color={colors.textMuted} />
-          <Text style={[styles.addSavedTxt, { color: colors.textMuted }]}>Já tenho algo guardado</Text>
-        </TouchableOpacity>
       )}
     </View>
   );
@@ -235,6 +237,4 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 12, fontWeight: '600', marginBottom: 4 },
   simInput: { height: 44, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, fontWeight: '700' },
 
-  addSavedBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, alignSelf: 'flex-start', paddingVertical: 4 },
-  addSavedTxt: { fontSize: 13, fontWeight: '600' },
 });
