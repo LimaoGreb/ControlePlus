@@ -125,7 +125,7 @@ export default function ChatScreen() {
     const isYes = /^(sim|ok|pode|isso|certo|confirma|s|yes|vai lá)$/i.test(lower);
     const isNo  = /^(n[aã]o|nao|não|cancela|cancelar|para|não|n)$/i.test(lower);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       if (pendingOp) {
         if (isYes) {
           try {
@@ -153,17 +153,17 @@ export default function ChatScreen() {
         const contextData = { data, investments, projects, paymentMethods, userName };
         const dataOps    = { addItem, updateItem, removeItem };
         const settingsOps = { setUserName, setIsInvestor, setMakesContributions, addProjectFull, updateProject, removeProject, setContributionGoalPct };
-        const result = processMessage(text, contextData, dataOps, settingsOps);
+        const result = await processMessage(text, contextData, dataOps, settingsOps);
         push('bot', result.botText);
         if (result.pendingOp) setPendingOp(result.pendingOp);
       } catch (e) {
         console.warn('[Cap chat] processMessage error:', e);
-        push('bot', 'Ocorreu um erro inesperado. Tenta de novo!');
+        push('bot', 'Eita, deu um erro aqui. Tenta de novo!');
       }
 
       setLoading(false);
       scrollToEnd();
-    }, 350); // pequena pausa para o indicador de "digitando" aparecer
+    }, 300); // pausa natural antes de responder
   }, [loading, pendingOp, data, investments, projects, paymentMethods, userName,
       addItem, updateItem, removeItem, setUserName, setIsInvestor, setMakesContributions,
       addProjectFull, updateProject, removeProject, setContributionGoalPct, push, scrollToEnd]);

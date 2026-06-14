@@ -21,6 +21,7 @@ import express from 'express';
 import { handleMessage, handlePhotoMessage } from './conversation.js';
 import { setWebhook, sendMessage } from './telegramApi.js';
 import { getAllChatIds, readUserSnapshot } from './firebaseWriter.js';
+import { classifyIntent } from './geminiClient.js';
 
 const app = express();
 app.use(express.json());
@@ -71,6 +72,21 @@ app.get('/setup-webhook', async (req, res) => {
 
 // Health check
 app.get('/', (req, res) => res.json({ status: 'Jarvis online' }));
+
+// ─── Endpoint para o Cap (chat in-app) ───────────────────────────────────────
+// Recebe texto e retorna a classificação via Gemini quando o localClassify falha.
+// Chave API fica só no servidor — o app não precisa guardar nada sensível.
+app.post('/cap-classify', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string') return res.status(400).json({ error: 'text required' });
+    const result = await classifyIntent(text.slice(0, 500));
+    res.json({ result });
+  } catch (e) {
+    console.error('[Cap classify]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
