@@ -118,7 +118,8 @@ function extractNameFilter(t) {
 }
 
 // Classificador local — sem API. Cobre >95% dos casos reais.
-function localClassify(t) {
+// Exportado para uso no ChatScreen (app nativo) sem chamada de API.
+export function localClassify(t) {
   const month = getMonthName(t);
 
   // ── Chat / ajuda — detecta antes de tudo para não engolir perguntas genéricas ──

@@ -23,6 +23,7 @@ import MonthScreen from './src/screens/MonthScreen';
 import AnnualSummaryScreen from './src/screens/AnnualSummaryScreen';
 import InvestmentsScreen from './src/screens/InvestmentsScreen';
 import ProjectsScreen from './src/screens/ProjectsScreen';
+import ChatScreen from './src/screens/ChatScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import SettingsPerfilScreen from './src/screens/SettingsPerfilScreen';
 import SettingsCartoesScreen from './src/screens/SettingsCartoesScreen';
@@ -103,6 +104,7 @@ function Tabs() {
             Investir: 'trending-up-outline',
             Casal: 'heart-outline',
             Projetos: 'flag-outline',
+            Jarvis: 'chatbubble-ellipses-outline',
           };
           return <Ionicons name={icons[route.name]} size={size} color={color} />;
         },
@@ -141,6 +143,11 @@ function Tabs() {
         name="Projetos"
         component={ProjectsScreen}
         options={{ title: 'Projetos', tabBarLabel: 'Projetos' }}
+      />
+      <Tab.Screen
+        name="Jarvis"
+        component={ChatScreen}
+        options={{ headerShown: false, tabBarLabel: 'Jarvis' }}
       />
     </Tab.Navigator>
   );

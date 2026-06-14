@@ -2,6 +2,34 @@
 
 ---
 
+## v2.6.0 (app) — 2026-06-13
+
+### feat: Jarvis Chat nativo — assistente financeiro dentro do app
+
+**Contexto:** Chat nativo na 6ª aba do menu (ícone de balão). O usuário conversa com o Jarvis
+diretamente no app, sem Telegram. Reutiliza o `localClassify` do bot para classificar intenções
+e executa operações direto nos contextos React (sem Firebase).
+
+**Novos arquivos:**
+- `src/services/jarvisLocal.js` — bridge entre `localClassify`/`answerQuery` e os dados do app.
+  Suporta todos os intents: queries, conclude, reopen, income, add_project, rename_expense,
+  edit_expense (valor/pagamento), delete_expense, move_expense, rename_project, edit_project,
+  delete_project, update_project_saved, toggle_setting, set_user_name, update_due_date,
+  set_contribution_pct. Operações destrutivas exigem confirmação (sim/não).
+- `src/screens/ChatScreen.js` — tela de chat com bolhas (user direita / Jarvis esquerda),
+  chips de sugestão rápida, input multiline, renderer de *bold* e _italic_ em markdown simples.
+
+**Arquivos alterados:**
+- `App.js` — import ChatScreen, ícone `Jarvis: chatbubble-ellipses-outline`, Tab.Screen "Jarvis"
+- `bot/geminiClient.js` — `export` adicionado ao `localClassify` (backward-compatible com o bot)
+- `app.json` — version 2.5.3 → 2.6.0, versionCode 33 → 34
+
+**Dependências:** nenhuma nova. Usa `react-native-safe-area-context` (já instalada).
+
+**Nota de build:** APK novo necessário para ativar a aba Jarvis.
+
+---
+
 ## v2.5.3 (app + bot) — 2026-06-13
 
 ### feat: Jarvis com acesso total ao app — CRUD completo
