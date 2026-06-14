@@ -250,6 +250,7 @@ export default function CasalScreen({ navigation }) {
           header={header}
           hideIncome
           additionalIncome={combinedIncome}
+          isCouple
         />
       </SharedMonthData>
       {partnerPersonalData && (

@@ -7,6 +7,7 @@
 //    com os dados compartilhados, fazendo MonthContent e filhos funcionarem sem
 //    nenhuma alteração.
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DataContext } from './DataContext';
 import { YEAR } from '../data/initialData';
@@ -192,7 +193,8 @@ export function useSharedData() {
 // sem alterar o DataContext das abas pessoais.
 export function SharedMonthData({ children }) {
   const { sharedContextValue, ready } = useSharedData();
-  if (!ready || !sharedContextValue?.data) return null;
+  // Retorna View vazia (nunca null) — null pode causar crash no React Navigation
+  if (!ready || !sharedContextValue?.data) return <View style={{ flex: 1 }} />;
   return (
     <DataContext.Provider value={sharedContextValue}>
       {children}

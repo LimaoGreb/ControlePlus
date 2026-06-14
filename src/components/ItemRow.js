@@ -201,6 +201,15 @@ export default function ItemRow({
                   </TouchableOpacity>
                 );
               })}
+          {unlocked && lockConditionMet && !concluded && (
+            <TouchableOpacity
+              onPress={() => { hapticSuccess(); setUnlocked(false); }}
+              style={[styles.confirmBtn, { borderColor: colors.positive, backgroundColor: colors.positive + '18' }]}
+            >
+              <Ionicons name="checkmark-circle" size={13} color={colors.positive} />
+              <Text style={[styles.confirmBtnTxt, { color: colors.positive }]}>Confirmar</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -211,7 +220,7 @@ export default function ItemRow({
     <TouchableOpacity
       activeOpacity={1}
       onLongPress={handleLongPress}
-      delayLongPress={2000}
+      delayLongPress={1000}
     >
       {rowContent}
     </TouchableOpacity>
@@ -278,6 +287,8 @@ const styles = StyleSheet.create({
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginLeft: 16 },
   chip: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7, marginRight: 8, marginBottom: 6, gap: 6 },
   chipText: { fontSize: 13, fontWeight: '700' },
+  confirmBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 6, gap: 4 },
+  confirmBtnTxt: { fontSize: 11, fontWeight: '700' },
   action: { justifyContent: 'center', width: 100, paddingHorizontal: 14, borderRadius: 10, marginBottom: 10 },
   actionText: { color: '#fff', fontSize: 12, fontWeight: '800', marginTop: 2 },
   refWrapper: {

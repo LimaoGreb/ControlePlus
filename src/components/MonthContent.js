@@ -16,7 +16,7 @@ import VariableExpensesSection from './VariableExpensesSection';
 import ContributionsSection from './ContributionsSection';
 import CompleteMonthButton from './CompleteMonthButton';
 
-export default function MonthContent({ monthIndex, header = null, scrollRef = null, hideIncome = false, searchTerm = '', additionalIncome = 0 }) {
+export default function MonthContent({ monthIndex, header = null, scrollRef = null, hideIncome = false, searchTerm = '', additionalIncome = 0, isCouple = false }) {
   const { colors } = useTheme();
   const { data } = useData();
   const { makesContributions, contributionGoalPct } = useSettings();
@@ -31,15 +31,18 @@ export default function MonthContent({ monthIndex, header = null, scrollRef = nu
     completed: false,
   };
   const totals = monthTotals(month);
-  const isCasal = additionalIncome > 0;
+  // isCouple=true sinaliza que estamos na aba Casal — sempre oculta InsightCards e ajusta totais
+  const isCasal = isCouple || additionalIncome > 0;
   const displayTotals = isCasal
-    ? {
-        ...totals,
-        rendaTotal: additionalIncome,
-        sobraTotal: additionalIncome - totals.outflowTotal,
-        percentGasto: (totals.outflowTotal / additionalIncome) * 100,
-        percentSobra: 100 - (totals.outflowTotal / additionalIncome) * 100,
-      }
+    ? additionalIncome > 0
+      ? {
+          ...totals,
+          rendaTotal: additionalIncome,
+          sobraTotal: additionalIncome - totals.outflowTotal,
+          percentGasto: (totals.outflowTotal / additionalIncome) * 100,
+          percentSobra: 100 - (totals.outflowTotal / additionalIncome) * 100,
+        }
+      : { ...totals, rendaTotal: 0, sobraTotal: -(totals.outflowTotal || 0), percentGasto: 100, percentSobra: 0 }
     : totals;
 
   const q = searchTerm.trim().toLowerCase();

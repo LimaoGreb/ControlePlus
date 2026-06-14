@@ -2,6 +2,32 @@
 
 ---
 
+## v2.10.0 — 2026-06-14
+
+### fix: Crash Modo Casal + UX lock + Cap chips + avatar do Cap + ícone robô
+
+**Crash Modo Casal (CRÍTICO):**
+- `src/context/SharedDataContext.js` — `SharedMonthData` agora retorna `<View style={{flex:1}}/>` ao invés de `null` durante carregamento (null + React Navigation = crash em produção).
+- `src/components/MonthContent.js` — Nova prop `isCouple`: quando `true`, força `isCasal=true` independente de `additionalIncome`. Previne InsightCards dentro do contexto shared (InsightCards chamava `useData()` esperando dados pessoais mas recebia dados do casal). Também corrige divisão por zero quando `additionalIncome=0` e `isCasal=true`.
+- `src/screens/CasalScreen.js` — Passa `isCouple` prop ao MonthContent na aba Casal.
+- `App.js` — `TabErrorBoundary`: classe React que captura erros de render na aba Casal e exibe mensagem amigável ao invés de fechar o app. `CasalWithBoundary` usa o boundary.
+
+**UX Card Lock:**
+- `src/components/ItemRow.js` — `delayLongPress` reduzido de 2000ms para 1000ms. Botão "Confirmar" (verde, minimalista) adicionado após os chips de pagamento quando a row está desbloqueada.
+
+**Cap — Avatar e ícone:**
+- `src/screens/ChatScreen.js` — Avatar do bot nas mensagens e no header trocado de "C" (texto) para imagem `assets/cap-avatar.png` (logo do Cap).
+- `App.js` — Ícone da aba Cap trocado de `chatbubble-ellipses-outline` para `robot-outline` (MaterialCommunityIcons). Importado `MaterialCommunityIcons` de `@expo/vector-icons`.
+
+**Cap — Chips e inteligência:**
+- `src/screens/ChatScreen.js` — Chips de sugestão menores: `paddingHorizontal 14→10`, `paddingVertical 7→4`, `fontSize 12.5→11`.
+- `src/services/jarvisLocal.js` — Interceptor para "quanto no cartão" sem cartão específico: lista os cartões cadastrados do usuário em vez de buscar "cartão" como nome de despesa.
+
+**Assets:**
+- `assets/cap-avatar.png` — Placeholder (cópia do icon.png). Substituir pela imagem real do mascote Cap.
+
+---
+
 ## v2.9.1 (hotfix) — 2026-06-14
 
 ### fix: Renda sem swipe, replicar só pra frente, sem limite e startup instantâneo

@@ -73,6 +73,18 @@ export async function processMessage(text, contextData, dataOps, settingsOps) {
   const supportAnswer = capSupport(t, userName);
   if (supportAnswer) return { botText: supportAnswer, pendingOp: null };
 
+  // ── 1b. "quanto no cartão" sem cartão específico → lista as opções do usuário ─
+  const SPECIFIC_CARD_RE = /nubank|\bnu\b|c6|picpay|next|\binter\b|bradesco|ita[uú]|santander|recargapay|pagbank|mercado\s*pago|sicoob|neon|will/i;
+  if (/\bcart[aã]o\b/i.test(t) && !SPECIFIC_CARD_RE.test(t) &&
+      /\bquanto\b|\bgastos?\b|\bgastei\b|\bvejam?\b|\bmostr[ae]\b|\bquero\s+ver\b|\bver\b/i.test(t) &&
+      paymentMethods?.length > 0) {
+    const cards = paymentMethods.map(pm => pm.name);
+    return {
+      botText: `💳 *Qual cartão/forma de pagamento, ${n}?*\n\n${cards.map(c => `• ${c}`).join('\n')}\n\n_Só falar o nome: "${cards[0]}"_`,
+      pendingOp: null,
+    };
+  }
+
   // ── 2. Classificador local (regex, >99% dos casos financeiros) ─────────────
   let classified = localClassify(t);
 

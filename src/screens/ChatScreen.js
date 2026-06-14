@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
   ScrollView, StyleSheet, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Animated,
+  ActivityIndicator, Animated, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,16 +46,18 @@ function BotText({ text, colors }) {
   );
 }
 
+const CAP_AVATAR = require('../../assets/cap-avatar.png');
+
+function CapAvatarImg({ style }) {
+  return <Image source={CAP_AVATAR} style={[styles.avatar, style]} resizeMode="cover" />;
+}
+
 // ─── Bolha de mensagem ────────────────────────────────────────────────────────
 function MessageBubble({ msg, colors }) {
   const isUser = msg.from === 'user';
   return (
     <View style={[styles.msgRow, isUser && styles.msgRowUser]}>
-      {!isUser && (
-        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-          <Text style={styles.avatarTxt}>C</Text>
-        </View>
-      )}
+      {!isUser && <CapAvatarImg />}
       <View style={[
         styles.bubble,
         isUser
@@ -75,9 +77,7 @@ function MessageBubble({ msg, colors }) {
 function TypingIndicator({ colors }) {
   return (
     <View style={styles.msgRow}>
-      <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-        <Text style={styles.avatarTxt}>C</Text>
-      </View>
+      <CapAvatarImg />
       <View style={[styles.bubbleBot, styles.bubble, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <ActivityIndicator size="small" color={colors.primary} />
       </View>
@@ -244,9 +244,7 @@ export default function ChatScreen() {
     >
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <View style={[styles.headerAvatar, { backgroundColor: colors.primary }]}>
-          <Text style={styles.headerAvatarTxt}>C</Text>
-        </View>
+        <Image source={CAP_AVATAR} style={styles.headerAvatar} resizeMode="cover" />
         <View style={{ flex: 1 }}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Cap</Text>
           <Text style={[styles.headerSub, { color: listening ? '#E53935' : colors.textMuted }]}>
@@ -331,8 +329,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1,
   },
-  headerAvatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  headerAvatarTxt: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  headerAvatar: { width: 38, height: 38, borderRadius: 19 },
   headerTitle: { fontSize: 16, fontWeight: '800' },
   headerSub: { fontSize: 11, fontWeight: '500' },
   pendingBadge: { marginLeft: 'auto', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
@@ -342,8 +339,7 @@ const styles = StyleSheet.create({
 
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 8 },
   msgRowUser: { flexDirection: 'row-reverse' },
-  avatar: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avatarTxt: { color: '#fff', fontWeight: '900', fontSize: 13 },
+  avatar: { width: 30, height: 30, borderRadius: 15, flexShrink: 0 },
   bubble: { maxWidth: '78%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleBot: { borderWidth: 1, borderBottomLeftRadius: 4 },
   bubbleUser: { borderBottomRightRadius: 4 },
@@ -354,8 +350,8 @@ const styles = StyleSheet.create({
 
   chipsWrap: { flexShrink: 0 },
   chips: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
-  chip: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7, flexShrink: 0 },
-  chipTxt: { fontSize: 12.5, fontWeight: '600' },
+  chip: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, flexShrink: 0 },
+  chipTxt: { fontSize: 11, fontWeight: '600' },
 
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,

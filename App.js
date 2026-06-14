@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, StatusBar, Platform, UIManager, TouchableOpacity } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,6 +43,28 @@ import HeaderMenu from './src/components/HeaderMenu';
 import WelcomeBack from './src/components/WelcomeBack';
 import { useSync } from './src/context/SyncContext';
 import { MONTH_NAMES, YEAR } from './src/data/initialData';
+
+// ErrorBoundary para abas individuais — impede que um crash numa aba feche todo o app.
+class TabErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 }}>
+          <Ionicons name="warning-outline" size={44} color="#F5A524" />
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>Algo deu errado nesta aba.</Text>
+          <Text style={{ color: '#888', fontSize: 13, textAlign: 'center' }}>Volte e tente abrir novamente.</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+const CasalWithBoundary = (props) => <TabErrorBoundary><CasalScreen {...props} /></TabErrorBoundary>;
 
 // Mantém o splash nativo visível enquanto os contextos carregam (AsyncStorage).
 // Sem isso, o app mostraria um spinner branco entre o splash e o conteúdo.
@@ -102,6 +125,9 @@ function Tabs() {
         headerTitleStyle: { fontWeight: '800' },
         headerRight: () => <HeaderMenu />,
         tabBarIcon: ({ color, size }) => {
+          if (route.name === 'Cap') {
+            return <MaterialCommunityIcons name="robot-outline" size={size} color={color} />;
+          }
           const icons = {
             Atual: 'today-outline',
             Meses: 'calendar-outline',
@@ -109,9 +135,8 @@ function Tabs() {
             Investir: 'trending-up-outline',
             Casal: 'heart-outline',
             Projetos: 'flag-outline',
-            Cap: 'chatbubble-ellipses-outline',
           };
-          return <Ionicons name={icons[route.name]} size={size} color={color} />;
+          return <Ionicons name={icons[route.name] || 'help-circle-outline'} size={size} color={color} />;
         },
       })}
     >
@@ -140,7 +165,7 @@ function Tabs() {
       {coupleCode && (
         <Tab.Screen
           name="Casal"
-          component={CasalScreen}
+          component={CasalWithBoundary}
           options={{ title: 'Casal', tabBarLabel: 'Casal' }}
         />
       )}
