@@ -1,7 +1,7 @@
 // Estrutura inicial do app. O app começa COMPLETAMENTE ZERADO — sem nenhuma
 // renda, despesa ou mês concluído. O usuário cadastra tudo manualmente.
 
-export const YEAR = 2026;
+export const YEAR = new Date().getFullYear();
 
 export const MONTH_NAMES = [
   'Janeiro',

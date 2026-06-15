@@ -37,7 +37,7 @@ export function InstallmentProvider({ children }) {
 
 function InstallmentModal({ payload, onClose }) {
   const { colors } = useTheme();
-  const { addItem, addInstallments, removeItem } = useData();
+  const { addItem, addInstallments, removeItem, activeYear } = useData();
   const { monthIndex, section, itemId, name, value } = payload;
 
   const [parcelas, setParcelas] = useState(2);
@@ -59,39 +59,40 @@ function InstallmentModal({ payload, onClose }) {
     ]).start();
   }, []); // eslint-disable-line
 
-  const firstMonth = monthIndex + 1;
-  const fits = Math.min(parcelas, 11 - monthIndex);
   const total = parcelas * valorParcela;
-  const monthsLabel =
-    firstMonth > 11
-      ? 'ano que vem (não cabe em 2026)'
-      : `${MONTH_NAMES[firstMonth]}${fits > 1 ? ` até ${MONTH_NAMES[Math.min(monthIndex + parcelas, 11)]}` : ''}`;
+
+  // Calcula mês/ano de início e fim das parcelas (suporte cross-year)
+  const startAbsMonth = monthIndex + 1;
+  const endAbsMonth   = monthIndex + parcelas;
+  const startYearOff  = Math.floor(startAbsMonth / 12);
+  const endYearOff    = Math.floor(endAbsMonth / 12);
+  const startM        = startAbsMonth % 12;
+  const endM          = endAbsMonth % 12;
+  const startYear     = activeYear + startYearOff;
+  const endYear       = activeYear + endYearOff;
+  const monthsLabel   = startYear === endYear
+    ? `${MONTH_NAMES[startM]} a ${MONTH_NAMES[endM]} de ${startYear}`
+    : `${MONTH_NAMES[startM]}/${startYear} a ${MONTH_NAMES[endM]}/${endYear}`;
 
   const changeParcelas = (delta) => {
     setParcelas((p) => Math.max(2, Math.min(24, p + delta)));
     setEditedValor(false);
   };
 
-  const confirmarParcelar = () => {
-    if (firstMonth > 11) {
-      Alert.alert('Não cabe', 'A compra começaria depois de Dezembro — não há meses suficientes em 2026.');
-      return;
-    }
-    addInstallments(monthIndex, name || 'Compra', valorParcela, parcelas, payload.payment);
+  const confirmarParcelar = async () => {
+    await addInstallments(monthIndex, name || 'Compra', valorParcela, parcelas, payload.payment);
     removeItem(monthIndex, section, itemId);
     // Ghost ref no mês da compra: referência visual, value=0, não conta nos totais
     addItem(monthIndex, section, name || 'Compra', 0, payload.payment, {
       isInstallmentRef: true,
       installmentCount: parcelas,
       installmentValue: valorParcela,
-      installmentStartMonth: firstMonth,
+      installmentStartMonth: startAbsMonth % 12,
     });
     onClose();
-    const faltou = parcelas - fits;
     Alert.alert(
       'Compra parcelada ✅',
-      `${name || 'Compra'} foi dividida em ${parcelas}x de ${formatBRL(valorParcela)} e adicionada como Gasto Fixo a partir de ${MONTH_NAMES[firstMonth]}.` +
-        (faltou > 0 ? `\n\n(${faltou} parcela(s) cairiam em 2027 e não couberam.)` : '')
+      `${name || 'Compra'} dividida em ${parcelas}x de ${formatBRL(valorParcela)} como Gasto Fixo de ${monthsLabel}.`
     );
   };
 
@@ -147,7 +148,7 @@ function InstallmentModal({ payload, onClose }) {
               />
 
               <Text style={[styles.info, { color: colors.textMuted }]}>
-                Total {formatBRL(total)} · vira <Text style={{ color: colors.fixed, fontWeight: '700' }}>Gasto Fixo</Text> em {monthsLabel}.
+                Total {formatBRL(total)} · vira <Text style={{ color: colors.fixed, fontWeight: '700' }}>Gasto Fixo</Text> de {monthsLabel}.
               </Text>
 
               <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.primary }]} onPress={confirmarParcelar}>

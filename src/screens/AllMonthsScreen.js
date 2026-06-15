@@ -13,29 +13,29 @@ import { MONTH_NAMES, YEAR } from '../data/initialData';
 import { formatBRL } from '../utils/currency';
 
 const MONTH_ABBR = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-const YEARS = [YEAR, YEAR + 1, YEAR + 2, YEAR + 3];
+const YEARS = [YEAR - 1, YEAR, YEAR + 1, YEAR + 2];
+const CURRENT_YEAR_IDX = 1; // YEAR está no índice 1
 const CURRENT_MONTH = new Date().getMonth();
 
 export default function AllMonthsScreen({ navigation }) {
   const { colors } = useTheme();
-  const { data } = useData();
+  const { data, activeYear, switchYear, switching } = useData();
   const { width: SW } = useWindowDimensions();
 
-  const [selYear, setSelYear] = useState(YEAR);
   const [selMonth, setSelMonth] = useState(CURRENT_MONTH);
 
   const carouselRef = useRef(null);
   useScrollToTop(carouselRef);
 
   useEffect(() => {
-    navigation.setOptions({ title: `Meses de ${selYear}` });
-  }, [selYear, navigation]);
+    navigation.setOptions({ title: `Meses de ${activeYear}` });
+  }, [activeYear, navigation]);
 
   const getMonthData = (year, mi) =>
-    year === YEAR ? (data.months[mi] || {}) : {};
+    year === activeYear ? (data?.months?.[mi] || {}) : {};
 
   // ── dados do mês selecionado ──
-  const selData = getMonthData(selYear, selMonth);
+  const selData = getMonthData(activeYear, selMonth);
   const totals = monthTotals(selData);
   const st = monthStatus(selData);
   const progressPct = totals.rendaTotal > 0
@@ -54,12 +54,11 @@ export default function AllMonthsScreen({ navigation }) {
   const btnH = Math.round(btnW * 0.62);
 
   const handlePickMonth = (year, mi) => {
-    setSelYear(year);
+    if (year !== activeYear) switchYear(year);
     setSelMonth(mi);
   };
 
   const handleOpen = () => {
-    if (selYear !== YEAR) return;
     navigation.navigate('MonthDetail', {
       monthIndex: selMonth,
       title: MONTH_NAMES[selMonth],
@@ -68,13 +67,13 @@ export default function AllMonthsScreen({ navigation }) {
 
   const goToYear = (y) => {
     const idx = YEARS.indexOf(y);
-    carouselRef.current?.scrollToIndex({ index: idx, animated: true });
-    setSelYear(y);
+    if (idx >= 0) carouselRef.current?.scrollToIndex({ index: idx, animated: true });
+    switchYear(y);
   };
 
   const onScrollEnd = (e) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SW);
-    if (YEARS[idx] !== undefined) setSelYear(YEARS[idx]);
+    if (YEARS[idx] !== undefined) switchYear(YEARS[idx]);
   };
 
   return (
@@ -120,30 +119,28 @@ export default function AllMonthsScreen({ navigation }) {
           </>
         ) : (
           <Text style={[styles.noData, { color: colors.textMuted }]}>
-            {selYear === YEAR ? 'Nenhum dado registrado ainda' : `Meses planejados para ${selYear}`}
+            {`Nenhum dado registrado em ${activeYear}`}
           </Text>
         )}
 
         {/* botão abrir */}
         <TouchableOpacity
-          style={[styles.openBtn, { backgroundColor: selYear === YEAR ? colors.primary : colors.cardAlt }]}
+          style={[styles.openBtn, { backgroundColor: switching ? colors.cardAlt : colors.primary }]}
           onPress={handleOpen}
-          disabled={selYear !== YEAR}
+          disabled={switching}
           activeOpacity={0.85}
         >
-          <Text style={[styles.openBtnText, { color: selYear === YEAR ? '#fff' : colors.textMuted }]}>
-            {selYear === YEAR
-              ? `Abrir ${MONTH_NAMES[selMonth].toLowerCase()}`
-              : `Disponível em ${selYear}`}
+          <Text style={[styles.openBtnText, { color: switching ? colors.textMuted : '#fff' }]}>
+            {switching ? 'Carregando...' : `Abrir ${MONTH_NAMES[selMonth].toLowerCase()}`}
           </Text>
-          {selYear === YEAR && <Ionicons name="arrow-forward" size={15} color="#fff" />}
+          {!switching && <Ionicons name="arrow-forward" size={15} color="#fff" />}
         </TouchableOpacity>
       </View>
 
       {/* ══════ TABS DE ANO ══════ */}
       <View style={[styles.yearTabs, { borderBottomColor: colors.border }]}>
         {YEARS.map((y) => {
-          const active = y === selYear;
+          const active = y === activeYear;
           return (
             <TouchableOpacity
               key={y}
@@ -173,15 +170,21 @@ export default function AllMonthsScreen({ navigation }) {
         keyExtractor={(y) => String(y)}
         onMomentumScrollEnd={onScrollEnd}
         getItemLayout={(_, i) => ({ length: SW, offset: SW * i, index: i })}
+        initialScrollIndex={CURRENT_YEAR_IDX}
         decelerationRate="fast"
         style={{ flex: 1 }}
         renderItem={({ item: year }) => (
           <View style={{ width: SW, flex: 1, paddingHorizontal: 16, paddingTop: 14 }}>
+            {switching && year === activeYear && (
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <Text style={[styles.futureNote, { color: colors.primary }]}>Carregando {activeYear}...</Text>
+              </View>
+            )}
             <View style={styles.grid}>
               {MONTH_ABBR.map((abbr, mi) => {
                 const mData = getMonthData(year, mi);
-                const s     = year === YEAR ? monthStatus(mData) : 'empty';
-                const isSel = year === selYear && mi === selMonth;
+                const s     = monthStatus(mData);
+                const isSel = year === activeYear && mi === selMonth;
                 const isCur = year === YEAR && mi === CURRENT_MONTH;
                 const dotC  = { done: colors.positive, progress: colors.warning, empty: 'transparent' }[s];
 
@@ -217,9 +220,9 @@ export default function AllMonthsScreen({ navigation }) {
               })}
             </View>
 
-            {year > YEAR && (
+            {year !== activeYear && (
               <Text style={[styles.futureNote, { color: colors.textMuted }]}>
-                Toque num mês para visualizar
+                Toque num mês para navegar a {year}
               </Text>
             )}
           </View>

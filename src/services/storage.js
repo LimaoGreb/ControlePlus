@@ -1,6 +1,6 @@
 // Persistência local com AsyncStorage. Salva/carrega todos os dados do app.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { buildInitialData, YEAR } from '../data/initialData';
+import { buildInitialData, buildInitialMonths, YEAR } from '../data/initialData';
 import { DEFAULT_PALETTE_ID } from '../theme/palettes';
 
 const DATA_KEY = `@financas:dados:${YEAR}`;
@@ -229,4 +229,30 @@ export async function saveContributionGoal(pct) {
 export async function replaceData(data) {
   await saveData(data);
   return data;
+}
+
+// ─── Multi-ano ────────────────────────────────────────────────────────────────
+export const getYearKey = (year) => `@financas:dados:${year}`;
+
+export async function loadYearData(year) {
+  try {
+    const raw = await AsyncStorage.getItem(getYearKey(year));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.months) return { ...parsed, year };
+    }
+  } catch (err) {
+    console.warn(`[storage] loadYearData ${year} error:`, err?.message);
+  }
+  return { year, months: buildInitialMonths() };
+}
+
+export async function saveYearData(year, data) {
+  try {
+    await AsyncStorage.setItem(getYearKey(year), JSON.stringify(data));
+    return true;
+  } catch (err) {
+    console.warn(`[storage] saveYearData ${year} error:`, err?.message);
+    return false;
+  }
 }

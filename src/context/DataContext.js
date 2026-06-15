@@ -6,7 +6,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { loadData, saveData, replaceData } from '../services/storage';
+import { loadData, saveData, replaceData, loadYearData, saveYearData } from '../services/storage';
+import { YEAR } from '../data/initialData';
 
 export const DataContext = createContext(null);
 // Contexto dedicado para a aba Casal — prioridade sobre DataContext em useData().
@@ -37,7 +38,10 @@ function ensureMonth(m) {
 export function DataProvider({ children }) {
   const [data, setData] = useState(null);
   const [ready, setReady] = useState(false);
+  const [activeYear, setActiveYear] = useState(YEAR);
+  const [switching, setSwitching] = useState(false);
   const skipNextSave = useRef(true);
+  const activeYearRef = useRef(YEAR);
 
   useEffect(() => {
     loadData().then((d) => {
@@ -46,15 +50,33 @@ export function DataProvider({ children }) {
     });
   }, []);
 
-  // Salvamento automático sempre que os dados mudam (exceto na carga inicial).
+  // Salvamento automático — sempre no ano ativo correto.
   useEffect(() => {
     if (!data) return;
     if (skipNextSave.current) {
       skipNextSave.current = false;
       return;
     }
-    saveData(data);
+    saveYearData(activeYearRef.current, data);
   }, [data]);
+
+  // Troca de ano: salva o atual, carrega o novo.
+  const switchYear = async (year) => {
+    if (year === activeYearRef.current || switching) return;
+    setSwitching(true);
+    try {
+      await saveYearData(activeYearRef.current, data);
+      const newData = await loadYearData(year);
+      activeYearRef.current = year;
+      skipNextSave.current = true;
+      setData(newData);
+      setActiveYear(year);
+    } catch (e) {
+      console.warn('[DataContext] switchYear error:', e?.message);
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   const updateMonth = (monthIndex, updater) => {
     setData((prev) => {
@@ -106,36 +128,69 @@ export function DataProvider({ children }) {
     return added;
   };
 
-  // Adiciona uma compra parcelada: cria N Gastos Fixos nos meses SEGUINTES
-  // (mês da compra + 1, +2, ...), cada um com o valor da parcela. Cap em Dezembro.
-  // Retorna quantas parcelas couberam no ano.
-  const addInstallments = (purchaseMonthIndex, name, parcelaValue, count, payment) => {
-    let added = 0;
+  // Adiciona uma compra parcelada: espalha as parcelas nos meses seguintes,
+  // cruzando anos se necessário. Retorna o total de parcelas adicionadas.
+  const addInstallments = async (purchaseMonthIndex, name, parcelaValue, count, payment) => {
+    const currentYearItems = [];
+    const futureByYear = {}; // { yearOffset: [{month, k}] }
+
+    for (let k = 1; k <= count; k++) {
+      const absMonth = purchaseMonthIndex + k;
+      const yearOffset = Math.floor(absMonth / 12);
+      const month = absMonth % 12;
+      if (yearOffset === 0) {
+        currentYearItems.push({ month, k });
+      } else {
+        if (!futureByYear[yearOffset]) futureByYear[yearOffset] = [];
+        futureByYear[yearOffset].push({ month, k });
+      }
+    }
+
+    // Parcelas do ano atual (síncrono)
     setData((prev) => {
       const months = { ...prev.months };
-      for (let k = 1; k <= count; k++) {
-        const mi = purchaseMonthIndex + k;
-        if (mi > 11) break;
-        const m = ensureMonth(months[mi]);
-        months[mi] = {
+      for (const { month, k } of currentYearItems) {
+        const m = ensureMonth(months[month]);
+        months[month] = {
           ...m,
-          fixed: [
-            ...m.fixed,
-            {
+          fixed: [...m.fixed, {
+            id: uid('fixed'),
+            name: `${name} (${k}/${count})`,
+            value: parcelaValue,
+            payment: payment || null,
+            parcela: true,
+          }],
+        };
+      }
+      return { ...prev, months };
+    });
+
+    // Parcelas de anos futuros (assíncrono, cada ano em sequência)
+    for (const [offsetStr, items] of Object.entries(futureByYear)) {
+      const targetYear = activeYearRef.current + Number(offsetStr);
+      try {
+        const yearData = await loadYearData(targetYear);
+        const months = { ...yearData.months };
+        for (const { month, k } of items) {
+          const m = ensureMonth(months[month]);
+          months[month] = {
+            ...m,
+            fixed: [...m.fixed, {
               id: uid('fixed'),
               name: `${name} (${k}/${count})`,
               value: parcelaValue,
               payment: payment || null,
               parcela: true,
-            },
-          ],
-        };
-        added++;
+            }],
+          };
+        }
+        await saveYearData(targetYear, { ...yearData, months });
+      } catch (e) {
+        console.warn(`[installments] erro ao salvar no ano ${targetYear}:`, e?.message);
       }
-      return { ...prev, months };
-    });
-    // added só reflete dentro do setData; o chamador calcula o esperado por conta.
-    return Math.min(count, 11 - purchaseMonthIndex);
+    }
+
+    return count;
   };
 
   // Marca/desmarca o mês como concluído (conclusão manual).
@@ -202,6 +257,9 @@ export function DataProvider({ children }) {
   const value = {
     data,
     ready,
+    activeYear,
+    switching,
+    switchYear,
     addItem,
     removeItem,
     updateItem,
