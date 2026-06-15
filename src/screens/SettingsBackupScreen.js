@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -113,6 +114,38 @@ export default function SettingsBackupScreen() {
         <TouchableOpacity style={[styles.btnOutline, { borderColor: colors.primary, marginTop: 10 }]} onPress={handleImport}>
           <Ionicons name="cloud-download-outline" size={20} color={colors.primary} />
           <Text style={[styles.btnOutlineText, { color: colors.primary }]}>Importar JSON</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* DEV: teste de notificação — remover depois */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: '#F5A524', borderWidth: 1.5, marginTop: 14 }]}>
+        <Text style={[styles.sectionTitle, { color: '#F5A524' }]}>DEV — TESTE DE NOTIFICAÇÃO</Text>
+        <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 14 }]}>
+          Dispara uma notificação local em 5 segundos. Minimize o app para ela aparecer.
+        </Text>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: '#F5A524' }]}
+          onPress={async () => {
+            try {
+              const { granted } = await Notifications.requestPermissionsAsync();
+              if (!granted) { Alert.alert('Permissão negada', 'Permita notificações nas configurações do Android.'); return; }
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title: '💸 Aluguel vence amanhã!',
+                  body: 'R$ 1.200,00 · Não vai esquecer?',
+                  sound: 'default',
+                  color: '#F5A524',
+                },
+                trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5 },
+              });
+              Alert.alert('Agendado!', 'Minimize o app — a notificação chega em 5 segundos.');
+            } catch (e) {
+              Alert.alert('Erro', String(e.message || e));
+            }
+          }}
+        >
+          <Ionicons name="notifications-outline" size={20} color="#000" />
+          <Text style={[styles.btnText, { color: '#000' }]}>Disparar em 5s</Text>
         </TouchableOpacity>
       </View>
 
