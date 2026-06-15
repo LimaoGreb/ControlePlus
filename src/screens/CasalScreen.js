@@ -1,13 +1,13 @@
 // Aba Casal: despesas conjuntas sincronizadas com o/a parceiro(a).
 // Navegação por meses, header com os dois nomes e indicador de atividade do parceiro.
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useContext } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { useSync } from '../context/SyncContext';
 import { useSettings } from '../context/SettingsContext';
-import { useData } from '../context/DataContext';
+import { useData, PersonalDataContext } from '../context/DataContext';
 import { SharedMonthData, PartnerDataProvider } from '../context/SharedDataContext';
 import Avatar from '../components/Avatar';
 import MonthContent from '../components/MonthContent';
@@ -30,7 +30,8 @@ export default function CasalScreen({ navigation }) {
   const { colors } = useTheme();
   const { coupleCode, status, lastSync, partnerName, lastPartnerActivity, partnerPersonalData, sharePersonal, partnerAvatar } = useSync();
   const { userName } = useSettings();
-  const { data: personalData } = useData();
+  useData(); // mantém compatibilidade com contextos filhos (SharedMonthData etc.)
+  const { data: personalData } = useContext(PersonalDataContext) || {};
   const [monthIndex, setMonthIndex] = useState(CURRENT_MONTH);
   const [showPartnerView, setShowPartnerView] = useState(false);
   const scrollRef = useRef(null);

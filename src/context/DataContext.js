@@ -12,6 +12,10 @@ export const DataContext = createContext(null);
 // Contexto dedicado para a aba Casal — prioridade sobre DataContext em useData().
 // Não afeta nenhuma outra tela; SharedMonthData é o único provider deste contexto.
 export const CasalDataContext = createContext(null);
+// Contexto blindado — sempre aponta para os dados pessoais do usuário logado.
+// PartnerDataProvider NÃO sobrescreve este contexto, então é seguro ler aqui
+// mesmo quando o modo parceiro global está ativo.
+export const PersonalDataContext = createContext(null);
 
 let idCounter = 0;
 function uid(prefix) {
@@ -210,7 +214,11 @@ export function DataProvider({ children }) {
     importData,
   };
 
-  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+  return (
+    <PersonalDataContext.Provider value={value}>
+      <DataContext.Provider value={value}>{children}</DataContext.Provider>
+    </PersonalDataContext.Provider>
+  );
 }
 
 export function useData() {
