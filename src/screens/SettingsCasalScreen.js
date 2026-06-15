@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScrollView, View, Text, TextInput, Switch, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
@@ -9,8 +9,29 @@ export default function SettingsCasalScreen() {
   const { colors } = useTheme();
   const { coupleCode, status, lastSync, connect, disconnect, generateCode, sharePersonal, setSharePersonal, partnerName, setPartnerName, FIREBASE_CONFIGURED } = useSync();
   const route = useRoute();
-  const [codeInput, setCodeInput] = useState(route.params?.code || '');
+  const inputRefs = useRef([]);
+  const [chars, setChars] = useState(() => {
+    const seed = (route.params?.code || '').replace('-', '');
+    return Array(8).fill('').map((_, i) => seed[i] || '');
+  });
   const [connecting, setConnecting] = useState(false);
+
+  const fullCode = chars.slice(0, 4).join('') + '-' + chars.slice(4).join('');
+  const isComplete = chars.every(c => c !== '');
+
+  const handleChar = (index, value) => {
+    const char = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-1);
+    const next = [...chars];
+    next[index] = char;
+    setChars(next);
+    if (char && index < 7) inputRefs.current[index + 1]?.focus();
+  };
+
+  const handleKeyPress = (index, key) => {
+    if (key === 'Backspace' && !chars[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
 
   useEffect(() => {
     const deepCode = route.params?.code;
@@ -91,29 +112,46 @@ export default function SettingsCasalScreen() {
             </Text>
 
             <Text style={[styles.label, { color: colors.text }]}>Entrar com código existente</Text>
-            <View style={styles.addRow}>
-              <TextInput
-                value={codeInput}
-                onChangeText={(t) => setCodeInput(t.toUpperCase())}
-                placeholder="Ex.: A3B9-KZ12"
-                placeholderTextColor={colors.textMuted}
-                autoCapitalize="characters"
-                style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
-              />
-              <TouchableOpacity
-                style={[styles.addBtn, { backgroundColor: colors.primary, opacity: connecting ? 0.6 : 1 }]}
-                disabled={connecting}
-                onPress={async () => {
-                  if (!codeInput.trim()) return;
-                  setConnecting(true);
-                  try { await connect(codeInput); setCodeInput(''); }
-                  catch (e) { Alert.alert('Erro', String(e.message || e)); }
-                  finally { setConnecting(false); }
-                }}
-              >
-                <Ionicons name="link-outline" size={22} color="#fff" />
-              </TouchableOpacity>
+            <View style={styles.codeBoxRow}>
+              {[0, 1, 2, 3].map(i => (
+                <TextInput
+                  key={i}
+                  ref={r => { inputRefs.current[i] = r; }}
+                  value={chars[i]}
+                  onChangeText={v => handleChar(i, v)}
+                  onKeyPress={({ nativeEvent }) => handleKeyPress(i, nativeEvent.key)}
+                  maxLength={1}
+                  autoCapitalize="characters"
+                  style={[styles.charBox, { backgroundColor: colors.inputBg, color: colors.text, borderColor: chars[i] ? colors.primary : colors.border }]}
+                />
+              ))}
+              <Text style={[styles.dashSep, { color: colors.textMuted }]}>–</Text>
+              {[4, 5, 6, 7].map(i => (
+                <TextInput
+                  key={i}
+                  ref={r => { inputRefs.current[i] = r; }}
+                  value={chars[i]}
+                  onChangeText={v => handleChar(i, v)}
+                  onKeyPress={({ nativeEvent }) => handleKeyPress(i, nativeEvent.key)}
+                  maxLength={1}
+                  autoCapitalize="characters"
+                  style={[styles.charBox, { backgroundColor: colors.inputBg, color: colors.text, borderColor: chars[i] ? colors.primary : colors.border }]}
+                />
+              ))}
             </View>
+            <TouchableOpacity
+              style={[styles.btn, { backgroundColor: colors.primary, opacity: (connecting || !isComplete) ? 0.5 : 1, marginTop: 12 }]}
+              disabled={connecting || !isComplete}
+              onPress={async () => {
+                setConnecting(true);
+                try { await connect(fullCode); setChars(Array(8).fill('')); }
+                catch (e) { Alert.alert('Erro', String(e.message || e)); }
+                finally { setConnecting(false); }
+              }}
+            >
+              <Ionicons name="link-outline" size={20} color="#fff" />
+              <Text style={[styles.btnText, { color: '#fff' }]}>{connecting ? 'Conectando…' : 'Conectar'}</Text>
+            </TouchableOpacity>
 
             <View style={styles.orRow}>
               <View style={[styles.orLine, { backgroundColor: colors.border }]} />
@@ -149,8 +187,9 @@ const styles = StyleSheet.create({
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   codeText: { flex: 1, fontSize: 22, fontWeight: '900', letterSpacing: 3, textAlign: 'center', borderWidth: 1.5, borderRadius: 10, paddingVertical: 12 },
   shareBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, gap: 6 },
-  addRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  addBtn: { width: 48, height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  codeBoxRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4 },
+  charBox: { width: 36, height: 48, borderWidth: 1.5, borderRadius: 10, textAlign: 'center', fontSize: 18, fontWeight: '900', letterSpacing: 0 },
+  dashSep: { fontSize: 22, fontWeight: '300', marginHorizontal: 2 },
   orRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 16, gap: 10 },
   orLine: { flex: 1, height: 1 },
   orText: { fontSize: 13, fontWeight: '700' },
