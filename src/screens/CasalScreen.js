@@ -28,7 +28,7 @@ function timeAgo(ts) {
 
 export default function CasalScreen({ navigation }) {
   const { colors } = useTheme();
-  const { coupleCode, status, lastSync, partnerName, lastPartnerActivity, partnerPersonalData, sharePersonal, partnerAvatar } = useSync();
+  const { coupleCode, status, lastSync, partnerName, lastPartnerActivity, partnerPersonalData, sharePersonal, partnerAvatar, activeProfile } = useSync();
   const { userName } = useSettings();
   useData(); // mantém compatibilidade com contextos filhos (SharedMonthData etc.)
   const { data: personalData } = useContext(PersonalDataContext) || {};
@@ -78,11 +78,18 @@ export default function CasalScreen({ navigation }) {
   const theirName = (partnerName || 'Parceiro(a)').split(' ')[0];
   const partnerActivity = timeAgo(lastPartnerActivity);
 
+  // No modo parceiro global, o ponto de vista inverte: ela é o "eu" da tela
+  const isGlobalPartnerMode = activeProfile === 'partner';
+  const leftName = isGlobalPartnerMode ? theirName : myName;
+  const rightName = isGlobalPartnerMode ? myName : theirName;
+
   // renda combinada: soma as rendas pessoais de ambos no mês selecionado
   const myMonthTotals = monthTotals(personalData?.months?.[monthIndex] || {});
   const partnerMonthTotals = partnerPersonalData
     ? monthTotals(partnerPersonalData?.months?.[monthIndex] || {})
     : null;
+  const leftTotals = isGlobalPartnerMode ? partnerMonthTotals : myMonthTotals;
+  const rightTotals = isGlobalPartnerMode ? myMonthTotals : partnerMonthTotals;
   const showIncomeCard = myMonthTotals.rendaTotal > 0 || partnerMonthTotals?.rendaTotal > 0;
   const combinedIncome = myMonthTotals.rendaTotal + (partnerMonthTotals?.rendaTotal || 0);
 
@@ -95,7 +102,7 @@ export default function CasalScreen({ navigation }) {
         <View style={styles.namesRow}>
           <Ionicons name="heart" size={15} color={colors.primary} style={{ marginRight: 6 }} />
           <Text style={[styles.coupleNames, { color: colors.text }]}>
-            {myName} & {theirName}
+            {leftName} & {rightName}
           </Text>
         </View>
         <View style={styles.syncBadge}>
@@ -119,9 +126,9 @@ export default function CasalScreen({ navigation }) {
         <View style={[styles.incomeCard, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
           <View style={styles.incomeRow}>
             <View style={styles.incomeItem}>
-              <Text style={[styles.incomeName, { color: colors.textMuted }]}>{myName}</Text>
+              <Text style={[styles.incomeName, { color: colors.textMuted }]}>{leftName}</Text>
               <Text style={[styles.incomeVal, { color: colors.text }]}>
-                {formatBRL(myMonthTotals.rendaTotal)}
+                {leftTotals ? formatBRL(leftTotals.rendaTotal) : '—'}
               </Text>
             </View>
 
@@ -133,9 +140,9 @@ export default function CasalScreen({ navigation }) {
             </View>
 
             <View style={[styles.incomeItem, { alignItems: 'flex-end' }]}>
-              <Text style={[styles.incomeName, { color: colors.textMuted }]}>{theirName}</Text>
+              <Text style={[styles.incomeName, { color: colors.textMuted }]}>{rightName}</Text>
               <Text style={[styles.incomeVal, { color: colors.text }]}>
-                {partnerMonthTotals ? formatBRL(partnerMonthTotals.rendaTotal) : '—'}
+                {rightTotals ? formatBRL(rightTotals.rendaTotal) : '—'}
               </Text>
             </View>
           </View>
