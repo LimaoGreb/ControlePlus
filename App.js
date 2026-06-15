@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, useNavigationState } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -126,6 +126,7 @@ function Tabs() {
 
   const canSwitchProfile = !!(coupleCode && partnerPersonalData);
   const isPartnerMode = activeProfile === 'partner' && canSwitchProfile;
+  const activeTab = useNavigationState(state => state?.routes?.[state?.index]?.name);
   const myFirst = (userName || 'Você').split(' ')[0];
   const partnerFirst = (partnerName || 'Parceiro(a)').split(' ')[0];
 
@@ -223,8 +224,8 @@ function Tabs() {
         </PartnerDataProvider>
       ) : tabNavigator}
 
-      {/* Avatar do parceiro — pequeno, acima do FAB, igual ao Meta AI no WhatsApp */}
-      {canSwitchProfile && (
+      {/* Avatar do parceiro — oculto na aba Cap */}
+      {canSwitchProfile && activeTab !== 'Cap' && (
         <TouchableOpacity
           onPress={switchProfile}
           activeOpacity={0.8}
