@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, StatusBar, Platform, UIManager, TouchableOpacity, Linking } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -286,8 +287,26 @@ function Navigation() {
       }
     };
     Linking.getInitialURL().then(handleDeepLink).catch(() => {});
-    const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
-    return () => sub.remove();
+    const linkSub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+
+    const notifSub = Notifications.addNotificationResponseReceivedListener(response => {
+      try {
+        if (response.actionIdentifier !== 'pay') return;
+        const { monthIndex } = response.notification.request.content.data || {};
+        if (monthIndex == null || !navigationRef.isReady()) return;
+        navigationRef.navigate('Main', {
+          screen: 'Meses',
+          params: {
+            screen: 'MonthDetail',
+            params: { monthIndex, title: MONTH_NAMES[monthIndex] },
+          },
+        });
+      } catch (e) {
+        console.warn('[notif] resposta de acao error:', e);
+      }
+    });
+
+    return () => { linkSub.remove(); notifSub.remove(); };
   }, [appReady]);
 
   // Splash nativo ainda visível enquanto não está pronto — não renderiza nada.

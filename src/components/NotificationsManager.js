@@ -13,6 +13,7 @@ import {
   scheduleExpenseNotifications,
   cancelExpenseNotifications,
   rescheduleDueReminders,
+  setupNotificationCategories,
 } from '../services/notifications';
 import { formatBRL } from '../utils/currency';
 import { YEAR } from '../data/initialData';
@@ -162,6 +163,7 @@ export default function NotificationsManager() {
     if (!ready || !data || boosted.current) return;
     boosted.current = true;
     prevRef.current = data;
+    setupNotificationCategories();
     ensurePermission().then(granted => {
       if (granted) rescheduleDueReminders(data, YEAR);
     });

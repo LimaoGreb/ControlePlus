@@ -23,6 +23,21 @@ function configure() {
   });
 }
 
+// ─── Categoria com botão "Pagar" ─────────────────────────────────────────────
+export async function setupNotificationCategories() {
+  try {
+    await Notifications.setNotificationCategoryAsync('expense_due', [
+      {
+        identifier: 'pay',
+        buttonTitle: '💳 Pagar',
+        options: { opensAppToForeground: true },
+      },
+    ]);
+  } catch (e) {
+    console.warn('[notif] setNotificationCategoryAsync error:', e?.message);
+  }
+}
+
 // ─── Permissão + canal Android ────────────────────────────────────────────────
 export async function ensurePermission() {
   if (Platform.OS === 'web') return false;
@@ -94,7 +109,11 @@ export async function scheduleExpenseNotifications(expense, monthIndex, year) {
       const { title, body } = buildNotif(expense.name, expense.value, level, hi);
       try {
         const id = await Notifications.scheduleNotificationAsync({
-          content: { title, body, sound: 'default', color: NOTIF_COLOR },
+          content: {
+            title, body, sound: 'default', color: NOTIF_COLOR,
+            categoryIdentifier: 'expense_due',
+            data: { monthIndex, expenseId: expense.id },
+          },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: fireAt,
