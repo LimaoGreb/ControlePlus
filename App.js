@@ -102,7 +102,7 @@ function CapHeaderBtn() {
       hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       style={{ marginRight: 4 }}
     >
-      <Ionicons name="chatbubbles-outline" size={22} color={colors.text} />
+      <MaterialCommunityIcons name="robot-outline" size={22} color={colors.text} />
     </TouchableOpacity>
   );
 }
