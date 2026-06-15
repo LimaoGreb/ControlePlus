@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StatusBar, Platform, UIManager, TouchableOpacity, Linking, AppState } from 'react-native';
-import { updateAllWidgets } from './src/widgets/updateAllWidgets';
 import * as Notifications from 'expo-notifications';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
@@ -362,7 +361,7 @@ function WidgetSyncManager() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (appState.current === 'active' && next.match(/inactive|background/)) {
-        updateAllWidgets();
+        try { require('./src/widgets/updateAllWidgets').updateAllWidgets(); } catch (_) {}
       }
       appState.current = next;
     });
