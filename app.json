@@ -2,7 +2,7 @@
   "expo": {
     "name": "Controle+",
     "slug": "FinanceApp",
-    "scheme": "com.mautic.financeapp",
+    "scheme": "br.kowalsky.financeapp",
     "version": "2.14.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mautic.financeapp"
+      "bundleIdentifier": "br.kowalsky.financeapp"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
-      "package": "com.mautic.financeapp",
+      "package": "br.kowalsky.financeapp",
       "versionCode": 43,
       "intentFilters": [
         {

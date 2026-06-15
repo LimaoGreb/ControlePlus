@@ -1,14 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, View, Text, TextInput, Switch, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { useSync } from '../context/SyncContext';
 
 export default function SettingsCasalScreen() {
   const { colors } = useTheme();
   const { coupleCode, status, lastSync, connect, disconnect, generateCode, sharePersonal, setSharePersonal, partnerName, setPartnerName, FIREBASE_CONFIGURED } = useSync();
-  const [codeInput, setCodeInput] = useState('');
+  const route = useRoute();
+  const [codeInput, setCodeInput] = useState(route.params?.code || '');
   const [connecting, setConnecting] = useState(false);
+
+  useEffect(() => {
+    const deepCode = route.params?.code;
+    if (deepCode && !coupleCode) {
+      setConnecting(true);
+      connect(deepCode)
+        .catch(e => Alert.alert('Erro ao conectar', String(e.message || e)))
+        .finally(() => setConnecting(false));
+    }
+  }, []);
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
@@ -35,7 +47,7 @@ export default function SettingsCasalScreen() {
             <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>Código do casal</Text>
             <View style={styles.codeRow}>
               <Text style={[styles.codeText, { color: colors.primary, borderColor: colors.border, backgroundColor: colors.cardAlt }]}>{coupleCode}</Text>
-              <TouchableOpacity style={[styles.shareBtn, { borderColor: colors.primary }]} onPress={() => Share.share({ message: `Entra no Controle+ e usa este código no Modo Casal: ${coupleCode}` })}>
+              <TouchableOpacity style={[styles.shareBtn, { borderColor: colors.primary }]} onPress={() => Share.share({ message: `💑 Me conecta no Controle+!\nToca no link para entrar no Modo Casal direto:\n\nbr.kowalsky.financeapp://casal/${coupleCode}` })}>
                 <Ionicons name="share-social-outline" size={18} color={colors.primary} />
                 <Text style={[{ color: colors.primary, fontWeight: '700', fontSize: 14 }]}>Enviar</Text>
               </TouchableOpacity>

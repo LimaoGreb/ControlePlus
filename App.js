@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
-import { View, Text, StatusBar, Platform, UIManager, TouchableOpacity } from 'react-native';
+import { View, Text, StatusBar, Platform, UIManager, TouchableOpacity, Linking } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NavigationContainer, DefaultTheme, DarkTheme, useNavigationState, useNavigation } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, useNavigationState, useNavigation, useNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -263,6 +263,7 @@ function Navigation() {
   const { colors, ready: themeReady } = useTheme();
   const { ready: dataReady } = useData();
   const { ready: settingsReady, userName } = useSettings();
+  const navigationRef = useNavigationContainerRef();
 
   const appReady = themeReady && dataReady && settingsReady;
 
@@ -270,6 +271,24 @@ function Navigation() {
     if (appReady) {
       SplashScreen.hideAsync().catch(() => {});
     }
+  }, [appReady]);
+
+  useEffect(() => {
+    if (!appReady) return;
+    const handleDeepLink = (url) => {
+      if (!url) return;
+      try {
+        const match = url.match(/casal\/([A-Z0-9-]+)/i);
+        if (match?.[1] && navigationRef.isReady()) {
+          navigationRef.navigate('SettingsCasal', { code: match[1] });
+        }
+      } catch (e) {
+        console.warn('[DeepLink] erro:', e);
+      }
+    };
+    Linking.getInitialURL().then(handleDeepLink).catch(() => {});
+    const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+    return () => sub.remove();
   }, [appReady]);
 
   // Splash nativo ainda visível enquanto não está pronto — não renderiza nada.
@@ -293,7 +312,7 @@ function Navigation() {
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navigationRef} theme={navTheme}>
       <StatusBar barStyle={colors.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.card} />
       <RootStack.Navigator
         screenOptions={{
