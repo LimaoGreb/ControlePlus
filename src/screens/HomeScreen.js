@@ -54,6 +54,13 @@ export default function HomeScreen() {
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{MONTH_NAMES[currentMonth]} · Dashboard</Text>
           </View>
           <TouchableOpacity
+            onPress={() => navigation.navigate('Chat')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={{ marginRight: 4 }}
+          >
+            <Ionicons name="chatbubbles-outline" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => setMenuOpen(true)}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >

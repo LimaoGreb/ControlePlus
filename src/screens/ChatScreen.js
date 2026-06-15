@@ -295,21 +295,11 @@ export default function ChatScreen() {
     onTranscript: useCallback((text) => send(text), [send]),
   });
 
-  // ─── Esconde tab bar com teclado ──────────────────────────────────────────
   const navigation = useNavigation();
-  useEffect(() => {
-    const parent = navigation.getParent();
-    const show = Keyboard.addListener('keyboardDidShow', () => parent?.setOptions({ tabBarStyle: { display: 'none' } }));
-    const hide = Keyboard.addListener('keyboardDidHide', () => parent?.setOptions({ tabBarStyle: { display: 'flex' } }));
-    return () => {
-      show.remove(); hide.remove();
-      parent?.setOptions({ tabBarStyle: { display: 'flex' } });
-    };
-  }, [navigation]);
 
   const isWelcome = messages.length === 1;
-  // Quando teclado visível, FloatingTabBar some — remove clearance dele do padding
-  const inputPadBottom = keyboardVisible ? Math.max(insets.bottom, 8) : insets.bottom + 72;
+  // Chat agora é tela RootStack — sem FloatingTabBar, só safe area
+  const inputPadBottom = keyboardVisible ? Math.max(insets.bottom, 8) : insets.bottom + 12;
 
   return (
     <View style={[styles.outer, { backgroundColor: colors.background }]}>
@@ -357,6 +347,14 @@ export default function ChatScreen() {
             style={[styles.clearBtn, { backgroundColor: colors.cardAlt || colors.background, borderColor: colors.border }]}
           >
             <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={[styles.clearBtn, { backgroundColor: colors.cardAlt || colors.background, borderColor: colors.border }]}
+          >
+            <Ionicons name="close" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 

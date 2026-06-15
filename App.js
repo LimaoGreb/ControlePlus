@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NavigationContainer, DefaultTheme, DarkTheme, useNavigationState } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, useNavigationState, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -93,6 +93,20 @@ const Stack = createNativeStackNavigator();
 const RootStack = createNativeStackNavigator();
 
 
+function CapHeaderBtn() {
+  const { colors } = useTheme();
+  const navigation = useNavigation();
+  return (
+    <TouchableOpacity
+      onPress={() => navigation.navigate('Chat')}
+      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      style={{ marginRight: 4 }}
+    >
+      <Ionicons name="chatbubbles-outline" size={22} color={colors.text} />
+    </TouchableOpacity>
+  );
+}
+
 function AllMonthsStack() {
   const { colors } = useTheme();
   return (
@@ -102,7 +116,7 @@ function AllMonthsStack() {
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '800' },
         contentStyle: { backgroundColor: colors.background },
-        headerRight: () => <HeaderMenu />,
+        headerRight: () => <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><CapHeaderBtn /><HeaderMenu /></View>,
       })}
     >
       <Stack.Screen name="AllMonthsList" component={AllMonthsScreen} options={{ title: `Meses de ${YEAR}` }} />
@@ -137,11 +151,13 @@ function Tabs() {
         headerStyle: { backgroundColor: colors.card },
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '800' },
-        headerRight: () => <HeaderMenu />,
+        headerRight: () => (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <CapHeaderBtn />
+            <HeaderMenu />
+          </View>
+        ),
         tabBarIcon: ({ color, size }) => {
-          if (route.name === 'Cap') {
-            return <MaterialCommunityIcons name="robot-outline" size={size} color={color} />;
-          }
           const icons = {
             Atual: 'today-outline',
             Meses: 'calendar-outline',
@@ -187,11 +203,6 @@ function Tabs() {
         name="Projetos"
         component={ProjectsScreen}
         options={{ title: 'Projetos', tabBarLabel: 'Projetos' }}
-      />
-      <Tab.Screen
-        name="Cap"
-        component={ChatScreen}
-        options={{ headerShown: false, tabBarLabel: 'Cap' }}
       />
     </Tab.Navigator>
   );
@@ -293,6 +304,7 @@ function Navigation() {
         }}
       >
         <RootStack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
+        <RootStack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false, animation: 'slide_from_bottom' }} />
         <RootStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Configurações' }} />
         <RootStack.Screen name="SettingsPerfil" component={SettingsPerfilScreen} options={{ title: 'Perfil' }} />
         <RootStack.Screen name="SettingsCartoes" component={SettingsCartoesScreen} options={{ title: 'Formas de Pagamento' }} />
