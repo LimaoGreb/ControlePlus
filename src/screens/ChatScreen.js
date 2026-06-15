@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
@@ -7,6 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import * as Speech from 'expo-speech';
 import { useTheme } from '../theme/ThemeContext';
 import { useData } from '../context/DataContext';
 import { useSettings } from '../context/SettingsContext';
@@ -26,6 +27,27 @@ const CHIPS = [
   { label: '📋 Análise anual', text: 'análise do ano' },
   { label: '💳 Cartão', text: 'quanto no cartão esse mês' },
 ];
+
+// Preset fixo de alturas para waveform decorativo (bolha de áudio enviada)
+const WAVE_PRESET = [0.3,0.75,0.5,0.9,0.4,0.8,0.55,0.3,0.7,0.5,0.9,0.4,0.8,0.6,0.3,0.7,0.45,0.85,0.6,0.9,0.3,0.75,0.5,0.4];
+
+function fmtSecs(s) {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function estimateDuration(text) {
+  const secs = Math.max(2, Math.round((text || '').split(' ').length / 2.5));
+  return fmtSecs(secs);
+}
+
+function cleanForSpeech(text) {
+  return (text || '')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/[^\w\sçãõáéíóúàâêîôûäëïöüñ.,!?;:\-\n]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 // ─── Renderiza texto do bot com *bold* e _italic_ ────────────────────────────
 function BotText({ text, colors }) {
@@ -49,25 +71,161 @@ function CapAvatarImg({ size = 32 }) {
   );
 }
 
-// ─── Bolha de mensagem ────────────────────────────────────────────────────────
-function MessageBubble({ msg, colors }) {
-  const isUser = msg.from === 'user';
+// Waveform estático decorativo para bolha de áudio enviado
+function StaticWaveform({ color, count = 22 }) {
   return (
-    <View style={[styles.msgRow, isUser && styles.msgRowUser]}>
-      {!isUser && <CapAvatarImg size={32} />}
-      <View style={[
-        styles.bubble,
-        isUser
-          ? [styles.bubbleUser, { backgroundColor: colors.primary }]
-          : [styles.bubbleBot, { backgroundColor: colors.card, borderColor: colors.border }],
-      ]}>
-        {isUser
-          ? <Text style={styles.msgTextUser} selectable>{msg.text}</Text>
-          : <BotText text={msg.text} colors={colors} />}
-      </View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+      {WAVE_PRESET.slice(0, count).map((h, i) => (
+        <View key={i} style={{
+          width: 3, height: Math.round(22 * h), borderRadius: 2,
+          backgroundColor: color, opacity: 0.85,
+        }} />
+      ))}
     </View>
   );
 }
+
+// Waveform animado para a barra de gravação
+function LiveWaveformBars({ color, count = 20 }) {
+  const anims = useRef(
+    Array.from({ length: count }, (_, i) => new Animated.Value(0.2 + (i % 4) * 0.05))
+  ).current;
+
+  useEffect(() => {
+    const all = anims.map((a, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 38),
+          Animated.timing(a, {
+            toValue: 0.45 + (i % 3) * 0.25,
+            duration: 290 + (i % 4) * 110,
+            useNativeDriver: true,
+          }),
+          Animated.timing(a, {
+            toValue: 0.15 + (i % 2) * 0.1,
+            duration: 290 + (i % 3) * 110,
+            useNativeDriver: true,
+          }),
+        ])
+      )
+    );
+    all.forEach(a => a.start());
+    return () => all.forEach(a => a.stop());
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, height: 32 }}>
+      {anims.map((a, i) => (
+        <Animated.View key={i} style={{
+          width: 3, height: 26, borderRadius: 2,
+          backgroundColor: color,
+          transform: [{ scaleY: a }],
+        }} />
+      ))}
+    </View>
+  );
+}
+
+// ─── Barra de gravação estilo WhatsApp ────────────────────────────────────────
+function RecordingBar({ secs, onCancel, onSend, colors, paddingBottom }) {
+  return (
+    <View style={[
+      styles.recordingBar,
+      { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom },
+    ]}>
+      <TouchableOpacity
+        onPress={onCancel}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={[styles.recordActionBtn, { backgroundColor: '#E5393522' }]}
+      >
+        <Ionicons name="trash-outline" size={20} color="#E53935" />
+      </TouchableOpacity>
+
+      <View style={styles.recordCenter}>
+        <View style={styles.recordDot} />
+        <Text style={[styles.recordTimer, { color: colors.text }]}>{fmtSecs(secs)}</Text>
+        <LiveWaveformBars color={colors.primary} count={20} />
+      </View>
+
+      <TouchableOpacity
+        onPress={onSend}
+        style={[styles.recordActionBtn, { backgroundColor: '#2BB673' }]}
+      >
+        <Ionicons name="arrow-forward" size={20} color="#fff" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Bolha de mensagem ────────────────────────────────────────────────────────
+const MessageBubble = memo(function MessageBubble({ msg, colors, speakingId, onReplay }) {
+  const isUser = msg.from === 'user';
+
+  // Bolha de áudio (usuário mandou por voz)
+  if (isUser && msg.isVoice) {
+    return (
+      <View style={[styles.msgRow, styles.msgRowUser]}>
+        <View style={{ maxWidth: '82%' }}>
+          <View style={[styles.bubble, styles.bubbleUser, { backgroundColor: colors.primary }]}>
+            <View style={styles.audioBubbleRow}>
+              <TouchableOpacity
+                onPress={() => onReplay(msg.text, msg.id)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={speakingId === msg.id ? 'pause-circle' : 'play-circle'}
+                  size={30}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+              <StaticWaveform color="rgba(255,255,255,0.7)" count={18} />
+              <Text style={styles.audioDuration}>{msg.duration || '0:05'}</Text>
+            </View>
+          </View>
+          <Text style={[styles.audioTranscript, { color: colors.textMuted }]}>
+            🔤 {msg.text}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.msgRow, isUser && styles.msgRowUser]}>
+      {!isUser && <CapAvatarImg size={32} />}
+      <View style={{ maxWidth: '80%' }}>
+        <View style={[
+          styles.bubble,
+          isUser
+            ? [styles.bubbleUser, { backgroundColor: colors.primary }]
+            : [styles.bubbleBot, { backgroundColor: colors.card, borderColor: colors.border }],
+        ]}>
+          {isUser
+            ? <Text style={styles.msgTextUser} selectable>{msg.text}</Text>
+            : <BotText text={msg.text} colors={colors} />}
+        </View>
+        {!isUser && msg.isVoiceResponse && (
+          <TouchableOpacity
+            onPress={() => onReplay(msg.text, msg.id)}
+            style={[styles.replayBtn, { borderColor: colors.border }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={speakingId === msg.id ? 'volume-high' : 'volume-medium-outline'}
+              size={13}
+              color={speakingId === msg.id ? colors.primary : colors.textMuted}
+            />
+            <Text style={[styles.replayTxt, {
+              color: speakingId === msg.id ? colors.primary : colors.textMuted,
+            }]}>
+              {speakingId === msg.id ? 'Falando...' : 'Ouvir resposta'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+});
 
 // ─── 3 dots animados estilo iMessage ─────────────────────────────────────────
 function TypingIndicator({ colors }) {
@@ -143,7 +301,7 @@ function MicButton({ listening, onPress, colors }) {
   );
 }
 
-// ─── Grid de sugestões (mostrado só na tela inicial) ──────────────────────────
+// ─── Grid de sugestões ────────────────────────────────────────────────────────
 function ChipSuggestions({ onSend, colors }) {
   return (
     <View style={styles.chipGrid}>
@@ -165,7 +323,14 @@ function ChipSuggestions({ onSend, colors }) {
 }
 
 let _id = 0;
-const mkMsg = (from, text) => ({ id: String(_id++), from, text });
+const mkMsg = (from, text, opts = {}) => ({
+  id: String(_id++),
+  from,
+  text,
+  isVoice: opts.isVoice || false,
+  isVoiceResponse: opts.isVoiceResponse || false,
+  duration: opts.duration || null,
+});
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function ChatScreen() {
@@ -187,12 +352,26 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(false);
   const [pendingOp, setPendingOp] = useState(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [recordSecs, setRecordSecs] = useState(0);
+  const [speakingId, setSpeakingId] = useState(null);
+
   const listRef = useRef(null);
   const capInitRef = useRef(false);
   const capLenRef = useRef(0);
   const historyRef = useRef([]);
+  const cancelledRef = useRef(false);
+  const mountedRef = useRef(true);
 
-  // Rastreia teclado para ajustar padding do input bar
+  // Cleanup TTS ao desmontar
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      try { Speech.stop(); } catch {}
+    };
+  }, []);
+
+  // Rastreia teclado
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
     const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
@@ -219,8 +398,8 @@ export default function ChatScreen() {
     markAllRead();
   }, [capMsgs.length, capReady, markAllRead]);
 
-  const push = useCallback((from, text) => {
-    setMessages(prev => [...prev, mkMsg(from, text)]);
+  const push = useCallback((from, text, opts = {}) => {
+    setMessages(prev => [...prev, mkMsg(from, text, opts)]);
   }, []);
 
   const scrollToEnd = useCallback(() => {
@@ -232,14 +411,59 @@ export default function ChatScreen() {
     setPendingOp(null);
     setInputText('');
     historyRef.current = [];
+    try { Speech.stop(); } catch {}
+    if (mountedRef.current) setSpeakingId(null);
   }, [firstName]);
 
+  // ─── TTS ──────────────────────────────────────────────────────────────────
+  const speakResponse = useCallback((text, msgId) => {
+    try {
+      if (mountedRef.current) setSpeakingId(msgId);
+      Speech.speak(cleanForSpeech(text), {
+        language: 'pt-BR',
+        pitch: 1.0,
+        rate: 0.9,
+        onDone: () => { if (mountedRef.current) setSpeakingId(null); },
+        onError: () => { if (mountedRef.current) setSpeakingId(null); },
+      });
+    } catch (e) {
+      console.warn('[TTS] speak error:', e?.message);
+      if (mountedRef.current) setSpeakingId(null);
+    }
+  }, []);
+
+  const replaySpeech = useCallback(async (text, msgId) => {
+    try {
+      const isSpeaking = await Speech.isSpeakingAsync();
+      if (isSpeaking) {
+        Speech.stop();
+        // Se era a mesma mensagem, apenas para (toggle)
+        if (speakingId === msgId) {
+          if (mountedRef.current) setSpeakingId(null);
+          return;
+        }
+      }
+      if (mountedRef.current) setSpeakingId(msgId);
+      Speech.speak(cleanForSpeech(text), {
+        language: 'pt-BR',
+        pitch: 1.0,
+        rate: 0.9,
+        onDone: () => { if (mountedRef.current) setSpeakingId(null); },
+        onError: () => { if (mountedRef.current) setSpeakingId(null); },
+      });
+    } catch (e) {
+      console.warn('[TTS] replay error:', e?.message);
+      if (mountedRef.current) setSpeakingId(null);
+    }
+  }, [speakingId]);
+
   // ─── Envio de mensagem ─────────────────────────────────────────────────────
-  const send = useCallback((rawText) => {
+  const send = useCallback((rawText, isVoice = false) => {
     const text = (rawText || '').trim();
     if (!text || loading) return;
     setInputText('');
-    push('user', text);
+    const duration = isVoice ? estimateDuration(text) : null;
+    push('user', text, { isVoice, duration });
     setLoading(true);
     scrollToEnd();
 
@@ -282,28 +506,59 @@ export default function ChatScreen() {
         { role: 'user', text },
         { role: 'bot', text: botText },
       ].slice(-10);
-      push('bot', botText);
+
+      // Captura o ID da próxima mensagem antes de criá-la
+      const nextBotId = String(_id);
+      push('bot', botText, { isVoiceResponse: isVoice });
       setLoading(false);
       scrollToEnd();
+
+      if (isVoice) {
+        setTimeout(() => speakResponse(botText, nextBotId), 400);
+      }
     }, 300);
   }, [loading, pendingOp, data, investments, projects, paymentMethods, userName,
       addItem, updateItem, removeItem, setUserName, setIsInvestor, setMakesContributions,
-      addProjectFull, updateProject, removeProject, setContributionGoalPct, push, scrollToEnd]);
+      addProjectFull, updateProject, removeProject, setContributionGoalPct,
+      push, scrollToEnd, speakResponse]);
 
   // ─── Voz ──────────────────────────────────────────────────────────────────
   const { listening, toggleMic } = useVoiceChat({
-    onTranscript: useCallback((text) => send(text), [send]),
+    onTranscript: useCallback((text) => {
+      if (cancelledRef.current) {
+        cancelledRef.current = false;
+        return;
+      }
+      send(text, true);
+    }, [send]),
   });
 
-  const navigation = useNavigation();
+  // Timer de gravação
+  useEffect(() => {
+    if (!listening) { setRecordSecs(0); return; }
+    const interval = setInterval(() => setRecordSecs(s => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [listening]);
 
+  // Para TTS ao iniciar gravação
+  useEffect(() => {
+    if (listening) {
+      try { Speech.stop(); } catch {}
+      if (mountedRef.current) setSpeakingId(null);
+    }
+  }, [listening]);
+
+  const cancelRecording = useCallback(() => {
+    cancelledRef.current = true;
+    toggleMic();
+  }, [toggleMic]);
+
+  const navigation = useNavigation();
   const isWelcome = messages.length === 1;
-  // Chat agora é tela RootStack — sem FloatingTabBar, só safe area
   const inputPadBottom = keyboardVisible ? Math.max(insets.bottom, 8) : insets.bottom + 12;
 
   return (
     <View style={[styles.outer, { backgroundColor: colors.background }]}>
-      {/* Fundo sutil aplicado em toda a tela, sem "box" separado */}
       <ImageBackground
         source={CAP_BG}
         style={StyleSheet.absoluteFill}
@@ -317,7 +572,6 @@ export default function ChatScreen() {
       >
         {/* ─── Header ─────────────────────────────────────────────────────── */}
         <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-          {/* Avatar com online dot */}
           <View style={styles.avatarContainer}>
             <View style={styles.headerAvatarWrap}>
               <Image source={CAP_AVATAR} style={styles.headerAvatarImg} resizeMode="cover" />
@@ -331,7 +585,7 @@ export default function ChatScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[styles.headerTitle, { color: colors.text }]}>Cap</Text>
             <Text style={[styles.headerSub, { color: listening ? '#E53935' : colors.primary }]}>
-              {listening ? '🎤 Ouvindo...' : pendingOp ? '⏳ Aguardando resposta' : '● Assistente financeiro'}
+              {listening ? '🎤 Gravando...' : pendingOp ? '⏳ Aguardando resposta' : '● Assistente financeiro'}
             </Text>
           </View>
 
@@ -364,7 +618,14 @@ export default function ChatScreen() {
           data={[...messages].reverse()}
           inverted
           keyExtractor={item => item.id}
-          renderItem={({ item }) => <MessageBubble msg={item} colors={colors} />}
+          renderItem={({ item }) => (
+            <MessageBubble
+              msg={item}
+              colors={colors}
+              speakingId={speakingId}
+              onReplay={replaySpeech}
+            />
+          )}
           ListHeaderComponent={
             loading
               ? <TypingIndicator colors={colors} />
@@ -378,52 +639,57 @@ export default function ChatScreen() {
           keyboardShouldPersistTaps="handled"
         />
 
-        {/* ─── Barra de input ─────────────────────────────────────────────── */}
-        <View style={[
-          styles.inputBar,
-          {
-            backgroundColor: colors.card,
-            borderTopColor: colors.border,
-            paddingBottom: inputPadBottom,
-          },
-        ]}>
-          <MicButton listening={listening} onPress={toggleMic} colors={colors} />
-
-          <TextInput
-            value={listening ? '' : inputText}
-            onChangeText={setInputText}
-            placeholder={
-              listening ? '🎤 Ouvindo...'
-              : pendingOp ? 'sim ou não...'
-              : 'Pergunte algo...'
-            }
-            placeholderTextColor={listening ? '#E5393580' : colors.textMuted}
-            style={[styles.input, {
-              color: colors.text,
-              backgroundColor: colors.background,
-              borderColor: colors.border,
-            }]}
-            editable={!listening}
-            multiline
-            maxLength={300}
-            returnKeyType="default"
-            blurOnSubmit={false}
+        {/* ─── Barra de gravação ou input normal ──────────────────────────── */}
+        {listening ? (
+          <RecordingBar
+            secs={recordSecs}
+            onCancel={cancelRecording}
+            onSend={toggleMic}
+            colors={colors}
+            paddingBottom={inputPadBottom}
           />
+        ) : (
+          <View style={[
+            styles.inputBar,
+            {
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+              paddingBottom: inputPadBottom,
+            },
+          ]}>
+            <MicButton listening={false} onPress={toggleMic} colors={colors} />
 
-          <TouchableOpacity
-            onPress={() => send(inputText)}
-            disabled={!inputText.trim() || loading || listening}
-            activeOpacity={0.8}
-            style={[styles.sendBtn, { backgroundColor: colors.primary }]}
-          >
-            <Ionicons
-              name="send"
-              size={17}
-              color="#fff"
-              style={{ opacity: inputText.trim() && !loading && !listening ? 1 : 0.35 }}
+            <TextInput
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder={pendingOp ? 'sim ou não...' : 'Pergunte algo...'}
+              placeholderTextColor={colors.textMuted}
+              style={[styles.input, {
+                color: colors.text,
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+              }]}
+              multiline
+              maxLength={300}
+              returnKeyType="default"
+              blurOnSubmit={false}
             />
-          </TouchableOpacity>
-        </View>
+
+            <TouchableOpacity
+              onPress={() => send(inputText)}
+              disabled={!inputText.trim() || loading}
+              activeOpacity={0.8}
+              style={[styles.sendBtn, { backgroundColor: colors.primary }]}
+            >
+              <Ionicons
+                name="send"
+                size={17}
+                color="#fff"
+                style={{ opacity: inputText.trim() && !loading ? 1 : 0.35 }}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </View>
   );
@@ -467,7 +733,7 @@ const styles = StyleSheet.create({
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 6 },
   msgRowUser: { flexDirection: 'row-reverse' },
   avatarWrap: { overflow: 'hidden', flexShrink: 0 },
-  bubble: { maxWidth: '80%', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 },
+  bubble: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleBot: { borderWidth: 1, borderBottomLeftRadius: 5 },
   bubbleUser: { borderBottomRightRadius: 5 },
   msgText: { fontSize: 15, lineHeight: 22 },
@@ -479,7 +745,7 @@ const styles = StyleSheet.create({
   typingDots: { flexDirection: 'row', gap: 5, paddingVertical: 4, paddingHorizontal: 2 },
   typingDot: { width: 9, height: 9, borderRadius: 5 },
 
-  // Chips grid (estado inicial)
+  // Chips grid
   chipGrid: { paddingVertical: 10, paddingHorizontal: 4, marginBottom: 10 },
   chipLabel: {
     fontSize: 11, fontWeight: '700', textTransform: 'uppercase',
@@ -514,5 +780,72 @@ const styles = StyleSheet.create({
   sendBtn: {
     width: 42, height: 42, borderRadius: 21,
     alignItems: 'center', justifyContent: 'center',
+  },
+
+  // Recording bar
+  recordingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+  },
+  recordActionBtn: {
+    width: 42, height: 42, borderRadius: 21,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  recordCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    overflow: 'hidden',
+  },
+  recordDot: {
+    width: 9, height: 9, borderRadius: 5,
+    backgroundColor: '#E53935',
+  },
+  recordTimer: {
+    fontSize: 14,
+    fontWeight: '700',
+    minWidth: 34,
+    fontVariant: ['tabular-nums'],
+  },
+
+  // Audio bubble (usuário mandou por voz)
+  audioBubbleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  audioDuration: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
+  audioTranscript: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginLeft: 2,
+  },
+
+  // Botão "Ouvir resposta" no Cap
+  replayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  replayTxt: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

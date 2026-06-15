@@ -2,6 +2,27 @@
 
 ---
 
+## v2.15.1 — 2026-06-15
+
+### feat: TTS + UI de áudio WhatsApp-style no Cap
+
+**Lib adicionada:** `expo-speech ~13.0.1` (`npx expo install expo-speech`).
+
+**`src/screens/ChatScreen.js` — reescrito:**
+- `mkMsg` agora aceita `opts = { isVoice, isVoiceResponse, duration }`.
+- `StaticWaveform` — waveform decorativo estático para bolhas de áudio enviadas (preset de 24 alturas fixas, sem animação).
+- `LiveWaveformBars` — waveform animado com Animated.loop+scaleY para a barra de gravação (20 barras, fase escalonada por índice).
+- `RecordingBar` — substitui a barra de input quando `listening=true`: lixeira (cancelar) + dot vermelho + timer + waveform animado + botão enviar.
+- Bolha de áudio do usuário: play/pause + waveform estático + duração estimada + transcrição abaixo em itálico.
+- Respostas do Cap pós-voz: marcadas com `isVoiceResponse=true`, exibem botão "Ouvir resposta" que replays TTS.
+- `speakResponse(text, msgId)` — TTS automático quando Cap responde a mensagem de voz.
+- `replaySpeech(text, msgId)` — toggle TTS por mensagem, para TTS ativo antes de iniciar novo.
+- `cancelledRef` — cancela transcrição em voo ao tocar na lixeira (não envia transcript).
+- TTS para ao iniciar nova gravação. `Speech.stop()` chamado no unmount.
+- `MessageBubble` wrapped com `React.memo` para evitar re-renders desnecessários.
+
+---
+
 ## v2.15.0 — 2026-06-15
 
 ### feat: Deep link Casal + ícone robozinho + notificações com botão Pagar + limpeza Google Auth
