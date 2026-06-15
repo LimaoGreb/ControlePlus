@@ -3,7 +3,7 @@
     "name": "Controle+",
     "slug": "FinanceApp",
     "scheme": "br.kowalsky.financeapp",
-    "version": "2.14.0",
+    "version": "2.15.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -23,7 +23,7 @@
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "package": "br.kowalsky.financeapp",
-      "versionCode": 43,
+      "versionCode": 44,
     },
     "web": {
       "bundler": "metro",

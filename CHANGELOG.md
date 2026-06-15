@@ -2,6 +2,32 @@
 
 ---
 
+## v2.15.0 — 2026-06-15
+
+### feat: Deep link Casal + ícone robozinho + notificações com botão Pagar + limpeza Google Auth
+
+**Package renomeado:** `com.mautic.financeapp` → `br.kowalsky.financeapp` (scheme, bundleIdentifier, package, deep link). Requer desinstalar APK anterior antes de instalar.
+
+**Deep link Modo Casal:**
+- `App.js` — listener `Linking` + `useNavigationContainerRef` detecta `br.kowalsky.financeapp://casal/<code>` e navega direto pra `SettingsCasalScreen` com código preenchido.
+- `src/screens/SettingsCasalScreen.js` — input de código substituído por 8 boxes segmentados (4+dash+4) com auto-foco e backspace inteligente. Recebe `route.params?.code` via deep link e auto-conecta. Mensagem de share atualizada com link clicável.
+
+**Ícone do Cap:** substituído por `robot-outline` (MaterialCommunityIcons) no header de todas as telas e na HomeScreen. Aparece entre a saudação e os três pontinhos.
+
+**Notificações com botão Pagar:**
+- `src/services/notifications.js` — categoria `expense_due` registrada com ação `pay` (💳 Pagar). Notificações agendadas incluem `categoryIdentifier` e `data: { monthIndex, expenseId }`.
+- `src/components/NotificationsManager.js` — chama `setupNotificationCategories()` no boot.
+- `App.js` — listener `addNotificationResponseReceivedListener` navega pro mês da despesa ao tocar em Pagar.
+- **Requer APK de release** — action buttons não funcionam no Expo Go.
+
+**Google Auth desativado (arquivos mantidos):**
+- Removido `GoogleAuthProvider` do `App.js`, `useGoogleAuth` de todas as telas, card CONTA GOOGLE do Perfil, card GOOGLE DRIVE do Backup, `expo-auth-session` e intentFilter do OAuth.
+- Arquivos `GoogleAuthContext.js` e `googleDrive.js` preservados para reimplementação futura.
+
+**Ícone de notificação:** `app.json` atualizado com `android-icon-monochrome.png` para notificações Android.
+
+---
+
 ## v2.14.0 — 2026-06-14
 
 ### fix: Crash Casal + Chat layout + partner view isolada
