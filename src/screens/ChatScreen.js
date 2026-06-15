@@ -221,7 +221,7 @@ export default function ChatScreen() {
   }, []);
 
   const scrollToEnd = useCallback(() => {
-    requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    requestAnimationFrame(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }));
   }, []);
 
   const clearConversation = useCallback(() => {
@@ -352,16 +352,16 @@ export default function ChatScreen() {
       <ImageBackground source={CAP_BG} style={{ flex: 1 }} imageStyle={{ opacity: 0.07 }} resizeMode="cover">
         <FlatList
           ref={listRef}
-          data={messages}
+          data={[...messages].reverse()}
+          inverted
           keyExtractor={item => item.id}
           renderItem={({ item }) => <MessageBubble msg={item} colors={colors} />}
-          contentContainerStyle={[styles.list, { paddingBottom: 12, flexGrow: 1, justifyContent: 'flex-end' }]}
+          ListHeaderComponent={loading ? <TypingIndicator colors={colors} /> : null}
+          contentContainerStyle={styles.list}
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          onContentSizeChange={scrollToEnd}
         />
-        {loading && <TypingIndicator colors={colors} />}
       </ImageBackground>
 
       {/* Chips de sugestão — fixos acima do input */}

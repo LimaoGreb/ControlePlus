@@ -2,6 +2,7 @@
 // Navegação por meses, header com os dois nomes e indicador de atividade do parceiro.
 import React, { useRef, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { useSync } from '../context/SyncContext';
@@ -27,11 +28,17 @@ function timeAgo(ts) {
 
 export default function CasalScreen({ navigation }) {
   const { colors } = useTheme();
-  const { coupleCode, status, lastSync, partnerName, lastPartnerActivity, partnerPersonalData, sharePersonal, partnerAvatar, activeProfile, switchProfile } = useSync();
+  const { coupleCode, status, lastSync, partnerName, lastPartnerActivity, partnerPersonalData, sharePersonal, partnerAvatar } = useSync();
   const { userName } = useSettings();
   const { data: personalData } = useData();
   const [monthIndex, setMonthIndex] = useState(CURRENT_MONTH);
+  const [showPartnerView, setShowPartnerView] = useState(false);
   const scrollRef = useRef(null);
+
+  // Reseta para a view do casal sempre que a aba ganha foco
+  useFocusEffect(useCallback(() => {
+    setShowPartnerView(false);
+  }, []));
 
   const goBack = useCallback(() => setMonthIndex((i) => Math.max(0, i - 1)), []);
   const goNext = useCallback(() => setMonthIndex((i) => Math.min(11, i + 1)), []);
@@ -199,7 +206,7 @@ export default function CasalScreen({ navigation }) {
         </View>
         <TouchableOpacity
           style={[styles.backBtn, { borderColor: colors.border }]}
-          onPress={switchProfile}
+          onPress={() => setShowPartnerView(false)}
         >
           <Ionicons name="chevron-back" size={14} color={colors.primary} />
           <Text style={[styles.backBtnText, { color: colors.primary }]}>Casal</Text>
@@ -227,7 +234,7 @@ export default function CasalScreen({ navigation }) {
     </View>
   );
 
-  if (activeProfile === 'partner' && partnerPersonalData) {
+  if (showPartnerView && partnerPersonalData) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <PartnerDataProvider data={partnerPersonalData}>
@@ -256,7 +263,7 @@ export default function CasalScreen({ navigation }) {
       {partnerPersonalData && (
         <TouchableOpacity
           style={[styles.partnerFab, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={switchProfile}
+          onPress={() => setShowPartnerView(true)}
         >
           <Avatar avatar={partnerAvatar} size={36} />
           <Text style={[styles.partnerFabLabel, { color: colors.textMuted }]}>{theirName}</Text>

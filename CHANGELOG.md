@@ -2,6 +2,16 @@
 
 ---
 
+## v2.14.0 — 2026-06-14
+
+### fix: Crash Casal + Chat layout + partner view isolada
+
+- `src/components/MonthContent.js` — **Fix do crash `Cannot read property 'length' of undefined`**: substituiu `data.months?.[monthIndex] || {...defaults}` por desestruturação explícita que garante arrays em cada propriedade individualmente (`(rawMonth && rawMonth.fixed) || []`). O `||` no objeto inteiro não protegia contra Firebase retornando um mês parcial (com `fixed` undefined).
+- `src/screens/ChatScreen.js` — FlatList trocado para padrão `inverted` com dados revertidos (`[...messages].reverse()`). `TypingIndicator` movido para `ListHeaderComponent` (posição correta com lista invertida = fundo visual). `scrollToEnd` usa `scrollToOffset({offset:0})`.
+- `src/screens/CasalScreen.js` — **Fix da view do parceiro aparecendo ao abrir Casal**: substituiu uso do `activeProfile` global (SyncContext) por estado local `showPartnerView`. `useFocusEffect` reseta para `false` ao focar a aba, garantindo que o Casal sempre abre na view conjunta.
+
+---
+
 ## v2.13.0 — 2026-06-14
 
 ### fix: Chat layout + IncomeSection revert + diagnóstico Casal

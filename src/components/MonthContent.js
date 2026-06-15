@@ -23,12 +23,13 @@ export default function MonthContent({ monthIndex, header = null, scrollRef = nu
 
   if (!data) return null;
 
-  const month = data.months?.[monthIndex] || {
-    incomes: [],
-    fixed: [],
-    variable: [],
-    contributions: [],
-    completed: false,
+  const rawMonth = data.months?.[monthIndex];
+  const month = {
+    incomes: (rawMonth && rawMonth.incomes) || [],
+    fixed: (rawMonth && rawMonth.fixed) || [],
+    variable: (rawMonth && rawMonth.variable) || [],
+    contributions: (rawMonth && rawMonth.contributions) || [],
+    completed: !!(rawMonth && rawMonth.completed),
   };
   const totals = monthTotals(month);
   // isCouple=true sinaliza que estamos na aba Casal — sempre oculta InsightCards e ajusta totais
