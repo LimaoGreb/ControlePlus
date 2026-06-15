@@ -8,8 +8,6 @@ import { useTheme } from '../theme/ThemeContext';
 import { useData } from '../context/DataContext';
 import { useSettings } from '../context/SettingsContext';
 import { useSync } from '../context/SyncContext';
-import { useGoogleAuth } from '../context/GoogleAuthContext';
-import { uploadToDrive, downloadFromDrive } from '../services/googleDrive';
 import { contrastText } from '../utils/colorUtils';
 import { YEAR } from '../data/initialData';
 
@@ -23,7 +21,6 @@ export default function SettingsBackupScreen() {
     projects, makesContributions, contributionGoalPct, importSettings,
   } = useSettings();
   const { coupleCode, connect } = useSync();
-  const { token, googleUser, signIn, signOut, loading, ready } = useGoogleAuth();
   const [busy, setBusy] = useState(false);
 
   const buildBackup = () => ({
@@ -97,48 +94,6 @@ export default function SettingsBackupScreen() {
     }
   };
 
-  // ── Backup Google Drive ───────────────────────────────────────────────────────
-  const handleDriveExport = async () => {
-    if (!token) { signIn(); return; }
-    try {
-      setBusy(true);
-      await uploadToDrive(token, BACKUP_FILENAME, buildBackup());
-      Alert.alert('Backup salvo no Drive', `"${BACKUP_FILENAME}" salvo na sua conta Google Drive.`);
-    } catch (err) {
-      if (String(err).includes('401')) {
-        signOut();
-        Alert.alert('Sessão expirada', 'Faça login com Google novamente.');
-      } else {
-        Alert.alert('Erro no Drive', String(err.message || err));
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleDriveImport = async () => {
-    if (!token) { signIn(); return; }
-    try {
-      setBusy(true);
-      const result = await downloadFromDrive(token, BACKUP_FILENAME);
-      if (!result) { Alert.alert('Não encontrado', `Nenhum arquivo "${BACKUP_FILENAME}" no seu Drive.`); return; }
-      const date = new Date(result.modifiedTime).toLocaleString('pt-BR');
-      Alert.alert('Restaurar do Drive', `Backup encontrado (${date}).\nIsso vai substituir TODOS os dados e configurações.`, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Restaurar', style: 'destructive', onPress: async () => {
-          try {
-            await restoreBackup(result.data);
-            Alert.alert('Pronto', 'Dados restaurados do Google Drive!');
-          } catch (e) { Alert.alert('Erro', String(e.message || e)); }
-        }},
-      ]);
-    } catch (err) {
-      Alert.alert('Erro no Drive', String(err.message || err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
 
@@ -161,56 +116,6 @@ export default function SettingsBackupScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Backup Google Drive */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>GOOGLE DRIVE</Text>
-
-        {googleUser ? (
-          <View style={[styles.accountRow, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
-            {googleUser.photo
-              ? <Image source={{ uri: googleUser.photo }} style={styles.avatar} />
-              : <Ionicons name="person-circle" size={38} color={colors.textMuted} />}
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={[styles.accountName, { color: colors.text }]}>{googleUser.name}</Text>
-              <Text style={[styles.accountEmail, { color: colors.textMuted }]}>{googleUser.email}</Text>
-            </View>
-            <TouchableOpacity onPress={signOut} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="log-out-outline" size={22} color={colors.negative} />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 14 }]}>
-            Conecte sua conta Google para salvar e restaurar backups diretamente no Drive.
-          </Text>
-        )}
-
-        {!googleUser ? (
-          <TouchableOpacity
-            style={[styles.googleBtn, { borderColor: colors.border, backgroundColor: colors.cardAlt }]}
-            onPress={signIn} disabled={!ready || loading}
-          >
-            <Text style={styles.googleIcon}>G</Text>
-            <Text style={[styles.googleBtnText, { color: colors.text }]}>Entrar com Google</Text>
-          </TouchableOpacity>
-        ) : (
-          <>
-            <TouchableOpacity
-              style={[styles.btn, { backgroundColor: '#1a73e8', opacity: busy ? 0.6 : 1, marginTop: 12 }]}
-              onPress={handleDriveExport} disabled={busy}
-            >
-              <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
-              <Text style={[styles.btnText, { color: '#fff' }]}>Salvar backup no Drive</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.btnOutline, { borderColor: '#1a73e8', marginTop: 10 }]}
-              onPress={handleDriveImport} disabled={busy}
-            >
-              <Ionicons name="cloud-download-outline" size={20} color="#1a73e8" />
-              <Text style={[styles.btnOutlineText, { color: '#1a73e8' }]}>Restaurar do Drive</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
     </ScrollView>
   );
 }

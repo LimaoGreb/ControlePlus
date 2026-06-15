@@ -5,15 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
-import { useGoogleAuth } from '../context/GoogleAuthContext';
 import { contrastText } from '../utils/colorUtils';
 import Avatar, { PRESET_AVATARS } from './Avatar';
 
 export default function AvatarPicker() {
   const { colors } = useTheme();
   const { avatar, setAvatar } = useSettings();
-  const { googleUser } = useGoogleAuth();
-
   const pickPhoto = async () => {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -46,15 +43,6 @@ export default function AvatarPicker() {
             <Ionicons name="image-outline" size={18} color={contrastText(colors.primary)} />
             <Text style={[styles.btnText, { color: contrastText(colors.primary) }]}>Escolher foto</Text>
           </TouchableOpacity>
-          {googleUser?.photo && (
-            <TouchableOpacity
-              style={[styles.btn, { backgroundColor: colors.cardAlt, borderWidth: 1.5, borderColor: '#1a73e8', marginTop: 6 }]}
-              onPress={() => setAvatar({ kind: 'photo', value: googleUser.photo })}
-            >
-              <Text style={{ fontSize: 13, fontWeight: '900', color: '#1a73e8' }}>G</Text>
-              <Text style={[styles.btnText, { color: '#1a73e8' }]}>Foto do Google</Text>
-            </TouchableOpacity>
-          )}
           {avatar && (
             <TouchableOpacity style={styles.removeBtn} onPress={() => setAvatar(null)}>
               <Text style={[styles.removeText, { color: colors.textMuted }]}>Remover</Text>

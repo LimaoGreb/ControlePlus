@@ -15,7 +15,6 @@ import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { CapProvider } from './src/context/CapContext';
 import { InstallmentProvider } from './src/context/InstallmentContext';
 import { SyncProvider } from './src/context/SyncContext';
-import { GoogleAuthProvider } from './src/context/GoogleAuthContext';
 import { SharedDataProvider, PartnerDataProvider } from './src/context/SharedDataContext';
 import CasalScreen from './src/screens/CasalScreen';
 
@@ -346,7 +345,6 @@ export default function App() {
             <CapProvider>
             <SharedDataProvider>
             <SyncProvider>
-            <GoogleAuthProvider>
             <InstallmentProvider>
               <NotificationsManager />
               <BotSyncManager />
@@ -354,7 +352,6 @@ export default function App() {
               <WelcomeBack />
               <Navigation />
             </InstallmentProvider>
-            </GoogleAuthProvider>
             </SyncProvider>
             </SharedDataProvider>
             </CapProvider>

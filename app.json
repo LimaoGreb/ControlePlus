@@ -24,20 +24,6 @@
       },
       "package": "br.kowalsky.financeapp",
       "versionCode": 43,
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "data": [
-            {
-              "scheme": "com.googleusercontent.apps.198101730282-r33arkuqt67oqg5ptn47lttjcckvnt66"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        }
-      ]
     },
     "web": {
       "bundler": "metro",

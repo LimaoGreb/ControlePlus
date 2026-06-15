@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, TextInput, Switch, TouchableOpacity, StyleSheet, Alert, Share, Image } from 'react-native';
+import { ScrollView, View, Text, TextInput, Switch, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SvgXml } from 'react-native-svg';
 import { telegram } from '../data/bankLogos';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { useSync } from '../context/SyncContext';
-import { useGoogleAuth } from '../context/GoogleAuthContext';
 import AvatarPicker from '../components/AvatarPicker';
 
 export default function SettingsPerfilScreen() {
@@ -25,7 +24,6 @@ export default function SettingsPerfilScreen() {
     partnerName, setPartnerName,
     FIREBASE_CONFIGURED,
   } = useSync();
-  const { token, googleUser, signIn, signOut, loading: googleLoading, ready } = useGoogleAuth();
   const [codeInput, setCodeInput] = useState('');
   const [tgInput, setTgInput] = useState(telegramChatId || '');
   const [connecting, setConnecting] = useState(false);
@@ -240,56 +238,6 @@ export default function SettingsPerfilScreen() {
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Salvar</Text>
           </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Google */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>CONTA GOOGLE</Text>
-
-        {googleUser ? (
-          <>
-            <View style={[styles.googleAccountRow, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
-              {googleUser.photo
-                ? <Image source={{ uri: googleUser.photo }} style={styles.googleAvatar} />
-                : <Ionicons name="person-circle" size={44} color={colors.textMuted} />}
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.googleName, { color: colors.text }]}>{googleUser.name}</Text>
-                <Text style={[styles.googleEmail, { color: colors.textMuted }]}>{googleUser.email}</Text>
-              </View>
-            </View>
-
-            <Text style={[styles.hint, { color: colors.textMuted, marginTop: 10, marginBottom: 14 }]}>
-              Conta conectada. Use o backup por Google Drive na tela de Backup.
-            </Text>
-
-            <TouchableOpacity
-              style={[styles.btnOutline, { borderColor: colors.negative }]}
-              onPress={() => Alert.alert('Desconectar Google', 'Deseja sair da conta Google? O backup pelo Drive ficará indisponível.', [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Sair', style: 'destructive', onPress: signOut },
-              ])}
-            >
-              <Ionicons name="log-out-outline" size={20} color={colors.negative} />
-              <Text style={[styles.btnOutlineText, { color: colors.negative }]}>Sair da conta Google</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 16 }]}>
-              Entre com Google para habilitar backup e restauração automática dos seus dados pelo Google Drive.
-            </Text>
-            <TouchableOpacity
-              style={[styles.googleSignInBtn, { borderColor: colors.border, backgroundColor: colors.cardAlt }]}
-              onPress={signIn}
-              disabled={!ready || googleLoading}
-            >
-              <Text style={styles.googleG}>G</Text>
-              <Text style={[styles.googleSignInText, { color: colors.text }]}>
-                {googleLoading ? 'Conectando…' : 'Entrar com Google'}
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
       </View>
 
       <View style={{ height: 40 }} />
