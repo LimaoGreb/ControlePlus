@@ -78,6 +78,25 @@ export function answerQuery(snapshot, params) {
     return `💳 *${cap(filter) || 'Todos'} — ${mn}*\n\n${filtered.map(i => `• ${i.name}: ${R(i.value)}`).join('\n')}\n\n*Total: ${R(total)}*`;
   }
 
+  // ── Por categoria ─────────────────────────────────────────────────────────
+  if (subtype === 'by_category') {
+    const catId = params.category_id;
+    const CAT_LABELS = {
+      alimentacao:'Alimentação', transporte:'Transporte', moradia:'Moradia',
+      saude:'Saúde', lazer:'Lazer', educacao:'Educação',
+      vestuario:'Vestuário', assinaturas:'Assinaturas', tech:'Tecnologia', outros:'Outros',
+    };
+    const catLabel = CAT_LABELS[catId] || catId;
+    const catItems = all.filter(i => i.category === catId);
+    if (!catItems.length)
+      return `Nenhum gasto em *${catLabel}* em ${mn} ainda 🏷️\n\nDá pra categorizar no app ou via Cap:\n_"categoriza o iFood como alimentação"_`;
+    const total = catItems.reduce((s, i) => s + (i.value || 0), 0);
+    const tInc  = incomes.reduce((s, i) => s + (i.value || 0), 0);
+    const pct   = tInc > 0 ? ` · ${((total / tInc) * 100).toFixed(0)}% da renda` : '';
+    const lines = catItems.map(i => `• ${i.name}: ${R(i.value)}`).join('\n');
+    return `🏷️ *${catLabel}* — ${mn}\n\n${lines}\n\n*Total: ${R(total)}*${pct}`;
+  }
+
   // ── Por nome / categoria ──────────────────────────────────────────────────
   if (subtype === 'by_name') {
     const f = (filter || '').toLowerCase();

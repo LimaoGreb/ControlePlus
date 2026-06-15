@@ -6,6 +6,8 @@ import {
 } from 'react-native';
 import { useScrollToTop } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { EXPENSE_CATEGORIES } from '../data/categories';
+import CurrencyInput from '../components/CurrencyInput';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useData } from '../context/DataContext';
@@ -141,29 +143,28 @@ function categorize(months) {
       const val=Number(item.value)||0;
       if (val<=0) continue;
       grand+=val;
-      const n=(item.name||'').toLowerCase();
-      let hit=false;
-      for (const cat of CATS) {
-        if (cat.keys.some(k=>n.includes(k))) {
-          const key=n;
-          map[cat.id].total+=val;
-          if (!map[cat.id].itemMap[key]) map[cat.id].itemMap[key]={name:item.name||'?',total:0,count:0};
-          map[cat.id].itemMap[key].total+=val;
-          map[cat.id].itemMap[key].count+=1;
-          map[cat.id].monthlyData[i].total+=val;
-          map[cat.id].monthlyData[i].items.push({name:item.name||'?',value:val});
-          hit=true; break;
+      const key=(item.name||'').toLowerCase();
+
+      // Prioridade 1: categoria manual (CategoryChip)
+      let targetId = item.category && map[item.category] ? item.category : null;
+
+      // Prioridade 2: keyword matching
+      if (!targetId) {
+        const n=key;
+        for (const cat of CATS) {
+          if (cat.keys.some(k=>n.includes(k))) { targetId=cat.id; break; }
         }
       }
-      if (!hit) {
-        const key=n;
-        map.outros.total+=val;
-        if (!map.outros.itemMap[key]) map.outros.itemMap[key]={name:item.name||'?',total:0,count:0};
-        map.outros.itemMap[key].total+=val;
-        map.outros.itemMap[key].count+=1;
-        map.outros.monthlyData[i].total+=val;
-        map.outros.monthlyData[i].items.push({name:item.name||'?',value:val});
-      }
+
+      // Prioridade 3: outros
+      if (!targetId) targetId='outros';
+
+      map[targetId].total+=val;
+      if (!map[targetId].itemMap[key]) map[targetId].itemMap[key]={name:item.name||'?',total:0,count:0};
+      map[targetId].itemMap[key].total+=val;
+      map[targetId].itemMap[key].count+=1;
+      map[targetId].monthlyData[i].total+=val;
+      map[targetId].monthlyData[i].items.push({name:item.name||'?',value:val});
     }
   }
   return {
@@ -619,6 +620,303 @@ function DonutChart({cats,selectedId,onSelect,onPressIn,onPressOut,onLongPress,g
   );
 }
 
+// ─── BudgetEditorSheet ────────────────────────────────────────────────────────
+function BudgetEditorSheet({ visible, onClose }) {
+  const { colors } = useTheme();
+  const { categoryBudgets, setCategoryBudget } = useSettings();
+  const [editing, setEditing] = useState(null);
+  const translateY = useRef(new Animated.Value(700)).current;
+
+  React.useEffect(() => {
+    if (visible) Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 55, friction: 11 }).start();
+    else         Animated.timing(translateY, { toValue: 700, duration: 250, useNativeDriver: true }).start();
+  }, [visible]);
+
+  const panHandlers = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, g) => g.dy > 8,
+    onPanResponderMove: (_, g) => { if (g.dy > 0) translateY.setValue(g.dy); },
+    onPanResponderRelease: (_, g) => {
+      if (g.dy > 100 || g.vy > 0.6) onClose();
+      else Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+    },
+  })).current;
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <View style={be.backdrop}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+        <Animated.View style={[be.sheet, { backgroundColor: colors.card, transform: [{ translateY }] }]}>
+          <View {...panHandlers.panHandlers} style={be.handleZone}>
+            <View style={[be.handle, { backgroundColor: colors.border }]} />
+            <Text style={[be.title, { color: colors.text }]}>💰 Orçamento por Categoria</Text>
+            <Text style={[be.sub, { color: colors.textMuted }]}>Defina um limite mensal para cada categoria</Text>
+          </View>
+          <ScrollView contentContainerStyle={be.content} showsVerticalScrollIndicator={false}>
+            {EXPENSE_CATEGORIES.map(cat => {
+              const limit = categoryBudgets[cat.id] || 0;
+              const isEditing = editing === cat.id;
+              return (
+                <View key={cat.id} style={[be.row, { borderColor: isEditing ? cat.color : colors.border }]}>
+                  <View style={[be.iconBadge, { backgroundColor: cat.color + '22' }]}>
+                    <Ionicons name={cat.icon} size={18} color={cat.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[be.catName, { color: colors.text }]}>{cat.name}</Text>
+                    {isEditing ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                        <View style={{ flex: 1 }}>
+                          <CurrencyInput value={limit} onChangeValue={v => setCategoryBudget(cat.id, v)} />
+                        </View>
+                        {limit > 0 && (
+                          <TouchableOpacity onPress={() => { setCategoryBudget(cat.id, 0); setEditing(null); }}>
+                            <Text style={{ color: colors.negative, fontSize: 12, fontWeight: '700' }}>Remover</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ) : (
+                      <Text style={[be.limitTxt, { color: limit > 0 ? colors.textSecondary : colors.textMuted }]}>
+                        {limit > 0 ? `Limite: ${formatBRL(limit)}/mês` : 'Sem limite'}
+                      </Text>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setEditing(isEditing ? null : cat.id)}
+                    style={[be.editBtn, { backgroundColor: isEditing ? cat.color : colors.cardAlt }]}>
+                    <Ionicons name={isEditing ? 'checkmark' : 'pencil-outline'} size={15} color={isEditing ? '#fff' : colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+            <View style={{ height: 48 }} />
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+const be = StyleSheet.create({
+  backdrop:  { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.52)' },
+  sheet:     { borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: 640, paddingTop: 6,
+               shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.28, shadowRadius: 20, elevation: 20 },
+  handleZone:{ alignItems: 'center', paddingTop: 8, paddingBottom: 12, paddingHorizontal: 18 },
+  handle:    { width: 44, height: 5, borderRadius: 3, marginBottom: 14 },
+  title:     { fontSize: 17, fontWeight: '900', marginBottom: 4 },
+  sub:       { fontSize: 12 },
+  content:   { paddingHorizontal: 18, paddingTop: 6, gap: 10 },
+  row:       { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14 },
+  iconBadge: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  catName:   { fontSize: 14, fontWeight: '800' },
+  limitTxt:  { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  editBtn:   { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+});
+
+// ─── BudgetSection ────────────────────────────────────────────────────────────
+function BudgetSection({ monthData, onOpenEditor, bare = false }) {
+  const { colors } = useTheme();
+  const { categoryBudgets } = useSettings();
+
+  const budgetEntries = Object.entries(categoryBudgets || {}).filter(([, limit]) => limit > 0);
+
+  // Renda e gastos reais do mês
+  const monthIncome   = (monthData?.incomes || []).reduce((s, i) => s + (Number(i.value) || 0), 0);
+  const allExpenses   = [...(monthData?.fixed || []), ...(monthData?.variable || [])];
+  const totalMonthExp = allExpenses.reduce((s, i) => s + (Number(i.value) || 0), 0);
+  const freeToSpend   = monthIncome - totalMonthExp;
+
+  // Gasto por categoria (usa tag manual do item)
+  const items = allExpenses.filter(i => !i.isInstallmentRef && i.category);
+  const spent = {};
+  for (const item of items) {
+    spent[item.category] = (spent[item.category] || 0) + (Number(item.value) || 0);
+  }
+
+  const totalLimits = budgetEntries.reduce((s, [, l]) => s + l, 0);
+  const limitsExceedIncome = monthIncome > 0 && totalLimits > monthIncome;
+
+  // Marcador de ritmo baseado na renda real
+  const today       = new Date();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const dayPct      = today.getDate() / daysInMonth;
+  const expectedExp = monthIncome * dayPct;
+  const overPace    = totalMonthExp > expectedExp + 1;
+  const underPace   = totalMonthExp < expectedExp * 0.85;
+
+  function paceMsg() {
+    if (monthIncome === 0) return null;
+    if (freeToSpend < 0)  return { txt: 'Gastos acima da renda este mês', color: colors.negative };
+    if (overPace)         return { txt: 'Ritmo acima do esperado — cuidado', color: '#F59E0B' };
+    if (underPace)        return { txt: 'Ótimo ritmo! Abaixo do esperado', color: colors.positive };
+    return { txt: 'No ritmo certo para o mês', color: colors.positive };
+  }
+
+  function barColor(pct) {
+    if (pct === 0)  return colors.border;
+    if (pct >= 1)   return colors.negative;
+    if (pct >= 0.8) return '#F59E0B';
+    return colors.positive;
+  }
+
+  const pace = paceMsg();
+  const overallPct = monthIncome > 0 ? Math.min(totalMonthExp / monthIncome, 1) : 0;
+
+  const inner = (
+    <>
+      {/* Header */}
+      <View style={bgt.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Ionicons name="wallet-outline" size={16} color={colors.primary} />
+          <Text style={[bgt.title, { color: colors.text }]}>
+            Orçamento de {MONTH_NAMES[today.getMonth()]}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={onOpenEditor} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="pencil-outline" size={16} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>
+
+      {budgetEntries.length === 0 ? (
+        <TouchableOpacity onPress={onOpenEditor}
+          style={[bgt.emptyBtn, { borderColor: colors.primary + '44', backgroundColor: colors.primary + '0E' }]}>
+          <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+          <Text style={[bgt.emptyTxt, { color: colors.primary }]}>Definir limites por categoria</Text>
+        </TouchableOpacity>
+      ) : (
+        <>
+          {/* Card de resumo geral */}
+          <View style={[bgt.summaryCard, { backgroundColor: colors.background }]}>
+            <View style={bgt.summaryRow}>
+              <View>
+                <Text style={[bgt.freeLabel, { color: colors.textMuted }]}>Livre pra gastar</Text>
+                <Text style={[bgt.freeValue, { color: freeToSpend >= 0 ? colors.positive : colors.negative }]}>
+                  {freeToSpend >= 0 ? formatBRL(freeToSpend) : `−${formatBRL(-freeToSpend)}`}
+                </Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[bgt.spentOf, { color: colors.textMuted }]}>
+                  {formatBRL(totalMonthExp)} gastos
+                </Text>
+                <Text style={[bgt.spentOf, { color: colors.textMuted }]}>
+                  de {formatBRL(monthIncome)} de renda
+                </Text>
+              </View>
+            </View>
+
+            {/* Barra geral com marcador de ritmo */}
+            <View style={[bgt.track, { backgroundColor: colors.border, marginBottom: 0 }]}>
+              <View style={[bgt.fill, {
+                flex: overallPct,
+                backgroundColor: overallPct >= 1 ? colors.negative : overallPct >= 0.8 ? '#F59E0B' : colors.positive,
+              }]} />
+              <View style={{ flex: Math.max(0.001, 1 - overallPct) }} />
+              <View style={[bgt.paceMark, { left: `${Math.round(dayPct * 100)}%`, borderColor: colors.text }]} />
+            </View>
+            <View style={bgt.paceRow}>
+              <Text style={[bgt.paceLabel, { color: colors.textMuted }]}>Hoje (dia {today.getDate()})</Text>
+              {pace && <Text style={[bgt.paceMsg, { color: pace.color }]}>{pace.txt}</Text>}
+            </View>
+          </View>
+
+          {/* Aviso quando limites excedem renda */}
+          {limitsExceedIncome && (
+            <View style={[bgt.warnRow, { backgroundColor: '#F59E0B18', borderColor: '#F59E0B44' }]}>
+              <Ionicons name="warning-outline" size={14} color="#F59E0B" />
+              <Text style={[bgt.warnTxt, { color: '#F59E0B' }]}>
+                Seus limites somam {formatBRL(totalLimits)} — acima da renda de {formatBRL(monthIncome)}
+              </Text>
+            </View>
+          )}
+
+          <View style={[bgt.divider, { backgroundColor: colors.border }]} />
+
+          {/* Categorias individuais */}
+          {budgetEntries.map(([catId, limit]) => {
+            const cat = EXPENSE_CATEGORIES.find(c => c.id === catId);
+            if (!cat) return null;
+            const spentAmt  = spent[catId] || 0;
+            const pct       = limit > 0 ? spentAmt / limit : 0;
+            const color     = barColor(pct);
+            const remaining = limit - spentAmt;
+            const isOver    = remaining < 0;
+            const salaryPct = monthIncome > 0 ? (spentAmt / monthIncome) * 100 : 0;
+            const limitPct  = monthIncome > 0 ? (limit / monthIncome) * 100 : 0;
+
+            return (
+              <View key={catId} style={bgt.row}>
+                <View style={[bgt.iconBadge, { backgroundColor: cat.color + '22' }]}>
+                  <Ionicons name={cat.icon} size={15} color={cat.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={bgt.rowTop}>
+                    <Text style={[bgt.catName, { color: colors.text }]}>{cat.name}</Text>
+                    <Text style={[bgt.amounts, { color: isOver ? colors.negative : colors.textSecondary }]}>
+                      {formatBRL(spentAmt)}{' '}
+                      <Text style={{ color: colors.textMuted, fontWeight: '600' }}>/ {formatBRL(limit)}</Text>
+                    </Text>
+                  </View>
+                  <View style={[bgt.track, { backgroundColor: colors.border }]}>
+                    <View style={[bgt.fill, { flex: Math.min(pct, 1), backgroundColor: color }]} />
+                    <View style={{ flex: Math.max(0.001, 1 - pct) }} />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={[bgt.remaining, { color: isOver ? colors.negative : colors.textMuted }]}>
+                      {isOver
+                        ? `Estourado ${formatBRL(-remaining)}`
+                        : spentAmt === 0
+                          ? `Limite: ${Math.round(limitPct)}% da renda`
+                          : `Restam ${formatBRL(remaining)}`}
+                    </Text>
+                    {monthIncome > 0 && spentAmt > 0 && (
+                      <Text style={[bgt.salaryPct, { color: isOver ? colors.negative : colors.textMuted }]}>
+                        {salaryPct.toFixed(1)}% da renda
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </>
+      )}
+    </>
+  );
+
+  if (bare) return inner;
+  return (
+    <View style={[bgt.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      {inner}
+    </View>
+  );
+}
+const bgt = StyleSheet.create({
+  card:        { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 14 },
+  header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  title:       { fontSize: 15, fontWeight: '900' },
+  emptyBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderRadius: 12, borderStyle: 'dashed', paddingVertical: 14 },
+  emptyTxt:    { fontSize: 14, fontWeight: '700' },
+  summaryCard: { borderRadius: 12, padding: 12, marginBottom: 14 },
+  summaryRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 },
+  freeLabel:   { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 },
+  freeValue:   { fontSize: 22, fontWeight: '900' },
+  spentOf:     { fontSize: 11, fontWeight: '600' },
+  paceRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  paceLabel:   { fontSize: 10, fontWeight: '600' },
+  paceMsg:     { fontSize: 11, fontWeight: '700' },
+  paceMark:    { position: 'absolute', top: -3, width: 2, height: 13, borderRadius: 1, backgroundColor: 'transparent', borderWidth: 1 },
+  divider:     { height: 1, marginBottom: 14 },
+  row:         { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
+  iconBadge:   { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  rowTop:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 },
+  catName:     { fontSize: 13, fontWeight: '800' },
+  amounts:     { fontSize: 12, fontWeight: '800' },
+  track:       { height: 7, borderRadius: 4, flexDirection: 'row', overflow: 'hidden', marginBottom: 4 },
+  fill:        { borderRadius: 4 },
+  remaining:   { fontSize: 11, fontWeight: '600' },
+  salaryPct:   { fontSize: 11, fontWeight: '700' },
+  warnRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 12 },
+  warnTxt:     { fontSize: 12, fontWeight: '700', flex: 1 },
+});
+
 // ─── ProjectRow ───────────────────────────────────────────────────────────────
 function ProjectRow({project}) {
   const {colors}=useTheme();
@@ -733,6 +1031,9 @@ export default function AnnualSummaryScreen() {
   const hidePeek=useCallback(()=>{
     Animated.timing(peekAnim,{toValue:0,duration:160,useNativeDriver:true}).start(()=>setPeekCat(null));
   },[peekAnim]);
+
+  // Budget editor sheet
+  const [budgetEditorOpen, setBudgetEditorOpen] = useState(false);
 
   // Bottom sheet
   const [sheetOpen,setSheetOpen]=useState(false);
@@ -938,7 +1239,11 @@ export default function AnnualSummaryScreen() {
               <PeekCard cat={peekCat} anim={peekAnim}/>
             </View>
           </View>
+
         </ScrollView>
+
+        {/* ── ORÇAMENTO DO MÊS ── */}
+        <BudgetSection monthData={data.months?.[currentMonthIdx]} onOpenEditor={() => setBudgetEditorOpen(true)} />
 
         {/* ── PROJETOS ── */}
         {projects.length>0&&<>
@@ -980,6 +1285,9 @@ export default function AnnualSummaryScreen() {
 
         <View style={{height:96}}/>
       </ScrollView>
+
+      {/* ── BUDGET EDITOR SHEET ── */}
+      <BudgetEditorSheet visible={budgetEditorOpen} onClose={() => setBudgetEditorOpen(false)} />
 
       {/* ── BOTTOM SHEET ── */}
       <CategoryBottomSheet

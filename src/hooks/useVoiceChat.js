@@ -1,7 +1,15 @@
 // Hook de STT para o Cap: grava fala → transcreve → chama onTranscript(text).
-// Sem TTS — o Cap responde só por texto.
+// expo-speech-recognition é um módulo nativo — não disponível no Expo Go.
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
+
+let SpeechModule = null;
+let useSpeechEvent = () => {};
+
+try {
+  const mod = require('expo-speech-recognition');
+  SpeechModule = mod.ExpoSpeechRecognitionModule;
+  useSpeechEvent = mod.useSpeechRecognitionEvent;
+} catch (_) {}
 
 export function useVoiceChat({ onTranscript }) {
   const [listening, setListening] = useState(false);
@@ -11,7 +19,7 @@ export function useVoiceChat({ onTranscript }) {
   useEffect(() => { onTranscriptRef.current = onTranscript; }, [onTranscript]);
 
   // ─── Eventos ──────────────────────────────────────────────────────────────
-  useSpeechRecognitionEvent('result', (e) => {
+  useSpeechEvent('result', (e) => {
     if (!e.isFinal) return;
     const transcript = e.results?.[0]?.transcript;
     if (transcript) {
@@ -20,18 +28,19 @@ export function useVoiceChat({ onTranscript }) {
     }
   });
 
-  useSpeechRecognitionEvent('end', () => setListening(false));
+  useSpeechEvent('end', () => setListening(false));
 
-  useSpeechRecognitionEvent('error', (e) => {
+  useSpeechEvent('error', (e) => {
     console.warn('[voice] error:', e.error, e.message);
     setListening(false);
   });
 
   // ─── Permissão ────────────────────────────────────────────────────────────
   const ensurePermission = useCallback(async () => {
+    if (!SpeechModule) return false;
     if (permGranted.current) return true;
     try {
-      const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      const { granted } = await SpeechModule.requestPermissionsAsync();
       permGranted.current = granted;
       return granted;
     } catch (e) {
@@ -42,15 +51,11 @@ export function useVoiceChat({ onTranscript }) {
 
   // ─── Start / Stop ─────────────────────────────────────────────────────────
   const startListening = useCallback(async () => {
+    if (!SpeechModule) return;
     const ok = await ensurePermission();
     if (!ok) return;
     try {
-      ExpoSpeechRecognitionModule.start({
-        lang: 'pt-BR',
-        interimResults: false,
-        maxAlternatives: 1,
-        continuous: false,
-      });
+      SpeechModule.start({ lang: 'pt-BR', interimResults: false, maxAlternatives: 1, continuous: false });
       setListening(true);
     } catch (e) {
       console.warn('[voice] start error:', e.message);
@@ -58,7 +63,7 @@ export function useVoiceChat({ onTranscript }) {
   }, [ensurePermission]);
 
   const stopListening = useCallback(() => {
-    try { ExpoSpeechRecognitionModule.stop(); } catch {}
+    try { SpeechModule?.stop(); } catch {}
     setListening(false);
   }, []);
 

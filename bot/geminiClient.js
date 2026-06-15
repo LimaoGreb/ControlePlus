@@ -117,6 +117,24 @@ function extractNameFilter(t) {
   return (cleaned.length >= 2 && !/^\d+$/.test(cleaned)) ? cleaned.toLowerCase() : null;
 }
 
+// Mapeia termos de categoria no texto → ID da categoria (usado em add_expense, tag_category e by_category)
+const CAT_ID_PAIRS = [
+  [/\balimenta[çc][aã]o\b/i, 'alimentacao'],
+  [/\btransporte\b/i, 'transporte'],
+  [/\bmoradia\b/i, 'moradia'],
+  [/\bsa[uú]de\b/i, 'saude'],
+  [/\blazer\b/i, 'lazer'],
+  [/\beduca[çc][aã]o\b/i, 'educacao'],
+  [/\bvestu[aá]rio\b/i, 'vestuario'],
+  [/\bassinaturas?\b/i, 'assinaturas'],
+  [/\btech\b|\btecnologia\b/i, 'tech'],
+  [/\boutros?\b/i, 'outros'],
+];
+function parseCategoryId(str) {
+  for (const [re, id] of CAT_ID_PAIRS) if (re.test(str)) return id;
+  return null;
+}
+
 // Classificador local — sem API. Cobre >95% dos casos reais.
 // Exportado para uso no ChatScreen (app nativo) sem chamada de API.
 export function localClassify(t) {
@@ -179,6 +197,37 @@ export function localClassify(t) {
     let name = 'Renda';
     for (const [re, n] of sourceMap) { if (re.test(t)) { name = n; break; } }
     return { intent: 'income', params: { name, value, month } };
+  }
+
+  // ── Adicionar despesa variável/fixa via Cap ("gastei 45 no ifood") ──────────
+  // Vem ANTES do conclude para que "paguei 45 no ifood" (com número) vá pra add_expense,
+  // não para conclude_expense (que pega "paguei a netflix" sem número).
+  if (!/(quanto|qto\b|total\b|resumo\b|o\s*que\b|maior[es]?\b|an[aá]lise|hist[oó]rico|comparativ)/i.test(t) &&
+      /\b(gastei|paguei|saiu\s+\d|comprei|lancei|adicionei\s+\d|registrei\s+\d|inclui\s+\d)\b/i.test(t) &&
+      /\d/.test(t) &&
+      !/\b(projeto|meta|poupan[çc]a|reserva|guardei|poupei|juntei|economizei)\b/i.test(t) &&
+      !/\b(parcel[eiao]\w*|em\s+\d+\s*(vezes?|x\b))\b/i.test(t) &&
+      !/\b(sal[aá]rio|renda\b|recebi|freela|freelance|b[oô]nus|dividend|faturei|gratifica)\b/i.test(t) &&
+      !/\b(apaga|exclu|delet|remove?[r]?)\b/i.test(t)) {
+    const numMatch = t.match(/(\d+(?:[.,]\d{1,2})?)/);
+    const value = numMatch ? parseFloat(numMatch[1].replace(',', '.')) : null;
+    if (value && value > 0) {
+      const section = /\bfixo\b|\bfixa\b|todo\s*m[eê]s|mensalidade|mensal\b/i.test(t) ? 'fixed' : 'variable';
+      const catId = parseCategoryId(t);
+      const nameRaw = t
+        .replace(/\b(gastei|paguei|saiu|comprei|lancei|adicionei|registrei|inclu[ií])\b/gi, '')
+        .replace(/\b(em|no|na|de|do|da|dos|das|por|pro|pra|um|uma|uns|umas|o\b|a\b)\b/gi, ' ')
+        .replace(/\b(fixo|fixa|variavel|variável|despesa|gasto|conta|pagamento|lancamento)\b/gi, ' ')
+        .replace(/\b(alimenta[çc][aã]o|transporte|moradia|sa[uú]de|lazer|educa[çc][aã]o|vestu[aá]rio|assinaturas?|tecnologia|tech|outros?)\b/gi, ' ')
+        .replace(/\b(categoria|na\s+categoria|como\s+categoria)\b/gi, ' ')
+        .replace(/\b(esse\s+m[eê]s|este\s+m[eê]s|m[eê]s\s+passado)\b/gi, ' ')
+        .replace(/\d+(?:[.,]\d+)?/g, ' ').replace(/r\$|reais/gi, ' ')
+        .replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim();
+      return {
+        intent: 'add_expense',
+        params: { name: nameRaw.length >= 2 ? nameRaw : null, value, section, month, category: catId },
+      };
+    }
   }
 
   // ── Adicionar cartão/forma de pagamento (não suportado via bot) ─────────────
@@ -370,6 +419,30 @@ export function localClassify(t) {
     return { intent: 'edit_expense', params: { expense_name: nameRaw, field: 'payment', new_payment } };
   }
 
+  // ── Tag de categoria em despesa existente ─────────────────────────────────
+  // DEVE vir antes de delete_expense: "remove a categoria" matcharia remov[ae] no delete.
+  if (/\b(categoriza[r]?|classifica[r]?|coloca[r]?\s+\w.{0,25}categor|bota[r]?\s+\w.{0,25}categor|muda[r]?\s+a?\s*categor|troca[r]?\s+a?\s*categor|adiciona[r]?\s+(a\s+)?categor)\b/i.test(t) ||
+      (/\b(vai\s+em|vai\s+pra|é\s+d[ao]|coloca\s+em|joga\s+em|bota\s+em)\b/i.test(t) && parseCategoryId(t))) {
+    const catId = parseCategoryId(t);
+    const nameRaw = t
+      .replace(/\b(categoriza[r]?|classifica[r]?|coloca[r]?|bota[r]?|muda[r]?|troca[r]?|adiciona[r]?|marca[r]?)\b/gi, '')
+      .replace(/\b(a\s+)?categor\w*\b/gi, ' ').replace(/\bcomo\b|\bpara?\b|\bpra\b|\bpro\b|\bem\b/gi, ' ')
+      .replace(/\b(alimenta[çc][aã]o|transporte|moradia|sa[uú]de|lazer|educa[çc][aã]o|vestu[aá]rio|assinaturas?|tecnologia|tech|outros?)\b/gi, ' ')
+      .replace(/\b(o|a|os|as|do|da|dos|das|de|no|na)\b/gi, ' ')
+      .replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim();
+    return { intent: 'tag_category', params: { expense_name: nameRaw.length >= 2 ? nameRaw : null, category: catId } };
+  }
+
+  // ── Remover categoria de despesa ───────────────────────────────────────────
+  if (/\b(tira[r]?|remove?[r]?|remov[ae]|apaga[r]?|limpa[r]?|zera[r]?)\b.{0,30}\bcategor/i.test(t) ||
+      /\bsem\s+categoria\b/i.test(t)) {
+    const nameRaw = t
+      .replace(/\b(tira[r]?|remove?[r]?|remov[ae]|apaga[r]?|limpa[r]?|zera[r]?)\b/gi, '')
+      .replace(/\bcategor\w*\b/gi, '').replace(/\b(a|o|os|as|do|da|dos|das|de|no|na|sem)\b/gi, ' ')
+      .replace(/[?!.,;]/g, '').replace(/\s+/g, ' ').trim();
+    return { intent: 'remove_category', params: { expense_name: nameRaw.length >= 2 ? nameRaw : null } };
+  }
+
   // ── Apagar despesa ────────────────────────────────────────────────────────
   if (/\b(apaga[r]?|exclu[ií][r]?|excluir|remov[ae][r]?|delet[ae][r]?)\b.{0,25}\b(a|o)\s+\w/i.test(t) &&
       !/\b(projeto|meta|objetivo|cart[aã]o|forma\s*de\s*pagamento|m[eé]todo)\b/i.test(t) &&
@@ -551,6 +624,12 @@ export function localClassify(t) {
 
   // ── Por nome / categoria ──────────────────────────────────────────────────
   if (hasQuery) {
+    // Verifica primeiro se o texto menciona um nome de categoria explícito
+    const catQueryId = parseCategoryId(t);
+    if (catQueryId) {
+      return { intent: 'query', params: { subtype: 'by_category', month, category_id: catQueryId } };
+    }
+
     const nameFilter = extractNameFilter(t);
     const genericTerms = ['tudo','mes','geral','resumo','total','saldo','balanço','balanco','gastos','despesas','quanto','qto','dinheiro','situacao','fechamento','financas','como','ficou','totais','balanc','estou','historico','saiu','sobrou','sobra','sobrando','consumiu','levou','aconteceu','pesou','financeira','financeiro','vermelho','azul','resultado','visao','reais','sobrado','gastou','resume','resumao','quantos','anda','bolso','cara','irmao','mano','brow','po','ta','to','relatorio','balance','spending','summary','monthly','disponivel','disponível','custou','custei','custo','nota','overview'];
     const isGeneric = !nameFilter || nameFilter.length < 3

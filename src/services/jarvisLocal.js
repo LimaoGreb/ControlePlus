@@ -10,6 +10,33 @@ const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const MONTH_PT = MONTHS.map(m => m.toLowerCase());
 
+const CAT_LABELS = {
+  alimentacao:'🍔 Alimentação', transporte:'🚗 Transporte', moradia:'🏠 Moradia',
+  saude:'💊 Saúde', lazer:'🎮 Lazer', educacao:'📚 Educação',
+  vestuario:'👕 Vestuário', assinaturas:'📺 Assinaturas', tech:'💻 Tecnologia', outros:'🔮 Outros',
+};
+
+// Keyword matching para auto-detectar categoria pelo nome da despesa
+const AUTO_CAT = [
+  { id:'alimentacao', keys:['ifood','rappi','uber eat','supermercado','mercado','restaurante','lanche','pizza','sushi','hamburguer','comida','padaria','acai','açaí','carrefour','marmita','churrasco','refeicao','refeição','boteco','fast food','delivery'] },
+  { id:'moradia', keys:['aluguel','condominio','condomínio','enel','sabesp','cemig','copel','cosern','coelba','eletropaulo','iptu'] },
+  { id:'transporte', keys:['uber ','gasolina','posto ','99 ','estacionamento','ônibus','onibus','metrô','metro','passagem','combustivel','pedágio','pedagio','ipva','brt','táxi','taxi','99pop'] },
+  { id:'saude', keys:['farmacia','farmácia','remédio','remedio','médico','medico','consulta','plano de saude','dentista','academia','gym','smart fit','smartfit','fisio','exame','hospital','vitamina','suplemento','panvel','droga raia','drogasil'] },
+  { id:'tech', keys:['mouse','teclado','notebook','iphone','samsung','kabum','steam','psn','xbox','headset','monitor','impressora','celular '] },
+  { id:'assinaturas', keys:['netflix','spotify','prime video','amazon prime','hbo','disney','youtube premium','apple tv','deezer','globoplay','canva','notion','chatgpt','openai','internet ','tim ','claro ','vivo ','oi '] },
+  { id:'lazer', keys:['cinema','show ','viagem','ingresso','parque','festa ','pub ','balada','boliche','bar '] },
+  { id:'educacao', keys:['curso','faculdade','escola','udemy','alura','apostila','material escolar','livraria'] },
+  { id:'vestuario', keys:['roupa','calca','calça','camiseta','camisa','sapato','tenis ','tênis ','sandalia','renner','riachuelo','zara','shein','c&a'] },
+];
+
+function autoDetectCategory(name) {
+  const n = (name || '').toLowerCase();
+  for (const cat of AUTO_CAT) {
+    if (cat.keys.some(k => n.includes(k))) return cat.id;
+  }
+  return null;
+}
+
 function buildSnapshot(data, investments, projects, paymentMethods, userName) {
   return {
     months: data?.months || {},
@@ -197,6 +224,30 @@ export async function processMessage(text, contextData, dataOps, settingsOps, hi
     };
   }
 
+  // ── Adicionar despesa ────────────────────────────────────────────────────────
+  if (intent === 'add_expense') {
+    const { name, value, section = 'variable', month: mName, category: explicitCat } = params;
+    if (!value || value <= 0) return { botText: `Qual o valor da despesa, ${n}? Ex: _"gastei 45 no iFood"_`, pendingOp: null };
+    const idx = mName ? MONTH_PT.findIndex(m => mName.startsWith(m.substring(0, 3))) : new Date().getMonth();
+    const mi = idx >= 0 ? idx : new Date().getMonth();
+    // Categoria: explícita no texto > auto-detectada pelo nome
+    const catId = explicitCat || (name ? autoDetectCategory(name) : null);
+    const catLabel = catId ? CAT_LABELS[catId] : null;
+    const capName = name ? name.charAt(0).toUpperCase() + name.slice(1) : null;
+    const sectionLabel = section === 'fixed' ? 'Fixa' : 'Variável';
+    const catLine = catLabel ? `\n🏷️ ${catLabel}` : '';
+    if (!capName) {
+      return { botText: `Qual o nome da despesa, ${n}? Ex: _"gastei ${R(value)} no iFood"_`, pendingOp: null };
+    }
+    return {
+      botText: `📝 *${capName}* — ${R(value)} · ${MONTHS[mi]} · ${sectionLabel}${catLine}\n\nConfirmar? _(sim/não)_`,
+      pendingOp: {
+        fn: () => dataOps.addItem(mi, section, capName, value, null, catId ? { category: catId } : {}),
+        successText: `✅ *${capName}* adicionada${catLabel ? ` em ${catLabel}` : ''}! ${R(value)} no ${MONTHS[mi]}, ${n} 🎉`,
+      },
+    };
+  }
+
   // ── Criar projeto ────────────────────────────────────────────────────────────
   if (intent === 'add_project') {
     const { name, target, monthly, saved = 0 } = params;
@@ -353,6 +404,48 @@ export async function processMessage(text, contextData, dataOps, settingsOps, hi
       pendingOp: {
         fn: () => dataOps.removeItem(found.mi, found.section, found.item.id),
         successText: `🗑️ *${found.item.name}* apagada, ${n}!`,
+      },
+    };
+  }
+
+  // ── Tag de categoria em despesa ──────────────────────────────────────────────
+  if (intent === 'tag_category') {
+    const { expense_name, category } = params;
+    if (!expense_name || expense_name.length < 2)
+      return { botText: `Qual despesa quer categorizar, ${n}?\nEx: _"categoriza o iFood como alimentação"_`, pendingOp: null };
+    if (!category) {
+      return {
+        botText: `Qual categoria pra *${expense_name}*, ${n}?\n\n🍔 Alimentação · 🚗 Transporte · 🏠 Moradia\n💊 Saúde · 🎮 Lazer · 📚 Educação\n👕 Vestuário · 📺 Assinaturas · 💻 Tech`,
+        pendingOp: null,
+      };
+    }
+    const found = findExpense(data, expense_name);
+    if (!found) return { botText: `Não achei *"${expense_name}"* nas despesas, ${n}. Confere o nome!`, pendingOp: null };
+    const catLabel = CAT_LABELS[category] || category;
+    return {
+      botText: `🏷️ *${found.item.name}* → ${catLabel}\n\nConfirmar? _(sim/não)_`,
+      pendingOp: {
+        fn: () => dataOps.updateItem(found.mi, found.section, found.item.id, 'category', category),
+        successText: `✅ *${found.item.name}* categorizada como ${catLabel}! Aparece nos gráficos agora, ${n} 📊`,
+      },
+    };
+  }
+
+  // ── Remover categoria de despesa ─────────────────────────────────────────────
+  if (intent === 'remove_category') {
+    const { expense_name } = params;
+    if (!expense_name || expense_name.length < 2)
+      return { botText: `Qual despesa quer tirar a categoria, ${n}?`, pendingOp: null };
+    const found = findExpense(data, expense_name);
+    if (!found) return { botText: `Não achei *"${expense_name}"*, ${n}. Confere o nome!`, pendingOp: null };
+    if (!found.item.category)
+      return { botText: `*${found.item.name}* ainda não tem categoria, ${n}.`, pendingOp: null };
+    const catLabel = CAT_LABELS[found.item.category] || found.item.category;
+    return {
+      botText: `🏷️ Remover categoria *${catLabel}* de *${found.item.name}*?\n\n_(sim/não)_`,
+      pendingOp: {
+        fn: () => dataOps.updateItem(found.mi, found.section, found.item.id, 'category', null),
+        successText: `✅ Categoria removida de *${found.item.name}*, ${n}!`,
       },
     };
   }

@@ -1,28 +1,31 @@
-// Carrossel de gráficos do mês — 2 páginas: Despesas e Por Pagamento
+// Carrossel de gráficos do mês — 3 páginas: Despesas, Por Pagamento, Orçamento
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import ExpensesBreakdown from './ExpensesBreakdown';
 import PaymentBreakdown from './PaymentBreakdown';
+import BudgetBreakdown from './BudgetBreakdown';
 
-// Virtual: [pay-clone, cats, pay, cats-clone]
-//           vi=0       vi=1  vi=2  vi=3
-const REAL = [1, 0, 1, 0];
+// Virtual: [budget-pre, cats, pay, budget, cats-post]
+//           vi=0         vi=1  vi=2  vi=3     vi=4
+const REAL = [2, 0, 1, 2, 0];
 
 export default function MonthCharts({ month }) {
   const { colors } = useTheme();
   const [page, setPage] = useState(0);
   const [pageW, setPageW] = useState(0);
-  const [heights, setHeights] = useState([0, 0]);
+  const [heights, setHeights] = useState([0, 0, 0]);
   const scrollRef = useRef(null);
   const isJumping = useRef(false);
 
   const realPages = [
-    { key: 'cats', label: 'Despesas',      icon: 'pie-chart-outline', render: <ExpensesBreakdown month={month} /> },
-    { key: 'pay',  label: 'Por Pagamento', icon: 'card-outline',       render: <PaymentBreakdown month={month} /> },
+    { key: 'cats',   label: 'Despesas',      icon: 'pie-chart-outline', render: <ExpensesBreakdown month={month} /> },
+    { key: 'pay',    label: 'Por Pagamento', icon: 'card-outline',       render: <PaymentBreakdown month={month} /> },
+    { key: 'budget', label: 'Orçamento',     icon: 'wallet-outline',     render: <BudgetBreakdown month={month} /> },
   ];
 
+  // Inicia no vi=1 (cats)
   useEffect(() => {
     if (scrollRef.current && pageW > 0) {
       scrollRef.current.scrollTo({ x: pageW, animated: false });
@@ -39,11 +42,13 @@ export default function MonthCharts({ month }) {
     if (!pageW || isJumping.current) return;
     const vi = Math.round(e.nativeEvent.contentOffset.x / pageW);
     if (vi === 0) {
+      // clone do budget no início → pula para budget real (vi=3)
       isJumping.current = true;
-      scrollRef.current.scrollTo({ x: 2 * pageW, animated: false });
-      setPage(1);
+      scrollRef.current.scrollTo({ x: 3 * pageW, animated: false });
+      setPage(2);
       setTimeout(() => { isJumping.current = false; }, 50);
-    } else if (vi === 3) {
+    } else if (vi === 4) {
+      // clone do cats no fim → pula para cats real (vi=1)
       isJumping.current = true;
       scrollRef.current.scrollTo({ x: pageW, animated: false });
       setPage(0);
@@ -62,10 +67,11 @@ export default function MonthCharts({ month }) {
   const activeH = (heights[page] || 0) > 0 ? heights[page] : undefined;
 
   const virtualItems = [
-    { key: 'pay-pre',   realIdx: 1 },
-    { key: 'cats',      realIdx: 0 },
-    { key: 'pay',       realIdx: 1 },
-    { key: 'cats-post', realIdx: 0 },
+    { key: 'budget-pre',  realIdx: 2 },
+    { key: 'cats',        realIdx: 0 },
+    { key: 'pay',         realIdx: 1 },
+    { key: 'budget',      realIdx: 2 },
+    { key: 'cats-post',   realIdx: 0 },
   ];
 
   return (
@@ -115,11 +121,11 @@ export default function MonthCharts({ month }) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 12, overflow: 'hidden' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  card:     { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 12, overflow: 'hidden' },
+  header:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   titleRow: { flexDirection: 'row', alignItems: 'center' },
-  title: { fontSize: 16, fontWeight: '800', marginLeft: 8 },
-  dots: { flexDirection: 'row', alignItems: 'center' },
-  dot: { height: 8, borderRadius: 4, marginLeft: 6 },
-  hint: { fontSize: 11, textAlign: 'center', marginTop: 12, fontStyle: 'italic' },
+  title:    { fontSize: 16, fontWeight: '800', marginLeft: 8 },
+  dots:     { flexDirection: 'row', alignItems: 'center' },
+  dot:      { height: 8, borderRadius: 4, marginLeft: 6 },
+  hint:     { fontSize: 11, textAlign: 'center', marginTop: 12, fontStyle: 'italic' },
 });

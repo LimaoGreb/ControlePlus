@@ -2,6 +2,15 @@
 
 ---
 
+## v2.17.0 — 2026-06-15
+
+### feat: Orçamento como 3º slide do carrossel na Dashboard
+
+- `src/components/BudgetBreakdown.js` — novo componente: slide de orçamento compacto com resumo "Livre pra gastar", barras de progresso por categoria (verde/laranja/vermelho), % da renda e estouros. Estado vazio com botão direto para `SettingsBudget`.
+- `src/components/MonthCharts.js` — estendido de 2 para 3 páginas reais. Virtual list atualizada de 4 para 5 itens (`budget-pre`, cats, pay, budget, `cats-post`) com REAL map `[2,0,1,2,0]`. Infinite scroll preservado. `heights` agora com 3 entradas.
+
+---
+
 ## v2.16.0 — 2026-06-15
 
 ### feat: Orçamento por Categoria + Multi-ano (2026–2033) + 6 Widgets Android

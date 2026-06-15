@@ -147,10 +147,16 @@ const KB = [
     answer: n => `Além de mim (o Cap 😄), você também pode usar o *Jarvis* — meu irmão no Telegram!\n\nPara conectar, ${n}:\n1️⃣ Vai em *Configurações → Perfil*\n2️⃣ Toca em *Conectar Telegram*\n3️⃣ Segue as instruções\n\nCom o Jarvis no Telegram, você consulta e controla suas finanças sem nem abrir o app. Dois assistentes, mais conveniência! 📱`,
   },
 
+  // ── Categorias de despesa ──────────────────────────────────────────────────
+  {
+    match: t => any(t, 'categoria', 'categorias', 'categorizar', 'categorizado', 'classificar', 'classificacao', 'orcamento categoria', 'orcamento por categoria', 'limite categoria', 'limite por categoria', 'como uso categoria', 'como funciona categoria', 'o que e categoria', 'o que sao categorias', 'como categorizo', 'como coloco categoria'),
+    answer: n => `As *categorias* ajudam a organizar seus gastos por tipo, ${n}! 🏷️\n\n*9 categorias disponíveis:*\n🍔 Alimentação · 🚗 Transporte · 🏠 Moradia\n💊 Saúde · 🎮 Lazer · 📚 Educação\n👕 Vestuário · 📺 Assinaturas · 💻 Tech\n\n*Como categorizar:*\n• Ao adicionar uma despesa, o app já auto-detecta a categoria pelo nome!\n• Na lista, toca em qualquer despesa → _editar_ → categoria\n\n*Pelo Cap:*\n_"categoriza o iFood como alimentação"_\n_"coloca a academia na categoria saúde"_\n_"tira a categoria do Uber"_\n\n*Consultar gastos por categoria:*\n_"quanto gastei em alimentação?"_\n_"total em lazer esse mês?"_\n\n*Orçamento por categoria:*\nVai em *Configurações → Orçamento* pra definir limites. O gráfico de Orçamento na tela principal mostra o progresso! 📊`,
+  },
+
   // ── O que o Cap pode fazer ─────────────────────────────────────────────────
   {
     match: t => any(t, 'o que voce faz', 'o que pode fazer', 'o que o cap', 'quais comandos', 'comandos disponiveis', 'o que posso perguntar', 'como usar o cap', 'ajuda', 'help', 'o que faz'),
-    answer: n => `Pode deixar que eu cuido, ${n}! Aqui vai tudo que o *Cap* sabe fazer:\n\n*📊 Consultas:*\n_"como tá o mês?"_ · _"maiores gastos de junho"_\n_"quanto no nubank?"_ · _"gastos essa semana"_\n_"status dos projetos"_ · _"análise do ano"_\n\n*✅ Ações:*\n_"conclua a Netflix"_ · _"reabra o aluguel"_\n_"recebi 3000 de salário"_ · _"cria projeto viagem meta 8000"_\n_"guardei 500 no projeto viagem"_ · _"apaga o iFood"_\n_"muda o valor da Netflix para 55"_\n\n*⚙️ Configurações:*\n_"meu nome é Gabriel"_ · _"ativa modo investidor"_ · _"dízimo 10%"_\n\n*❓ Suporte:*\nPergunta qualquer coisa sobre como usar o app!`,
+    answer: n => `Pode deixar que eu cuido, ${n}! Aqui vai tudo que o *Cap* sabe fazer:\n\n*📊 Consultas:*\n_"como tá o mês?"_ · _"maiores gastos de junho"_\n_"quanto no nubank?"_ · _"gastos essa semana"_\n_"status dos projetos"_ · _"análise do ano"_\n_"quanto gastei em alimentação?"_ · _"total em lazer?"_\n\n*✅ Ações:*\n_"conclua a Netflix"_ · _"reabra o aluguel"_\n_"recebi 3000 de salário"_ · _"gastei 45 no iFood"_\n_"cria projeto viagem meta 8000"_ · _"guardei 500 no projeto viagem"_\n_"apaga o iFood"_ · _"muda o valor da Netflix para 55"_\n\n*🏷️ Categorias:*\n_"categoriza o iFood como alimentação"_\n_"coloca a academia na categoria saúde"_\n_"tira a categoria do Uber"_\n\n*⚙️ Configurações:*\n_"meu nome é Gabriel"_ · _"ativa modo investidor"_ · _"dízimo 10%"_\n\n*❓ Suporte:*\nPergunta qualquer coisa sobre como usar o app!`,
   },
 
   // ── Abas do app ────────────────────────────────────────────────────────────

@@ -2,7 +2,6 @@
 // + botão de concluir mês. Reutilizado pela HomeScreen e pela MonthScreen.
 import React from 'react';
 import { ScrollView, View, Text, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
@@ -16,14 +15,11 @@ import FixedExpensesSection from './FixedExpensesSection';
 import VariableExpensesSection from './VariableExpensesSection';
 import ContributionsSection from './ContributionsSection';
 import CompleteMonthButton from './CompleteMonthButton';
-import CategoryBudgetCard from './CategoryBudgetCard';
 
 export default function MonthContent({ monthIndex, header = null, scrollRef = null, hideIncome = false, searchTerm = '', additionalIncome = 0, isCouple = false }) {
   const { colors } = useTheme();
   const { data } = useData();
   const { makesContributions, contributionGoalPct } = useSettings();
-  const navigation = useNavigation();
-
   if (!data) return null;
 
   const rawMonth = data.months?.[monthIndex];
@@ -108,13 +104,6 @@ export default function MonthContent({ monthIndex, header = null, scrollRef = nu
             <MonthlySummaryCard totals={displayTotals} />
             {!isCasal && <InsightCards monthIndex={monthIndex} month={month} />}
             <MonthCharts month={month} />
-            {!isCasal && (
-              <CategoryBudgetCard
-                month={month}
-                monthIndex={monthIndex}
-                onNavigateToBudget={() => navigation.navigate('SettingsBudget')}
-              />
-            )}
 
             {!hideIncome && <IncomeSection monthIndex={monthIndex} month={month} />}
             <FixedExpensesSection monthIndex={monthIndex} month={month} allowInstallments={!isCasal} />
