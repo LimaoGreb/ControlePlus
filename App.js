@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { View, Text, StatusBar, Platform, UIManager, TouchableOpacity, Linking } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StatusBar, Platform, UIManager, TouchableOpacity, Linking, AppState } from 'react-native';
+import { updateAllWidgets } from './src/widgets/updateAllWidgets';
 import * as Notifications from 'expo-notifications';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
@@ -33,6 +34,7 @@ import SettingsTemasScreen from './src/screens/SettingsTemasScreen';
 import SettingsCasalScreen from './src/screens/SettingsCasalScreen';
 import SettingsInvestimentosScreen from './src/screens/SettingsInvestimentosScreen';
 import SettingsBackupScreen from './src/screens/SettingsBackupScreen';
+import SettingsBudgetScreen from './src/screens/SettingsBudgetScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import FloatingTabBar from './src/components/FloatingTabBar';
 import NotificationsManager from './src/components/NotificationsManager';
@@ -349,9 +351,24 @@ function Navigation() {
         <RootStack.Screen name="SettingsCasal" component={SettingsCasalScreen} options={{ title: 'Modo Casal' }} />
         <RootStack.Screen name="SettingsInvestimentos" component={SettingsInvestimentosScreen} options={{ title: 'Investimentos' }} />
         <RootStack.Screen name="SettingsBackup" component={SettingsBackupScreen} options={{ title: 'Backup' }} />
+        <RootStack.Screen name="SettingsBudget" component={SettingsBudgetScreen} options={{ title: 'Orçamento por Categoria' }} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
+}
+
+function WidgetSyncManager() {
+  const appState = useRef(AppState.currentState);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (appState.current === 'active' && next.match(/inactive|background/)) {
+        updateAllWidgets();
+      }
+      appState.current = next;
+    });
+    return () => sub.remove();
+  }, []);
+  return null;
 }
 
 export default function App() {
@@ -365,6 +382,7 @@ export default function App() {
             <SharedDataProvider>
             <SyncProvider>
             <InstallmentProvider>
+              <WidgetSyncManager />
               <NotificationsManager />
               <BotSyncManager />
               <JarvisSyncManager />

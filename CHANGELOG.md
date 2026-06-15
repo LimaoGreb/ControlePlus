@@ -2,6 +2,49 @@
 
 ---
 
+## v2.16.0 — 2026-06-15
+
+### feat: Orçamento por Categoria + Multi-ano (2026–2033) + 6 Widgets Android
+
+**Orçamento por Categoria:**
+- `src/data/categories.js` — 9 categorias de gasto com id, nome, ícone Ionicons e cor.
+- `src/components/CategoryChip.js` — chip seletor de categoria (modal 3×3), seguindo padrão DueDayChip.
+- `src/components/ItemRow.js` — props `showCategory` / `onChangeCategory`, renderiza `CategoryChip` na linha de gasto.
+- `src/components/ExpensesSection.js` — passa `showCategory` e `onChangeCategory` ao `ItemRow`.
+- `src/components/CategoryBudgetCard.js` — card de progresso por categoria (gasto vs limite, barra colorida, notificação em 80% e 100%).
+- `src/components/MonthContent.js` — importa `CategoryBudgetCard` + `useNavigation`; renderiza o card após `MonthCharts` (só no modo pessoal).
+- `src/screens/SettingsBudgetScreen.js` — tela de configuração de limites: lista 9 categorias, edição inline com `CurrencyInput`, opção de remover.
+- `src/context/SettingsContext.js` — `categoryBudgets` + `setCategoryBudget(catId, limit)` persistidos em `@financas:orcamentoCategorias`.
+- `src/services/storage.js` — `loadCategoryBudgets()` / `saveCategoryBudgets(budgets)`.
+- `App.js` — rota `SettingsBudget` registrada no RootStack.
+- `src/screens/SettingsScreen.js` — entrada "Orçamento" no menu de configurações.
+
+---
+
+### feat: Multi-ano (2026–2033) + 6 Widgets Android
+
+**Multi-year navigation:**
+- `src/data/initialData.js` — `YEAR = new Date().getFullYear()` (dinâmico).
+- `src/services/storage.js` — adicionado `getYearKey(year)`, `loadYearData(year)`, `saveYearData(year, data)`.
+- `src/context/DataContext.js` — `activeYear`, `switchYear`, `switchingRef` (guard síncrono), `dataRef` (closure-safe), `yearCache` (in-memory cache, troca instantânea após 1ª carga), `addInstallments` cross-year, `clearFutureYears`.
+- `src/context/InstallmentContext.js` — parcelas cruzam anos com fórmula `yearOffset = Math.floor(absMonth/12)`.
+- `src/screens/AllMonthsScreen.js` — YEARS `[2026..2033]` sem `initialScrollIndex` (era a causa raiz do bug de corrupção), year tabs como `ScrollView` horizontal, duplo toque abre mês direto.
+
+**Bug corrigido:** race condition no `switchYear` com `initialScrollIndex` copiava dados de 2026 para todos os anos futuros. Fix: `switchingRef.current` + `dataRef.current` + remoção do `initialScrollIndex`.
+
+**6 Widgets Android (`react-native-android-widget@0.20.3`):**
+- `app.json` — plugin registrado com 6 widgets (SaldoWidget 2×2, ResumoWidget 4×2, LancamentoWidget 2×1, PortfolioWidget 4×2, ProjetoWidget 2×2, CartoesWidget 4×2).
+- `index.js` — `registerWidgetTaskHandler(widgetTaskHandler)`.
+- `App.js` — `WidgetSyncManager` atualiza widgets no AppState `background`.
+- `src/widgets/widgetColors.js` — 6 paletas + dark/light em hex puro.
+- `src/widgets/widgetUtils.js` — `fmtBRL`, `progressColor`, `MONTH_NAMES`.
+- `src/widgets/widgetTaskHandler.js` — handler headless, lê AsyncStorage, renderiza cada widget.
+- `src/widgets/{Saldo,Resumo,Lancamento,Portfolio,Projeto,Cartoes}Widget.js` — componentes com FlexWidget/TextWidget/SvgWidget. ProjetoWidget usa donut SVG via stroke-dashoffset.
+- `src/widgets/updateAllWidgets.js` — atualiza todos os widgets de uma vez via `requestWidgetUpdate`.
+- ⚠️ Widgets só funcionam em APK (não no Expo Go). Precisa de build via Codemagic.
+
+---
+
 ## v2.15.1 — 2026-06-15
 
 ### feat: TTS + UI de áudio WhatsApp-style no Cap

@@ -2,7 +2,7 @@
 // grade 4×3 embaixo são os meses como botões. Swipe lateral = ano seguinte.
 import React, { useRef, useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, FlatList, StyleSheet, useWindowDimensions,
+  View, Text, TouchableOpacity, FlatList, ScrollView, StyleSheet, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useScrollToTop } from '@react-navigation/native';
@@ -13,8 +13,7 @@ import { MONTH_NAMES, YEAR } from '../data/initialData';
 import { formatBRL } from '../utils/currency';
 
 const MONTH_ABBR = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-const YEARS = [YEAR - 1, YEAR, YEAR + 1, YEAR + 2];
-const CURRENT_YEAR_IDX = 1; // YEAR está no índice 1
+const YEARS = Array.from({ length: 8 }, (_, i) => YEAR + i); // 2026–2033
 const CURRENT_MONTH = new Date().getMonth();
 
 export default function AllMonthsScreen({ navigation }) {
@@ -25,10 +24,18 @@ export default function AllMonthsScreen({ navigation }) {
   const [selMonth, setSelMonth] = useState(CURRENT_MONTH);
 
   const carouselRef = useRef(null);
+  const yearTabsRef = useRef(null);
   useScrollToTop(carouselRef);
+
+  // Duplo toque: conta toques por mês (key = "year-mi")
+  const tapCountRef = useRef({});
+  const tapTimerRef = useRef({});
 
   useEffect(() => {
     navigation.setOptions({ title: `Meses de ${activeYear}` });
+    // Mantém a aba do ano ativo visível no scroll horizontal
+    const idx = YEARS.indexOf(activeYear);
+    if (idx >= 0) yearTabsRef.current?.scrollTo({ x: idx * 56, animated: true });
   }, [activeYear, navigation]);
 
   const getMonthData = (year, mi) =>
@@ -56,6 +63,30 @@ export default function AllMonthsScreen({ navigation }) {
   const handlePickMonth = (year, mi) => {
     if (year !== activeYear) switchYear(year);
     setSelMonth(mi);
+  };
+
+  // Duplo toque abre o mês direto; toque simples só seleciona.
+  const handleMonthTap = (year, mi) => {
+    const key = `${year}-${mi}`;
+    const prev = tapCountRef.current[key] || 0;
+    if (tapTimerRef.current[key]) {
+      clearTimeout(tapTimerRef.current[key]);
+      tapTimerRef.current[key] = null;
+    }
+    if (prev >= 1) {
+      tapCountRef.current[key] = 0;
+      handlePickMonth(year, mi);
+      if (year === activeYear && !switching) {
+        navigation.navigate('MonthDetail', { monthIndex: mi, title: MONTH_NAMES[mi] });
+      }
+    } else {
+      tapCountRef.current[key] = 1;
+      tapTimerRef.current[key] = setTimeout(() => {
+        tapCountRef.current[key] = 0;
+        tapTimerRef.current[key] = null;
+        handlePickMonth(year, mi);
+      }, 280);
+    }
   };
 
   const handleOpen = () => {
@@ -137,8 +168,14 @@ export default function AllMonthsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* ══════ TABS DE ANO ══════ */}
-      <View style={[styles.yearTabs, { borderBottomColor: colors.border }]}>
+      {/* ══════ TABS DE ANO (scroll horizontal p/ 8 anos) ══════ */}
+      <View style={[styles.yearTabsScroll, { borderBottomColor: colors.border }]}>
+      <ScrollView
+        ref={yearTabsRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.yearTabsContent}
+      >
         {YEARS.map((y) => {
           const active = y === activeYear;
           return (
@@ -158,6 +195,7 @@ export default function AllMonthsScreen({ navigation }) {
             </TouchableOpacity>
           );
         })}
+      </ScrollView>
       </View>
 
       {/* ══════ CARROSSEL DE MESES ══════ */}
@@ -170,7 +208,6 @@ export default function AllMonthsScreen({ navigation }) {
         keyExtractor={(y) => String(y)}
         onMomentumScrollEnd={onScrollEnd}
         getItemLayout={(_, i) => ({ length: SW, offset: SW * i, index: i })}
-        initialScrollIndex={CURRENT_YEAR_IDX}
         decelerationRate="fast"
         style={{ flex: 1 }}
         renderItem={({ item: year }) => (
@@ -191,7 +228,7 @@ export default function AllMonthsScreen({ navigation }) {
                 return (
                   <TouchableOpacity
                     key={mi}
-                    onPress={() => handlePickMonth(year, mi)}
+                    onPress={() => handleMonthTap(year, mi)}
                     activeOpacity={0.75}
                     style={[
                       styles.mBtn,
@@ -270,17 +307,16 @@ const styles = StyleSheet.create({
   openBtnText: { fontSize: 14, fontWeight: '800' },
 
   // ── Year tabs ──
-  yearTabs: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  yearTabsScroll: {
     marginTop: 14,
-    marginHorizontal: 16,
     borderBottomWidth: 1,
-    paddingBottom: 0,
   },
-  yearTab: { alignItems: 'center', paddingBottom: 8, flex: 1 },
-  yearTabText: { fontSize: 14 },
-  yearTabLine: { position: 'absolute', bottom: 0, left: 8, right: 8, height: 2.5, borderRadius: 2 },
+  yearTabsContent: {
+    paddingHorizontal: 16,
+  },
+  yearTab: { alignItems: 'center', paddingBottom: 8, minWidth: 56 },
+  yearTabText: { fontSize: 13 },
+  yearTabLine: { position: 'absolute', bottom: 0, left: 6, right: 6, height: 2.5, borderRadius: 2 },
 
   // ── Month grid ──
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

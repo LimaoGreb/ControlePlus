@@ -19,6 +19,8 @@ import {
   saveContributionGoal,
   loadTelegramChatId,
   saveTelegramChatId,
+  loadCategoryBudgets,
+  saveCategoryBudgets,
 } from '../services/storage';
 
 const SettingsContext = createContext(null);
@@ -36,6 +38,7 @@ export function SettingsProvider({ children }) {
   const [makesContributions, setMakesContributionsState] = useState(false);
   const [contributionGoalPct, setContributionGoalPctState] = useState(10);
   const [telegramChatId, setTelegramChatIdState] = useState(null);
+  const [categoryBudgets, setCategoryBudgetsState] = useState({});
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -49,7 +52,8 @@ export function SettingsProvider({ children }) {
       loadAvatar(),
       loadProjects(),
       loadTelegramChatId(),
-    ]).then(([n, pms, inv, invts, mc, goal, av, projs, tgId]) => {
+      loadCategoryBudgets(),
+    ]).then(([n, pms, inv, invts, mc, goal, av, projs, tgId, catBudgets]) => {
       setUserNameState(n);
       setPaymentMethods(pms);
       setIsInvestorState(inv);
@@ -59,6 +63,7 @@ export function SettingsProvider({ children }) {
       setAvatarState(av);
       setProjects(projs);
       if (tgId) setTelegramChatIdState(tgId);
+      setCategoryBudgetsState(catBudgets);
       setReady(true);
     });
   }, []);
@@ -231,6 +236,12 @@ export function SettingsProvider({ children }) {
         importSettings,
         telegramChatId,
         setTelegramChatId,
+        categoryBudgets,
+        setCategoryBudget: (catId, limit) => {
+          const next = { ...categoryBudgets, [catId]: limit };
+          setCategoryBudgetsState(next);
+          saveCategoryBudgets(next);
+        },
         ready,
       }}
     >

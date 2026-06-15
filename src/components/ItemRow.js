@@ -14,6 +14,7 @@ import { MONTH_NAMES } from '../data/initialData';
 import CurrencyInput from './CurrencyInput';
 import DueDayChip from './DueDayChip';
 import BankBadge from './BankBadge';
+import CategoryChip from './CategoryChip';
 
 export default function ItemRow({
   item,
@@ -31,6 +32,8 @@ export default function ItemRow({
   concludeLabel = 'Concluir',
   reopenLabel = 'Reabrir',
   isOverdue = false,
+  showCategory = false,
+  onChangeCategory,
 }) {
   const { colors } = useTheme();
   const accent = accentColor || colors.primary;
@@ -166,11 +169,14 @@ export default function ItemRow({
         )}
       </View>
 
-      {((swipeable && onChangeDueDay) || (showPayment && paymentMethods.length > 0)) && (
+      {((swipeable && onChangeDueDay) || (showPayment && paymentMethods.length > 0) || showCategory) && (
         <View style={styles.chipsRow}>
           <View style={styles.chipsLeft}>
             {swipeable && onChangeDueDay && !isLocked && (
               <DueDayChip dueDay={item.dueDay} onChange={onChangeDueDay} color={accent} />
+            )}
+            {showCategory && !isLocked && !concluded && (
+              <CategoryChip categoryId={item.category} onChange={onChangeCategory} />
             )}
             {showPayment && (concluded || isLocked)
               ? (() => {

@@ -12,6 +12,7 @@ import { YEAR } from '../data/initialData';
 const SECTIONS = [
   { key: 'SettingsPerfil',  icon: 'person-outline',        label: 'Perfil',              desc: 'Nome, foto, investidor, contribuições e modo casal' },
   { key: 'SettingsCartoes', icon: 'card-outline',          label: 'Formas de Pagamento', desc: 'Cartões e métodos de pagamento' },
+  { key: 'SettingsBudget', icon: 'wallet-outline',        label: 'Orçamento',           desc: 'Limites mensais por categoria de gasto' },
   { key: 'SettingsTemas',   icon: 'color-palette-outline', label: 'Temas',               desc: 'Tema escuro e paleta de cores' },
   { key: 'SettingsBackup',  icon: 'cloud-upload-outline',  label: 'Backup',              desc: 'Exportar e importar dados (JSON)' },
 ];

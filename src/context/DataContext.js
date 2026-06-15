@@ -6,8 +6,9 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { loadData, saveData, replaceData, loadYearData, saveYearData } from '../services/storage';
-import { YEAR } from '../data/initialData';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { loadData, saveData, replaceData, loadYearData, saveYearData, getYearKey } from '../services/storage';
+import { YEAR, buildInitialMonths } from '../data/initialData';
 
 export const DataContext = createContext(null);
 // Contexto dedicado para a aba Casal — prioridade sobre DataContext em useData().
@@ -42,13 +43,24 @@ export function DataProvider({ children }) {
   const [switching, setSwitching] = useState(false);
   const skipNextSave = useRef(true);
   const activeYearRef = useRef(YEAR);
+  const switchingRef = useRef(false);
+  const dataRef = useRef(null);
+  const yearCache = useRef({});       // cache em memória: { ano: data } — troca instantânea
 
   useEffect(() => {
     loadData().then((d) => {
+      dataRef.current = d;
+      yearCache.current[YEAR] = d;
       setData(d);
       setReady(true);
     });
   }, []);
+
+  // Mantém dataRef e cache sempre atualizados com o dado mais recente.
+  useEffect(() => {
+    dataRef.current = data;
+    if (data) yearCache.current[activeYearRef.current] = data;
+  }, [data]);
 
   // Salvamento automático — sempre no ano ativo correto.
   useEffect(() => {
@@ -60,21 +72,41 @@ export function DataProvider({ children }) {
     saveYearData(activeYearRef.current, data);
   }, [data]);
 
-  // Troca de ano: salva o atual, carrega o novo.
+  // Troca de ano com cache em memória — sem await quando o ano já foi carregado.
   const switchYear = async (year) => {
-    if (year === activeYearRef.current || switching) return;
-    setSwitching(true);
-    try {
-      await saveYearData(activeYearRef.current, data);
-      const newData = await loadYearData(year);
+    if (year === activeYearRef.current || switchingRef.current) return;
+    switchingRef.current = true;
+
+    // Salva o ano atual no cache e dispara write em background (não bloqueia)
+    yearCache.current[activeYearRef.current] = dataRef.current;
+    saveYearData(activeYearRef.current, dataRef.current);
+
+    const cached = yearCache.current[year];
+    if (cached) {
+      // Cache hit: troca instantânea, sem AsyncStorage
       activeYearRef.current = year;
       skipNextSave.current = true;
-      setData(newData);
+      dataRef.current = cached;
+      setData(cached);
       setActiveYear(year);
-    } catch (e) {
-      console.warn('[DataContext] switchYear error:', e?.message);
-    } finally {
-      setSwitching(false);
+      switchingRef.current = false;
+    } else {
+      // Cache miss: carrega do AsyncStorage (só na primeira vez)
+      setSwitching(true);
+      try {
+        const newData = await loadYearData(year);
+        yearCache.current[year] = newData;
+        activeYearRef.current = year;
+        skipNextSave.current = true;
+        dataRef.current = newData;
+        setData(newData);
+        setActiveYear(year);
+      } catch (e) {
+        console.warn('[DataContext] switchYear error:', e?.message);
+      } finally {
+        switchingRef.current = false;
+        setSwitching(false);
+      }
     }
   };
 
@@ -245,6 +277,23 @@ export function DataProvider({ children }) {
     }));
   };
 
+  // Apaga dados de todos os anos futuros (remove chaves do AsyncStorage).
+  // Usado para corrigir corrupção por race condition no carrossel.
+  const clearFutureYears = async () => {
+    const keys = [];
+    for (let i = 1; i <= 7; i++) {
+      const y = YEAR + i;
+      keys.push(getYearKey(y));
+      delete yearCache.current[y];
+    }
+    try {
+      await AsyncStorage.multiRemove(keys);
+      console.warn('[DataContext] clearFutureYears: removidos', keys);
+    } catch (e) {
+      console.warn('[DataContext] clearFutureYears error:', e?.message);
+    }
+  };
+
   const importData = async (newData) => {
     if (!newData || !newData.months) {
       throw new Error('Arquivo inválido: estrutura de dados não reconhecida.');
@@ -270,6 +319,7 @@ export function DataProvider({ children }) {
     replicateIncomeToAllMonths,
     clearMonth,
     importData,
+    clearFutureYears,
   };
 
   return (

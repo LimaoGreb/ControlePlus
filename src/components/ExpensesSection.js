@@ -78,6 +78,8 @@ export default function ExpensesSection({
           onChangeValue={(v) => updateItem(monthIndex, section, item.id, 'value', v)}
           onChangePayment={(p) => handlePayment(item, p)}
           onRemove={() => removeItem(monthIndex, section, item.id)}
+          showCategory
+          onChangeCategory={(cat) => updateItem(monthIndex, section, item.id, 'category', cat)}
         />
       ))}
 

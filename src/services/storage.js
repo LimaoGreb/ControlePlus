@@ -231,6 +231,24 @@ export async function replaceData(data) {
   return data;
 }
 
+// ─── Orçamento por categoria ──────────────────────────────────────────────────
+const CATEGORY_BUDGETS_KEY = '@financas:orcamentoCategorias';
+
+export async function loadCategoryBudgets() {
+  try {
+    const raw = await AsyncStorage.getItem(CATEGORY_BUDGETS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export async function saveCategoryBudgets(budgets) {
+  try {
+    await AsyncStorage.setItem(CATEGORY_BUDGETS_KEY, JSON.stringify(budgets || {}));
+  } catch (e) {
+    console.warn('Falha ao salvar orçamentos:', e);
+  }
+}
+
 // ─── Multi-ano ────────────────────────────────────────────────────────────────
 export const getYearKey = (year) => `@financas:dados:${year}`;
 

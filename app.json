@@ -3,7 +3,7 @@
     "name": "Controle+",
     "slug": "FinanceApp",
     "scheme": "br.kowalsky.financeapp",
-    "version": "2.15.0",
+    "version": "2.16.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -23,7 +23,7 @@
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "package": "br.kowalsky.financeapp",
-      "versionCode": 44,
+      "versionCode": 45,
     },
     "web": {
       "bundler": "metro",
@@ -31,6 +31,86 @@
     },
     "plugins": [
       "expo-font",
+      [
+        "react-native-android-widget",
+        {
+          "fonts": [],
+          "widgets": [
+            {
+              "name": "SaldoWidget",
+              "label": "Controle+ · Saldo do Mês",
+              "description": "Mostra a sobra do mês atual com barra de gastos.",
+              "minWidth": "180dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "none",
+              "widgetCategory": "home_screen"
+            },
+            {
+              "name": "ResumoWidget",
+              "label": "Controle+ · Resumo Financeiro",
+              "description": "Renda, gastos e sobra do mês com barra de progresso.",
+              "minWidth": "250dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal",
+              "widgetCategory": "home_screen"
+            },
+            {
+              "name": "LancamentoWidget",
+              "label": "Controle+ · Lançamento Rápido",
+              "description": "Abre o app direto no lançamento.",
+              "minWidth": "180dp",
+              "minHeight": "74dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 1,
+              "updatePeriodMillis": 0,
+              "resizeMode": "none",
+              "widgetCategory": "home_screen"
+            },
+            {
+              "name": "PortfolioWidget",
+              "label": "Controle+ · Portfólio",
+              "description": "Resumo dos seus investimentos.",
+              "minWidth": "250dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal",
+              "widgetCategory": "home_screen"
+            },
+            {
+              "name": "ProjetoWidget",
+              "label": "Controle+ · Projeto",
+              "description": "Progresso do seu projeto de poupança.",
+              "minWidth": "180dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "none",
+              "widgetCategory": "home_screen"
+            },
+            {
+              "name": "CartoesWidget",
+              "label": "Controle+ · Cartões",
+              "description": "Limites disponíveis dos seus cartões de crédito.",
+              "minWidth": "250dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal",
+              "widgetCategory": "home_screen"
+            }
+          ]
+        }
+      ],
       [
         "expo-image-picker",
         {
