@@ -2,6 +2,16 @@
 
 ---
 
+## v2.13.0 — 2026-06-14
+
+### fix: Chat layout + IncomeSection revert + diagnóstico Casal
+
+- `src/screens/ChatScreen.js` — FlatList recebe `flexGrow: 1, justifyContent: 'flex-end'` no contentContainerStyle; mensagens agora ficam ancoradas no fundo da área (padrão chat).
+- `src/components/IncomeSection.js` — Revertido ao `Collapsible` (era o comportamento esperado; remoção do v2.12.0 foi rejeitada).
+- `App.js` — `TabErrorBoundary` agora exibe o `error.message` em vermelho na tela de erro, permitindo diagnóstico visual do crash do Modo Casal sem Logcat.
+
+---
+
 ## v2.12.0 — 2026-06-14
 
 ### fix: Modo Casal + UX Cap + UI refinamentos gerais

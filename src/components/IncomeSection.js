@@ -1,10 +1,10 @@
 import React from 'react';
-import { Alert, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Alert, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../theme/ThemeContext';
 import { monthTotals } from '../utils/calculations';
-import { formatBRL } from '../utils/currency';
+import Collapsible from './Collapsible';
 import ItemRow from './ItemRow';
 
 export default function IncomeSection({ monthIndex, month }) {
@@ -26,13 +26,13 @@ export default function IncomeSection({ monthIndex, month }) {
   };
 
   return (
-    <View style={styles.section}>
-      <View style={styles.header}>
-        <Ionicons name="cash-outline" size={16} color={colors.income} />
-        <Text style={[styles.title, { color: colors.text }]}>Renda</Text>
-        <Text style={[styles.total, { color: colors.income }]}>{formatBRL(totals.rendaTotal)}</Text>
-      </View>
-
+    <Collapsible
+      icon="cash-outline"
+      title="Renda"
+      total={totals.rendaTotal}
+      color={colors.income}
+      count={incomes.length}
+    >
       {incomes.map((item) => (
         <ItemRow
           key={item.id}
@@ -62,15 +62,11 @@ export default function IncomeSection({ monthIndex, month }) {
           <Text style={[styles.replicateText, { color: colors.income }]}>Replicar nos meses seguintes</Text>
         </TouchableOpacity>
       )}
-    </View>
+    </Collapsible>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { marginBottom: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  title: { fontSize: 16, fontWeight: '800', flex: 1 },
-  total: { fontSize: 16, fontWeight: '800' },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',

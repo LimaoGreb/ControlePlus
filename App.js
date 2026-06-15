@@ -48,9 +48,9 @@ import { MONTH_NAMES, YEAR } from './src/data/initialData';
 class TabErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, errorMsg: '' };
   }
-  static getDerivedStateFromError() { return { hasError: true }; }
+  static getDerivedStateFromError(error) { return { hasError: true, errorMsg: error?.message || String(error) }; }
   componentDidCatch(error, info) {
     console.error('[TabErrorBoundary] erro capturado:', error?.message || String(error));
     console.error('[TabErrorBoundary] stack:', info?.componentStack);
@@ -61,9 +61,12 @@ class TabErrorBoundary extends React.Component {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 }}>
           <Ionicons name="warning-outline" size={44} color="#F5A524" />
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>Algo deu errado nesta aba.</Text>
+          {!!this.state.errorMsg && (
+            <Text style={{ color: '#E53935', fontSize: 11, textAlign: 'center', fontFamily: 'monospace', paddingHorizontal: 8 }}>{this.state.errorMsg}</Text>
+          )}
           <Text style={{ color: '#888', fontSize: 13, textAlign: 'center' }}>Tente novamente ou volte e reabra.</Text>
           <TouchableOpacity
-            onPress={() => this.setState({ hasError: false })}
+            onPress={() => this.setState({ hasError: false, errorMsg: '' })}
             style={{ marginTop: 8, paddingHorizontal: 24, paddingVertical: 11, backgroundColor: '#F5A524', borderRadius: 14 }}
           >
             <Text style={{ color: '#000', fontWeight: '800', fontSize: 14 }}>Tentar novamente</Text>

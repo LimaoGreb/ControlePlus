@@ -355,7 +355,7 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={item => item.id}
           renderItem={({ item }) => <MessageBubble msg={item} colors={colors} />}
-          contentContainerStyle={[styles.list, { paddingBottom: 12 }]}
+          contentContainerStyle={[styles.list, { paddingBottom: 12, flexGrow: 1, justifyContent: 'flex-end' }]}
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
