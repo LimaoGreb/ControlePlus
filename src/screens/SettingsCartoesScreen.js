@@ -43,14 +43,7 @@ export default function SettingsCartoesScreen() {
           Nenhuma cadastrada. Adicione para escolher na hora de lançar despesas.
         </Text>
       ) : (
-        <View style={[styles.section, {
-          marginHorizontal: 16,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border + '80',
-          borderRadius: 12,
-          backgroundColor: colors.text + '0D',
-          overflow: 'hidden',
-        }]}>
+        <View style={styles.section}>
           {paymentMethods.map((pm, idx) => {
             const bank = getBankForPayment(pm);
             const isNonCredit = bank?.id === 'pix' || bank?.id === 'debito';
@@ -61,7 +54,10 @@ export default function SettingsCartoesScreen() {
                 key={pm.id}
                 style={[
                   styles.pmWrap,
-                  idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border + '40' },
+                  {
+                    backgroundColor: colors.text + '0D',
+                    borderColor: colors.border + '80',
+                  },
                 ]}
               >
                 {/* Linha principal */}
@@ -200,21 +196,26 @@ export default function SettingsCartoesScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingVertical: 16 },
-  section: { marginBottom: 12 },
+  section: { paddingHorizontal: 16, marginBottom: 4 },
   hint: { fontSize: 12, lineHeight: 18 },
   input: { height: 48, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, marginBottom: 8 },
   addRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   addBtn: { width: 48, height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
 
-  pmWrap: { paddingHorizontal: 14 },
-  pmRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  pmWrap: {
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+  pmRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12 },
   pmIcon: { width: 28, height: 28, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   pmNameInput: { flex: 1, fontSize: 14, fontWeight: '600', marginLeft: 10, paddingVertical: 0, height: 24 },
 
   chip: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, marginRight: 6, borderWidth: 1 },
   chipText: { fontSize: 11.5, fontWeight: '700' },
 
-  expandPanel: { borderTopWidth: StyleSheet.hairlineWidth, paddingBottom: 12 },
+  expandPanel: { borderTopWidth: StyleSheet.hairlineWidth, paddingBottom: 12, paddingHorizontal: 12 },
   panelLabel: { fontSize: 10.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
   bankSearchBox: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, gap: 6, marginBottom: 10, borderWidth: 1 },
   bankSearchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
