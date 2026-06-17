@@ -57,7 +57,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             onPress={() => navigation.navigate('Chat')}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={{ marginRight: 4 }}
+            style={{ marginRight: 14 }}
           >
             <MaterialCommunityIcons name="robot-outline" size={22} color={colors.text} />
           </TouchableOpacity>
@@ -70,7 +70,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Linha 2: barra de pesquisa */}
-        <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: search.length > 0 ? colors.primary + '60' : colors.border }]}>
+        <View style={[styles.searchBar, { backgroundColor: colors.card, borderWidth: search.length > 0 ? 1 : 0, borderColor: colors.primary + '60' }]}>
           <Ionicons name="search-outline" size={15} color={colors.textMuted} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
@@ -129,24 +129,23 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
     zIndex: 10,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   titleGroup: { flex: 1, marginLeft: 12 },
-  greeting: { fontSize: 22, fontWeight: '900' },
-  subtitle: { fontSize: 13, fontWeight: '600', marginTop: 1 },
+  greeting: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
+  subtitle: { fontSize: 12, fontWeight: '700', marginTop: 2, letterSpacing: 0.4, textTransform: 'uppercase' },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     height: 38,
-    borderRadius: 19,
-    borderWidth: 1,
+    borderRadius: 12,
     paddingHorizontal: 12,
   },
   searchInput: { flex: 1, fontSize: 14, fontWeight: '400', paddingVertical: 0 },

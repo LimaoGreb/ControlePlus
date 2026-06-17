@@ -378,6 +378,26 @@ export function localClassify(t) {
     return { intent: 'query', params: { subtype: 'projects', month, filter: pFilter } };
   }
 
+  // ── Desbloquear despesas para edição (unlock_expenses) ───────────────────
+  if (/\bdesbloqu[aeio][ir]?\w*\b/i.test(t) ||
+      (/\b(coloque?|poe|põe|quero|deixa|vai)\b.{0,20}\b(pra?\s+editar|no\s+modo\s+(de\s+)?edi[çc][aã]o|editar)\b.{0,35}\b(todas?|despesas?|gastos?|tudo\b|m[eê]s\b)\b/i.test(t)) ||
+      (/\b(abr[ae][r]?|ativa[r]?|ligar?)\b.{0,20}\bmodo\s+(de\s+)?edi[çc][aã]o\b/i.test(t))) {
+    return { intent: 'unlock_expenses', params: { month } };
+  }
+
+  // ── Listar despesas do mês (bulk view) ────────────────────────────────────
+  if ((
+    /\b(lista[r]?|mostra[r]?|exib[ae][r]?|ver|veja|quero\s+ver|me\s+d[eê]|apresent\w*)\b.{0,30}\b(todas?\s+)?(minhas?\s+)?(despesas?|gastos?)\b/i.test(t) ||
+    /\bquais\b.{0,30}\b(s[aã]o\s+|est[aã]o\s+|minhas?\s+)?(despesas?|gastos?)\b/i.test(t)
+  ) &&
+    !/\b(quanto|qto|total|resumo|saldo|or[çc]amento|maior\w*|menor\w*)\b/i.test(t) &&
+    !/\b(tira[r]?|remov[ae]|apaga[r]?|limpa[r]?)\b.{0,30}\bcategor/i.test(t)) {
+    const noCategory = /\bsem\s+(categoria|categ)\b/i.test(t) || /\bn[aã]o\s+(t[eê]m|tem)\s+categoria/i.test(t);
+    const noPayment = /\bsem\s+(pagamento|forma|cart[aã]o)\b/i.test(t) || /\bn[aã]o\s+(t[eê]m|tem)\s+(pagamento|cart[aã]o)/i.test(t);
+    const subtype = noCategory ? 'uncategorized' : noPayment ? 'no_payment' : 'all';
+    return { intent: 'list_expenses', params: { subtype, month } };
+  }
+
   // ── Renomear despesa ──────────────────────────────────────────────────────
   if ((/\brenomei[ao]?\w*\b|\b(muda[r]?|edita[r]?)\s+o?\s*nome\s+(da|do)\s+\w|\bedita[r]?\s+nome\s+(da|do)\s+\w/i.test(t)) &&
       !/\b(projeto|meta|objetivo)\b/i.test(t) &&
@@ -410,6 +430,11 @@ export function localClassify(t) {
     const PAYMENTS = [[/pix/i,'Pix'],[/d[eé]bito/i,'Débito'],[/cr[eé]dito/i,'Crédito'],[/dinheiro/i,'Dinheiro'],[/boleto/i,'Boleto']];
     let new_payment = null;
     for (const [re, label] of PAYMENTS) { if (re.test(t)) { new_payment = label; break; } }
+    // Fallback: extrai texto após "pra/para" para suportar nomes de cartão (Nubank, C6, etc.)
+    if (!new_payment) {
+      const paraMatch = t.match(/\b(?:pra|para)\s+(.+?)(?:\s*$|\?|\.)/i);
+      if (paraMatch) new_payment = paraMatch[1].trim();
+    }
     const nameRaw = t
       .replace(/muda[r]?\s+o\s+pagamento\s+(do|da)|altera[r]?\s+o\s+pagamento\s+(do|da)|troca[r]?\s+o\s+pagamento\s+(do|da)|muda[r]?\s+a\s+forma\s+de\s+pag\w*\s+(do|da)/gi, '')
       .replace(/muda[r]?\s+o\s+pagamento|altera[r]?\s+o\s+pagamento|troca[r]?\s+o\s+pagamento|muda[r]?\s+a\s+forma\s+de\s+pag\w*/gi, '')

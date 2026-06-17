@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Alert, Text, TouchableOpacity, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../theme/ThemeContext';
@@ -45,39 +45,51 @@ export default function IncomeSection({ monthIndex, month }) {
         />
       ))}
 
-      <TouchableOpacity
-        style={[styles.addBtn, { borderColor: colors.income }]}
-        onPress={() => addItem(monthIndex, 'incomes', '', 0)}
-      >
-        <Ionicons name="add-circle-outline" size={22} color={colors.income} />
-        <Text style={[styles.addText, { color: colors.income }]}>+ Adicionar fonte de renda</Text>
-      </TouchableOpacity>
-
-      {hasValues && (
+      <View style={styles.actionsRow}>
         <TouchableOpacity
-          style={[styles.replicateBtn, { borderColor: colors.income }]}
-          onPress={handleReplicate}
+          style={[styles.addBtn, { backgroundColor: colors.income + '18', borderColor: colors.income + '80' }]}
+          onPress={() => addItem(monthIndex, 'incomes', '', 0)}
         >
-          <Ionicons name="calendar-outline" size={17} color={colors.income} />
-          <Text style={[styles.replicateText, { color: colors.income }]}>Replicar nos meses seguintes</Text>
+          <Ionicons name="add" size={18} color={colors.income} />
+          <Text style={[styles.addText, { color: colors.income }]}>Adicionar renda</Text>
         </TouchableOpacity>
-      )}
+
+        {hasValues && (
+          <TouchableOpacity
+            style={[styles.replicateBtn, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}
+            onPress={handleReplicate}
+          >
+            <Ionicons name="calendar-outline" size={15} color={colors.textSecondary} />
+            <Text style={[styles.replicateText, { color: colors.textSecondary }]}>Replicar nos seguintes</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </Collapsible>
   );
 }
 
 const styles = StyleSheet.create({
+  actionsRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   addBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginTop: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    paddingVertical: 11,
+    gap: 6,
   },
-  addText: { fontSize: 15, fontWeight: '700', marginLeft: 6 },
-  replicateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 10, marginTop: 8, gap: 6 },
-  replicateText: { fontSize: 14, fontWeight: '700' },
+  addText: { fontSize: 13, fontWeight: '800' },
+  replicateBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    paddingVertical: 11,
+    gap: 6,
+  },
+  replicateText: { fontSize: 12, fontWeight: '700' },
 });

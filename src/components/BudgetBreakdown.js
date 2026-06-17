@@ -54,7 +54,7 @@ export default function BudgetBreakdown({ month }) {
   return (
     <View style={styles.wrap}>
       {/* Resumo topo */}
-      <View style={[styles.summary, { backgroundColor: colors.background }]}>
+      <View style={styles.summary}>
         <View>
           <Text style={[styles.freeLabel, { color: colors.textMuted }]}>Livre pra gastar</Text>
           <Text style={[styles.freeVal, { color: freeToSpend >= 0 ? colors.positive : colors.negative }]}>
@@ -110,10 +110,10 @@ export default function BudgetBreakdown({ month }) {
 }
 
 const styles = StyleSheet.create({
-  wrap:        { paddingVertical: 4 },
-  summary:     { borderRadius: 10, padding: 10, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  freeLabel:   { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 1 },
-  freeVal:     { fontSize: 18, fontWeight: '900' },
+  wrap:        { paddingVertical: 4, paddingHorizontal: 16 },
+  summary:     { paddingVertical: 6, marginBottom: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  freeLabel:   { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
+  freeVal:     { fontSize: 20, fontWeight: '900' },
   incomeInfo:  { fontSize: 11, fontWeight: '600' },
   row:         { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10 },
   badge:       { width: 26, height: 26, borderRadius: 7, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
@@ -126,6 +126,6 @@ const styles = StyleSheet.create({
   empty:       { alignItems: 'center', paddingVertical: 24, gap: 8 },
   emptyTitle:  { fontSize: 14, fontWeight: '800' },
   emptyDesc:   { fontSize: 12, textAlign: 'center', lineHeight: 17 },
-  emptyBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginTop: 4 },
+  emptyBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginTop: 4 },
   emptyBtnTxt: { fontSize: 13, fontWeight: '700' },
 });

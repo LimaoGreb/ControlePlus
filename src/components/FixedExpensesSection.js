@@ -33,7 +33,7 @@ export default function FixedExpensesSection({ monthIndex, month, forceOpen = fa
   const copyButton =
     monthIndex > 0 ? (
       <TouchableOpacity
-        style={[styles.copyBtn, { borderColor: colors.fixed }]}
+        style={styles.copyBtn}
         onPress={handleCopy}
       >
         <Ionicons name="copy-outline" size={20} color={colors.fixed} />
@@ -64,12 +64,10 @@ const styles = StyleSheet.create({
   copyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginTop: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#ffffff18',
   },
-  copyText: { fontSize: 14, fontWeight: '700', marginLeft: 6 },
+  copyText: { fontSize: 13, fontWeight: '700', marginLeft: 7 },
 });

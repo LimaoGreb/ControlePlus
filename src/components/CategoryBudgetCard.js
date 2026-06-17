@@ -112,7 +112,7 @@ export default function CategoryBudgetCard({ month, monthIndex, onNavigateToBudg
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 12 },
+  card: { borderRadius: 16, padding: 16, marginBottom: 12 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   title: { fontSize: 14, fontWeight: '800' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },

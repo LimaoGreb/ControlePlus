@@ -7,6 +7,7 @@ import { contrastText } from '../utils/colorUtils';
 
 // Personagens pré-definidos (emoji + cor de fundo do círculo).
 export const PRESET_AVATARS = [
+  // Animais clássicos
   { value: '🦊', color: '#E07B4C' },
   { value: '🐱', color: '#8B3A5E' },
   { value: '🐼', color: '#415A77' },
@@ -23,8 +24,49 @@ export const PRESET_AVATARS = [
   { value: '🦉', color: '#5B8A9A' },
   { value: '🐢', color: '#2D6A4F' },
   { value: '🐙', color: '#9B2226' },
-  { value: '🐲', color: '#2D6A4F' },
   { value: '🦝', color: '#5C5C5C' },
+  { value: '🦋', color: '#7B3FA0' },
+  { value: '🐺', color: '#3D405B' },
+  { value: '🦔', color: '#8B5E3C' },
+  { value: '🦦', color: '#5C4033' },
+  { value: '🐬', color: '#4DA6FF' },
+  { value: '🦈', color: '#607D8B' },
+  { value: '🦅', color: '#5D4037' },
+  // Dragões & Fantasia
+  { value: '🐲', color: '#1B5E20' },
+  { value: '🐉', color: '#880E4F' },
+  { value: '🧙', color: '#4A148C' },
+  { value: '🧝', color: '#006064' },
+  { value: '🧛', color: '#37474F' },
+  { value: '🧟', color: '#33691E' },
+  { value: '🧜', color: '#0D47A1' },
+  { value: '🧞', color: '#E65100' },
+  { value: '🦸', color: '#1565C0' },
+  { value: '🦹', color: '#6A1B9A' },
+  { value: '🧚', color: '#F06292' },
+  { value: '🧌', color: '#4E342E' },
+  // Robôs & Tech
+  { value: '🤖', color: '#546E7A' },
+  { value: '👾', color: '#283593' },
+  { value: '🕹️', color: '#212121' },
+  { value: '💀', color: '#424242' },
+  { value: '👻', color: '#455A64' },
+  { value: '👽', color: '#1A237E' },
+  { value: '🛸', color: '#311B92' },
+  // Personagens humanos
+  { value: '🥷', color: '#212121' },
+  { value: '🧑‍🚀', color: '#1565C0' },
+  { value: '🧑‍🎤', color: '#880E4F' },
+  { value: '🧑‍💻', color: '#1B5E20' },
+  { value: '🧑‍🍳', color: '#E65100' },
+  { value: '🧑‍🎨', color: '#6A1B9A' },
+  { value: '🧑‍⚕️', color: '#006064' },
+  { value: '🧑‍🏫', color: '#E65100' },
+  { value: '🧑‍🔬', color: '#0D47A1' },
+  { value: '🧑‍🚒', color: '#B71C1C' },
+  { value: '🦸‍♀️', color: '#AD1457' },
+  { value: '🤠', color: '#6D4C41' },
+  { value: '🎃', color: '#E65100' },
 ];
 
 export default function Avatar({ avatar, size = 44 }) {

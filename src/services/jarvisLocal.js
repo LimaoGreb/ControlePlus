@@ -4,6 +4,7 @@ import { localClassify } from '../../bot/geminiClient';
 import { answerQuery } from '../../bot/queryHandler';
 import { capSupport } from './capSupport';
 import { BOT_SERVER_URL } from '../config/cap';
+import { triggerBulkUnlock } from '../utils/editModeSignal';
 
 const R = (v) => `R$ ${(v || 0).toFixed(2)}`;
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -107,7 +108,7 @@ export async function processMessage(text, contextData, dataOps, settingsOps, hi
       paymentMethods?.length > 0) {
     const cards = paymentMethods.map(pm => pm.name);
     return {
-      botText: `💳 *Qual cartão/forma de pagamento, ${n}?*\n\n${cards.map(c => `• ${c}`).join('\n')}\n\n_Só falar o nome: "${cards[0]}"_`,
+      botText: `Qual cartão quer ver, ${n}? 💳\n\n${cards.map(c => `• ${c}`).join('\n')}\n\n_Fala só o nome, tipo: "${cards[0]}"_`,
       pendingOp: null,
     };
   }
@@ -122,7 +123,7 @@ export async function processMessage(text, contextData, dataOps, settingsOps, hi
 
   if (!classified) {
     return {
-      botText: `Hmm, não peguei essa, ${n} 🤔\n\nTenta de outro jeito:\n_"como tá o mês?"_ · _"maiores gastos"_ · _"conclua a Netflix"_\n\nOu pergunta _"o que você faz?"_ pra ver tudo que sei!`,
+      botText: `Hmm, não entendi bem essa 🤔\n\nTenta de outro jeito, ${n}? Tipo _"como tá o mês?"_ ou _"maiores gastos"_. Se quiser ver tudo que sei fazer, manda _"o que você faz?"_`,
       pendingOp: null,
     };
   }
@@ -134,10 +135,90 @@ export async function processMessage(text, contextData, dataOps, settingsOps, hi
     return { botText: answerQuery(snapshot, params), pendingOp: null };
   }
 
+  // ── Listar despesas ──────────────────────────────────────────────────────────
+  if (intent === 'list_expenses') {
+    const { subtype, month: mName } = params;
+    const miRaw = mName ? MONTH_PT.findIndex(m => mName.startsWith(m.substring(0, 3))) : new Date().getMonth();
+    const mi = miRaw >= 0 ? miRaw : new Date().getMonth();
+    const months = data?.months || {};
+    const monthData = months[mi] || {};
+
+    const allItems = [
+      ...(monthData.fixed || []).filter(i => !i.isInstallmentRef).map(i => ({ ...i, _sec: 'fixed' })),
+      ...(monthData.variable || []).filter(i => !i.isInstallmentRef).map(i => ({ ...i, _sec: 'variable' })),
+    ];
+
+    let items = allItems;
+    if (subtype === 'uncategorized') items = allItems.filter(i => !i.category);
+    else if (subtype === 'no_payment') items = allItems.filter(i => !i.payment);
+
+    const monthName = MONTHS[mi];
+
+    if (!items.length) {
+      const msg = subtype === 'uncategorized'
+        ? `Todas as despesas de ${monthName} já têm categoria! ✅`
+        : subtype === 'no_payment'
+        ? `Todas as despesas de ${monthName} já têm forma de pagamento! ✅`
+        : `Nenhuma despesa em ${monthName} ainda, ${n}.`;
+      return { botText: msg, pendingOp: null };
+    }
+
+    const fixed = items.filter(i => i._sec === 'fixed');
+    const variable = items.filter(i => i._sec === 'variable');
+
+    const fmtItem = (i) => {
+      const cat = i.category ? ` · ${CAT_LABELS[i.category] || i.category}` : '';
+      const pay = i.payment ? ` · 💳 ${i.payment}` : '';
+      const done = i.concluded ? ' ✅' : '';
+      return `• *${i.name}* — ${R(i.value)}${cat}${pay}${done}`;
+    };
+
+    const parts = [];
+    if (fixed.length) parts.push(`📌 *Fixos (${fixed.length})*\n${fixed.map(fmtItem).join('\n')}`);
+    if (variable.length) parts.push(`💸 *Variáveis (${variable.length})*\n${variable.map(fmtItem).join('\n')}`);
+
+    const title = subtype === 'uncategorized'
+      ? `Sem categoria em ${monthName}`
+      : subtype === 'no_payment'
+      ? `Sem pagamento em ${monthName}`
+      : `Despesas de ${monthName}`;
+
+    const hint = subtype === 'all'
+      ? `\n\n_Editar: "muda o valor da Netflix pra 45" · "muda o pagamento do iFood pra Nubank" · "renomeia iFood pra Delivery"_`
+      : subtype === 'uncategorized'
+      ? `\n\n_Categorizar: "categoriza o iFood como alimentação"_`
+      : `\n\n_Adicionar pagamento: "muda o pagamento da Netflix pra Nubank"_`;
+
+    return {
+      botText: `📋 *${title}* (${items.length})\n\n${parts.join('\n\n')}${hint}`,
+      pendingOp: null,
+    };
+  }
+
+  // ── Desbloquear todas as despesas para edição ────────────────────────────────
+  if (intent === 'unlock_expenses') {
+    const mi = new Date().getMonth();
+    const months = data?.months || {};
+    const m = months[mi] || {};
+    const count = [...(m.fixed || []), ...(m.variable || [])].filter(i => !i.isInstallmentRef).length;
+    if (count === 0) return { botText: `Nenhuma despesa em ${MONTHS[mi]} ainda, ${n}.`, pendingOp: null };
+    triggerBulkUnlock();
+    return {
+      botText: `🔓 *${count} despesas de ${MONTHS[mi]}* desbloqueadas!\n\nAgora é só ir na tela e editar direto. Ou me fala aqui: _"muda o valor da Netflix pra 45"_ 📝`,
+      pendingOp: null,
+    };
+  }
+
   // ── Chat / saudação ──────────────────────────────────────────────────────────
   if (intent === 'chat') {
+    const chatReplies = [
+      `Oi, ${n}! 😄 Tô aqui. Pergunta o que quiser sobre suas finanças!`,
+      `Eai, ${n}! 👋 Pode mandar — tô de olho em tudo pra você.`,
+      `Oi! Tudo certo por aqui, ${n} ✌️ O que quer saber?`,
+      `${n}! 👊 Tô ligado. Alguma dúvida das finanças?`,
+    ];
     return {
-      botText: `Oi ${n}! 👋 Aqui é o *Cap*, seu capitão financeiro. Manda ver!\n\n📊 _"como tá o mês?"_\n💸 _"maiores gastos de junho"_\n✅ _"conclua a Netflix"_\n💰 _"recebi 3000 de salário"_\n🎯 _"cria projeto viagem meta 8000"_\n❓ _"como adiciono uma despesa?"_`,
+      botText: chatReplies[Math.floor(Math.random() * chatReplies.length)],
       pendingOp: null,
     };
   }
@@ -190,8 +271,8 @@ export async function processMessage(text, contextData, dataOps, settingsOps, hi
       return {
         botText: `Reabrir *${concluded.length} despesa(s)* de ${MONTHS[mi]}?\n\n_(sim/não)_`,
         pendingOp: {
-          fn: () => concluded.forEach(({ sec, it }) => dataOps.updateItem(mi, sec, it.id, 'concluded', false)),
-          successText: `🔓 Pronto, ${n}! *${concluded.length} despesas de ${MONTHS[mi]}* reabertas!`,
+          fn: () => { triggerBulkUnlock(); concluded.forEach(({ sec, it }) => dataOps.updateItem(mi, sec, it.id, 'concluded', false)); },
+          successText: `🔓 Pronto, ${n}! *${concluded.length} despesas de ${MONTHS[mi]}* reabertas e desbloqueadas pra editar!`,
         },
       };
     }
@@ -203,8 +284,8 @@ export async function processMessage(text, contextData, dataOps, settingsOps, hi
     return {
       botText: `🔓 *${found.item.name}* — ${R(found.item.value)} · ${MONTHS[found.mi]}\n\nReabrir? _(sim/não)_`,
       pendingOp: {
-        fn: () => dataOps.updateItem(found.mi, found.section, found.item.id, 'concluded', false),
-        successText: `🔓 Feito! *${found.item.name}* reaberta, ${n}!`,
+        fn: () => { triggerBulkUnlock(); dataOps.updateItem(found.mi, found.section, found.item.id, 'concluded', false); },
+        successText: `🔓 Feito! *${found.item.name}* reaberta e desbloqueada pra editar, ${n}!`,
       },
     };
   }

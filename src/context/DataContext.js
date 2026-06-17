@@ -62,14 +62,19 @@ export function DataProvider({ children }) {
     if (data) yearCache.current[activeYearRef.current] = data;
   }, [data]);
 
-  // Salvamento automático — sempre no ano ativo correto.
+  // Salvamento automático com debounce de 400ms — reduz writes durante digitação.
+  const saveTimer = useRef(null);
   useEffect(() => {
     if (!data) return;
     if (skipNextSave.current) {
       skipNextSave.current = false;
       return;
     }
-    saveYearData(activeYearRef.current, data);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveYearData(activeYearRef.current, dataRef.current);
+    }, 400);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [data]);
 
   // Troca de ano com cache em memória — sem await quando o ano já foi carregado.

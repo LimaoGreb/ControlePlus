@@ -13,8 +13,14 @@ import { MONTH_NAMES, YEAR } from '../data/initialData';
 import { formatBRL } from '../utils/currency';
 
 const MONTH_ABBR = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-const YEARS = Array.from({ length: 8 }, (_, i) => YEAR + i); // 2026–2033
+const YEARS = Array.from({ length: 8 }, (_, i) => YEAR + i);
 const CURRENT_MONTH = new Date().getMonth();
+
+const STATS = (totals, colors) => [
+  { l: 'Renda',  v: totals.rendaTotal,   c: colors.positive },
+  { l: 'Gastos', v: totals.outflowTotal, c: colors.negative },
+  { l: 'Sobra',  v: totals.sobraTotal,   c: totals.sobraTotal < 0 ? colors.negative : colors.positive },
+];
 
 export default function AllMonthsScreen({ navigation }) {
   const { colors } = useTheme();
@@ -27,13 +33,11 @@ export default function AllMonthsScreen({ navigation }) {
   const yearTabsRef = useRef(null);
   useScrollToTop(carouselRef);
 
-  // Duplo toque: conta toques por mês (key = "year-mi")
   const tapCountRef = useRef({});
   const tapTimerRef = useRef({});
 
   useEffect(() => {
     navigation.setOptions({ title: `Meses de ${activeYear}` });
-    // Mantém a aba do ano ativo visível no scroll horizontal
     const idx = YEARS.indexOf(activeYear);
     if (idx >= 0) yearTabsRef.current?.scrollTo({ x: idx * 56, animated: true });
   }, [activeYear, navigation]);
@@ -41,12 +45,12 @@ export default function AllMonthsScreen({ navigation }) {
   const getMonthData = (year, mi) =>
     year === activeYear ? (data?.months?.[mi] || {}) : {};
 
-  // ── dados do mês selecionado ──
   const selData = getMonthData(activeYear, selMonth);
-  const totals = monthTotals(selData);
-  const st = monthStatus(selData);
+  const totals  = monthTotals(selData);
+  const st      = monthStatus(selData);
   const progressPct = totals.rendaTotal > 0
     ? Math.min(totals.outflowTotal / totals.rendaTotal, 1) : 0;
+  const sobraColor = totals.sobraTotal < 0 ? colors.negative : colors.positive;
 
   const STATUS_MAP = {
     done:     { label: 'Concluído',    color: colors.positive, icon: 'checkmark-circle' },
@@ -55,8 +59,6 @@ export default function AllMonthsScreen({ navigation }) {
   };
   const si = STATUS_MAP[st];
 
-  // ── tamanho dos botões de mês ──
-  // SW - 32 (padding horizontal 16×2) - 16 (2 gaps de 8) dividido por 3 colunas
   const btnW = Math.floor((SW - 32 - 16) / 3);
   const btnH = Math.round(btnW * 0.62);
 
@@ -65,7 +67,6 @@ export default function AllMonthsScreen({ navigation }) {
     setSelMonth(mi);
   };
 
-  // Duplo toque abre o mês direto; toque simples só seleciona.
   const handleMonthTap = (year, mi) => {
     const key = `${year}-${mi}`;
     const prev = tapCountRef.current[key] || 0;
@@ -110,43 +111,54 @@ export default function AllMonthsScreen({ navigation }) {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
 
-      {/* ══════ DISPLAY ══════ */}
-      <View style={[styles.display, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        {/* cabeçalho: nome do mês + status */}
+      {/* ══════ DISPLAY: flat, sem card ══════ */}
+      <View style={[styles.display, { borderBottomColor: colors.border + '50' }]}>
+
+        {/* Cabeçalho: nome do mês + chip de status */}
         <View style={styles.dispHead}>
-          <Text style={[styles.dispMonth, { color: colors.text }]} adjustsFontSizeToFit numberOfLines={1}>
-            {MONTH_NAMES[selMonth]}
-          </Text>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={[styles.dispMonth, { color: colors.text }]} adjustsFontSizeToFit numberOfLines={1}>
+              {MONTH_NAMES[selMonth]}
+            </Text>
+            <Text style={[styles.monthNum, { color: colors.textMuted }]}>
+              {String(selMonth + 1).padStart(2, '0')}/12
+            </Text>
+          </View>
           <View style={[styles.statusChip, { backgroundColor: si.color + '22' }]}>
             <Ionicons name={si.icon} size={12} color={si.color} />
             <Text style={[styles.statusLabel, { color: si.color }]}>{si.label}</Text>
           </View>
         </View>
 
-        {/* stats ou mensagem vazio */}
         {st !== 'empty' ? (
           <>
+            {/* Stats com dot colorido antes do label */}
             <View style={styles.statsRow}>
-              {[
-                { l: 'Renda',   v: totals.rendaTotal,   c: colors.positive },
-                { l: 'Gastos',  v: totals.outflowTotal, c: colors.negative },
-                { l: 'Sobra',   v: totals.sobraTotal,   c: totals.sobraTotal < 0 ? colors.negative : colors.text },
-              ].map((s, i) => (
+              {STATS(totals, colors).map((s, i) => (
                 <React.Fragment key={s.l}>
-                  {i > 0 && <View style={[styles.vLine, { backgroundColor: colors.border }]} />}
+                  {i > 0 && <View style={[styles.vLine, { backgroundColor: colors.border + '80' }]} />}
                   <View style={styles.statCol}>
-                    <Text style={[styles.statLabel, { color: colors.textMuted }]}>{s.l}</Text>
-                    <Text style={[styles.statVal, { color: s.c }]}>{formatBRL(s.v)}</Text>
+                    <View style={styles.statLabelRow}>
+                      <View style={[styles.statDot, { backgroundColor: s.c }]} />
+                      <Text style={[styles.statLabel, { color: colors.textMuted }]}>{s.l.toUpperCase()}</Text>
+                    </View>
+                    <Text style={[styles.statVal, { color: s.c }]} numberOfLines={1} adjustsFontSizeToFit>
+                      {formatBRL(s.v)}
+                    </Text>
                   </View>
                 </React.Fragment>
               ))}
             </View>
-            <View style={[styles.progTrack, { backgroundColor: colors.border }]}>
+
+            {/* Barra de progresso */}
+            <View style={[styles.progTrack, { backgroundColor: colors.border + '50' }]}>
               <View style={[
                 styles.progFill,
                 { width: `${progressPct * 100}%`, backgroundColor: progressPct >= 1 ? colors.negative : colors.primary },
               ]} />
             </View>
+
+
           </>
         ) : (
           <Text style={[styles.noData, { color: colors.textMuted }]}>
@@ -154,7 +166,7 @@ export default function AllMonthsScreen({ navigation }) {
           </Text>
         )}
 
-        {/* botão abrir */}
+        {/* Botão abrir */}
         <TouchableOpacity
           style={[styles.openBtn, { backgroundColor: switching ? colors.cardAlt : colors.primary }]}
           onPress={handleOpen}
@@ -168,37 +180,37 @@ export default function AllMonthsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* ══════ TABS DE ANO (scroll horizontal p/ 8 anos) ══════ */}
-      <View style={[styles.yearTabsScroll, { borderBottomColor: colors.border }]}>
-      <ScrollView
-        ref={yearTabsRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.yearTabsContent}
-      >
-        {YEARS.map((y) => {
-          const active = y === activeYear;
-          return (
-            <TouchableOpacity
-              key={y}
-              onPress={() => goToYear(y)}
-              style={styles.yearTab}
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-            >
-              <Text style={[styles.yearTabText, {
-                color: active ? colors.primary : colors.textMuted,
-                fontWeight: active ? '900' : '500',
-              }]}>
-                {y}
-              </Text>
-              {active && <View style={[styles.yearTabLine, { backgroundColor: colors.primary }]} />}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      {/* ══════ TABS DE ANO ══════ */}
+      <View style={[styles.yearTabsScroll, { borderBottomColor: colors.border + '50' }]}>
+        <ScrollView
+          ref={yearTabsRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.yearTabsContent}
+        >
+          {YEARS.map((y) => {
+            const active = y === activeYear;
+            return (
+              <TouchableOpacity
+                key={y}
+                onPress={() => goToYear(y)}
+                style={styles.yearTab}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              >
+                <Text style={[styles.yearTabText, {
+                  color: active ? colors.primary : colors.textMuted,
+                  fontWeight: active ? '900' : '500',
+                }]}>
+                  {y}
+                </Text>
+                {active && <View style={[styles.yearTabLine, { backgroundColor: colors.primary }]} />}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      {/* ══════ CARROSSEL DE MESES ══════ */}
+      {/* ══════ GRID DE MESES ══════ */}
       <FlatList
         ref={carouselRef}
         data={YEARS}
@@ -235,14 +247,10 @@ export default function AllMonthsScreen({ navigation }) {
                       {
                         width: btnW,
                         height: btnH,
-                        backgroundColor: isSel ? colors.primary : colors.card,
-                        borderWidth: isCur && !isSel ? 2 : 0,
-                        borderColor: colors.primary,
-                        elevation: isSel ? 5 : 1,
-                        shadowColor: '#000',
-                        shadowOpacity: isSel ? 0.18 : 0.05,
-                        shadowRadius: isSel ? 6 : 2,
-                        shadowOffset: { width: 0, height: isSel ? 3 : 1 },
+                        backgroundColor: isSel ? colors.primary : colors.text + '0D',
+                        borderColor: isSel ? colors.primary : colors.border + '80',
+                        borderWidth: isCur && !isSel ? 1.5 : StyleSheet.hairlineWidth,
+                        ...(isCur && !isSel ? { borderColor: colors.primary } : {}),
                       },
                     ]}
                   >
@@ -252,6 +260,9 @@ export default function AllMonthsScreen({ navigation }) {
                     {s !== 'empty' && (
                       <View style={[styles.mDot, { backgroundColor: isSel ? '#ffffff88' : dotC }]} />
                     )}
+                    <Text style={[styles.mBtnNum, { color: isSel ? 'rgba(255,255,255,0.55)' : colors.textMuted }]}>
+                      {String(mi + 1).padStart(2, '0')}/12
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -272,31 +283,47 @@ export default function AllMonthsScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
 
-  // ── Display ──
+  // ── Display flat ──
   display: {
-    margin: 16,
-    marginBottom: 0,
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 10,
   },
   dispHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dispMonth: { fontSize: 28, fontWeight: '900', flex: 1, paddingRight: 8 },
+  dispMonth: { fontSize: 28, fontWeight: '900' },
+  monthNum:  { fontSize: 11, fontWeight: '700', marginTop: 1, letterSpacing: 0.5 },
   statusChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20,
   },
   statusLabel: { fontSize: 11, fontWeight: '700' },
 
+  // Stats
   statsRow: { flexDirection: 'row', alignItems: 'center' },
-  statCol: { flex: 1, alignItems: 'center', gap: 1 },
-  vLine: { width: 1, height: 30, marginHorizontal: 4 },
-  statLabel: { fontSize: 11, fontWeight: '600' },
+  statCol: { flex: 1, alignItems: 'center', gap: 2 },
+  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  statDot: { width: 5, height: 5, borderRadius: 3 },
+  statLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1 },
   statVal: { fontSize: 14, fontWeight: '800' },
+  vLine: { width: StyleSheet.hairlineWidth, height: 30, marginHorizontal: 4 },
 
-  progTrack: { height: 5, borderRadius: 3, overflow: 'hidden' },
+  // Progress
+  progTrack: { height: 4, borderRadius: 3, overflow: 'hidden' },
   progFill: { height: '100%', borderRadius: 3 },
+
+  // Sobra box — mesma linguagem do MonthlySummaryCard
+  sobraBox: {
+    borderLeftWidth: 3,
+    paddingLeft: 10,
+    paddingRight: 12,
+    paddingVertical: 8,
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+  },
+  sobraLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1, marginBottom: 2 },
+  sobraVal: { fontSize: 20, fontWeight: '900' },
 
   noData: { fontSize: 13, textAlign: 'center', paddingVertical: 6 },
 
@@ -308,22 +335,20 @@ const styles = StyleSheet.create({
 
   // ── Year tabs ──
   yearTabsScroll: {
-    marginTop: 14,
-    borderBottomWidth: 1,
+    marginTop: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  yearTabsContent: {
-    paddingHorizontal: 16,
-  },
+  yearTabsContent: { paddingHorizontal: 16 },
   yearTab: { alignItems: 'center', paddingBottom: 8, minWidth: 56 },
   yearTabText: { fontSize: 13 },
   yearTabLine: { position: 'absolute', bottom: 0, left: 6, right: 6, height: 2.5, borderRadius: 2 },
 
   // ── Month grid ──
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  mBtn: { borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  mBtnText: { fontSize: 13, fontWeight: '800' },
-  mBtnCurr: { fontSize: 7, lineHeight: 9 },
-  mDot: { width: 5, height: 5, borderRadius: 3 },
+  mBtn:    { borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  mBtnText:{ fontSize: 13, fontWeight: '800' },
+  mDot:    { width: 5, height: 5, borderRadius: 3 },
+  mBtnNum: { position: 'absolute', bottom: 5, right: 7, fontSize: 8, fontWeight: '700', letterSpacing: 0.3 },
 
   futureNote: { fontSize: 12, textAlign: 'center', marginTop: 18, fontStyle: 'italic' },
 });

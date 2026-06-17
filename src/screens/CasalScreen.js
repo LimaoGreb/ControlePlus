@@ -2,7 +2,7 @@
 // Navegação por meses, header com os dois nomes e indicador de atividade do parceiro.
 import React, { useRef, useState, useCallback, useContext } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useScrollToTop } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { useSync } from '../context/SyncContext';
@@ -35,6 +35,7 @@ export default function CasalScreen({ navigation }) {
   const [monthIndex, setMonthIndex] = useState(CURRENT_MONTH);
   const [showPartnerView, setShowPartnerView] = useState(false);
   const scrollRef = useRef(null);
+  useScrollToTop(scrollRef);
 
   // Reseta para a view do casal sempre que a aba ganha foco
   useFocusEffect(useCallback(() => {
@@ -123,7 +124,7 @@ export default function CasalScreen({ navigation }) {
 
       {/* Card de renda combinada */}
       {showIncomeCard && (
-        <View style={[styles.incomeCard, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
+        <View style={[styles.incomeCard, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}>
           <View style={styles.incomeRow}>
             <View style={styles.incomeItem}>
               <Text style={[styles.incomeName, { color: colors.textMuted }]}>{leftName}</Text>
@@ -160,7 +161,7 @@ export default function CasalScreen({ navigation }) {
       )}
 
       {/* Navegação de meses */}
-      <View style={[styles.monthNav, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
+      <View style={[styles.monthNav, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}>
         <TouchableOpacity
           onPress={goBack}
           disabled={monthIndex === 0}
@@ -213,14 +214,14 @@ export default function CasalScreen({ navigation }) {
           </Text>
         </View>
         <TouchableOpacity
-          style={[styles.backBtn, { borderColor: colors.border }]}
+          style={[styles.backBtn, { backgroundColor: colors.cardAlt }]}
           onPress={() => setShowPartnerView(false)}
         >
           <Ionicons name="chevron-back" size={14} color={colors.primary} />
           <Text style={[styles.backBtnText, { color: colors.primary }]}>Casal</Text>
         </TouchableOpacity>
       </View>
-      <View style={[styles.monthNav, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
+      <View style={[styles.monthNav, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}>
         <TouchableOpacity onPress={goBack} disabled={monthIndex === 0} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.navArrow}>
           <Ionicons name="chevron-back" size={20} color={monthIndex === 0 ? colors.border : colors.primary} />
         </TouchableOpacity>
@@ -270,7 +271,7 @@ export default function CasalScreen({ navigation }) {
       </SharedMonthData>
       {partnerPersonalData && (
         <TouchableOpacity
-          style={[styles.partnerFab, { backgroundColor: colors.card, borderColor: colors.border }]}
+          style={[styles.partnerFab, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}
           onPress={() => setShowPartnerView(true)}
         >
           <Avatar avatar={partnerAvatar} size={36} />
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
   activityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: -2 },
   activityText: { fontSize: 12 },
 
-  incomeCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 6 },
+  incomeCard: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14, gap: 6 },
   incomeRow: { flexDirection: 'row', alignItems: 'center' },
   incomeItem: { flex: 1, alignItems: 'flex-start', gap: 2 },
   incomeCenterBlock: { flex: 1.4, alignItems: 'center', gap: 2 },
@@ -315,8 +316,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingVertical: 10,
     paddingHorizontal: 6,
     marginTop: 2,
@@ -332,17 +333,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 90,
     right: 16,
-    borderRadius: 18,
-    borderWidth: 1,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 12,
     paddingVertical: 8,
     alignItems: 'center',
     gap: 4,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
   },
   partnerFabLabel: { fontSize: 10, fontWeight: '700' },
 
@@ -352,8 +348,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 10,
   },
   backBtnText: { fontSize: 13, fontWeight: '700' },
 });

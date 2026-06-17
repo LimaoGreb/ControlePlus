@@ -1,5 +1,5 @@
-// Seletor de avatar: foto da galeria, foto do Google, ou um personagem pré-definido.
-import React from 'react';
+// Seletor de avatar: foto da galeria ou personagem pré-definido.
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -8,9 +8,17 @@ import { useSettings } from '../context/SettingsContext';
 import { contrastText } from '../utils/colorUtils';
 import Avatar, { PRESET_AVATARS } from './Avatar';
 
+const CATEGORIES = [
+  { label: '🐾 Animais', range: [0, 24] },
+  { label: '🐲 Fantasia', range: [25, 35] },
+  { label: '🤖 Tech', range: [36, 43] },
+  { label: '🧑 Pessoas', range: [44, 62] },
+];
+
 export default function AvatarPicker() {
   const { colors } = useTheme();
   const { avatar, setAvatar } = useSettings();
+  const [activeCategory, setActiveCategory] = useState(0);
   const pickPhoto = async () => {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -52,8 +60,31 @@ export default function AvatarPicker() {
       </View>
 
       <Text style={[styles.label, { color: colors.textSecondary }]}>Ou escolha um personagem</Text>
+
+      {/* Filtro de categorias */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
+        {CATEGORIES.map((cat, i) => (
+          <TouchableOpacity
+            key={cat.label}
+            onPress={() => setActiveCategory(i)}
+            style={[
+              styles.catChip,
+              {
+                backgroundColor: activeCategory === i ? colors.primary : colors.text + '0D',
+                borderColor: activeCategory === i ? colors.primary : colors.border + '80',
+              },
+            ]}
+          >
+            <Text style={[styles.catText, { color: activeCategory === i ? contrastText(colors.primary) : colors.textSecondary }]}>
+              {cat.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Grid de avatars da categoria ativa */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presets}>
-        {PRESET_AVATARS.map((p) => (
+        {PRESET_AVATARS.slice(CATEGORIES[activeCategory].range[0], CATEGORIES[activeCategory].range[1] + 1).map((p) => (
           <TouchableOpacity
             key={p.value}
             onPress={() => setAvatar({ kind: 'emoji', value: p.value, color: p.color })}
@@ -77,6 +108,9 @@ const styles = StyleSheet.create({
   removeBtn: { alignItems: 'center', paddingVertical: 8 },
   removeText: { fontSize: 13, fontWeight: '600' },
   label: { fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  catRow: { paddingBottom: 10, gap: 8, paddingRight: 4 },
+  catChip: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: StyleSheet.hairlineWidth },
+  catText: { fontSize: 12, fontWeight: '700' },
   presets: { paddingVertical: 2, paddingRight: 8 },
   presetWrap: { borderRadius: 26, borderWidth: 2.5, borderColor: 'transparent', marginRight: 10, padding: 1 },
   preset: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },

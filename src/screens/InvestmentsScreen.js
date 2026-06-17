@@ -36,10 +36,10 @@ function AllocationBar({ entry, color }) {
     <View style={styles.allocWrap}>
       <TouchableOpacity activeOpacity={0.7} onPress={toggle}>
         <View style={styles.allocHeader}>
-          <Text style={[styles.allocLabel, { color: colors.text }]}>{entry.group}</Text>
+          <Text style={[styles.allocLabel, { color: colors.textSecondary }]}>{entry.group}</Text>
           <View style={styles.allocRight}>
             <Text style={[styles.allocValue, { color }]}>{formatBRL(entry.current)}</Text>
-            <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} style={{ marginLeft: 6 }} />
+            <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={15} color={colors.textMuted} style={{ marginLeft: 6 }} />
           </View>
         </View>
         <View style={[styles.track, { backgroundColor: colors.cardAlt }]}>
@@ -51,7 +51,7 @@ function AllocationBar({ entry, color }) {
       </TouchableOpacity>
 
       {open && (
-        <View style={[styles.detailBox, { borderColor: colors.border }]}>
+        <View style={[styles.detailBox, { borderTopColor: colors.border + '40' }]}>
           {entry.items.map((it) => (
             <View key={it.id} style={styles.detailRow}>
               <Text style={[styles.detailName, { color: colors.text }]} numberOfLines={1}>
@@ -125,7 +125,7 @@ export default function InvestmentsScreen() {
       <Text style={[styles.title, { color: colors.text }]}>Investimentos</Text>
 
       {/* Câmbio */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, padding: 14 }]}>
+      <View style={[styles.card, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80', padding: 14 }]}>
         <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 12 }]}>Câmbio</Text>
         <View style={styles.marketGrid}>
           {[
@@ -135,7 +135,7 @@ export default function InvestmentsScreen() {
             { flag: '₿',   label: 'Bitcoin', val: currencies.btc },
             { flag: '🇦🇷', label: 'Peso AR', val: currencies.ars },
           ].map((item) => (
-            <View key={item.label} style={[styles.marketChip, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
+            <View key={item.label} style={[styles.marketChip, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}>
               <Text style={styles.marketFlag}>{item.flag}</Text>
               <Text style={[styles.marketLabel, { color: colors.textSecondary }]}>{item.label}</Text>
               <Text style={[styles.marketValue, { color: colors.text }]}>
@@ -147,7 +147,7 @@ export default function InvestmentsScreen() {
       </View>
 
       {/* Indicadores Econômicos — BACEN */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, padding: 14 }]}>
+      <View style={[styles.card, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80', padding: 14 }]}>
         <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 12 }]}>Indicadores (BACEN)</Text>
         <View style={styles.indicGrid}>
           {[
@@ -155,7 +155,7 @@ export default function InvestmentsScreen() {
             { label: 'IPCA 12m',    val: indicadores.ipca,  suffix: '%',       color: colors.negative },
             { label: 'IGP-M 12m',   val: indicadores.igpm,  suffix: '%',       color: colors.variable },
           ].map((ind) => (
-            <View key={ind.label} style={[styles.indicChip, { backgroundColor: colors.cardAlt, borderColor: colors.border }]}>
+            <View key={ind.label} style={[styles.indicChip, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}>
               <Text style={[styles.indicLabel, { color: colors.textSecondary }]}>{ind.label}</Text>
               <Text style={[styles.indicValue, { color: ind.color }]}>
                 {ind.val != null ? `${ind.val.toFixed(2)}${ind.suffix}` : '—'}
@@ -170,7 +170,7 @@ export default function InvestmentsScreen() {
 
       {/* Resumo da carteira — só mostra quando há investimentos */}
       {investments.length > 0 && (
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.card, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryCol}>
               <Text style={[styles.sLabel, { color: colors.textSecondary }]}>Investido</Text>
@@ -199,7 +199,7 @@ export default function InvestmentsScreen() {
 
       {/* Alocação por classe */}
       {groups.length > 0 && (
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.card, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>Alocação da carteira</Text>
           <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 12 }]}>
             Toque numa classe para ver os ativos.
@@ -234,7 +234,7 @@ export default function InvestmentsScreen() {
       </Text>
 
       {investments.length === 0 && (
-        <View style={[styles.onboardCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.onboardCard, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}>
           <Text style={styles.onboardEmoji}>💼</Text>
           <Text style={[styles.onboardTitle, { color: colors.text }]}>Você já está investindo?</Text>
           <Text style={[styles.onboardSub, { color: colors.textSecondary }]}>
@@ -293,43 +293,46 @@ export default function InvestmentsScreen() {
 const styles = StyleSheet.create({
   content: { padding: 16 },
   title: { fontSize: 24, fontWeight: '900', marginBottom: 14 },
-  card: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
+  card: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginBottom: 14 },
   cardTitle: { fontSize: 16, fontWeight: '800' },
   hint: { fontSize: 11 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   summaryCol: { flex: 1, paddingRight: 8 },
   sLabel: { fontSize: 13, fontWeight: '600', marginBottom: 4 },
   sValue: { fontSize: 20, fontWeight: '800' },
-  resultBanner: { borderRadius: 14, borderWidth: 1, padding: 14, alignItems: 'center' },
+  resultBanner: { borderRadius: 14, padding: 14, alignItems: 'center' },
   rLabel: { fontSize: 13, fontWeight: '600' },
   rValue: { fontSize: 26, fontWeight: '900', marginTop: 2 },
   rPct: { fontSize: 14, fontWeight: '700' },
   marketGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  marketChip: { width: '47%', flexGrow: 1, borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'flex-start' },
+  marketChip: { width: '47%', flexGrow: 1, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, padding: 10, alignItems: 'flex-start' },
   marketFlag: { fontSize: 20, marginBottom: 2 },
   marketLabel: { fontSize: 11, fontWeight: '600', marginBottom: 2 },
   marketValue: { fontSize: 15, fontWeight: '800' },
   indicGrid: { flexDirection: 'row', gap: 8 },
-  indicChip: { flex: 1, borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'center' },
+  indicChip: { flex: 1, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, padding: 10, alignItems: 'center' },
   indicLabel: { fontSize: 10, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
   indicValue: { fontSize: 15, fontWeight: '900' },
-  quoteAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 12, marginBottom: 14 },
+  quoteAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingVertical: 12, marginBottom: 14 },
   quoteAllText: { fontSize: 14, fontWeight: '800', marginLeft: 8 },
-  allocWrap: { marginBottom: 14 },
-  allocHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  allocLabel: { fontSize: 15, fontWeight: '800' },
+  allocWrap: { marginBottom: 4 },
+  allocHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 14, paddingRight: 16,
+  },
+  allocLabel: { fontSize: 10.5, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.4, flex: 1 },
   allocRight: { flexDirection: 'row', alignItems: 'center' },
-  allocValue: { fontSize: 16, fontWeight: '800' },
-  track: { height: 14, borderRadius: 8, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 8 },
-  allocPct: { fontSize: 12, fontWeight: '600', marginTop: 4 },
-  detailBox: { borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 10 },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
+  allocValue: { fontSize: 15, fontWeight: '800' },
+  track: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3 },
+  allocPct: { fontSize: 10.5, fontWeight: '600', marginTop: 4, marginBottom: 4 },
+  detailBox: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 6, marginTop: 8 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
   detailName: { fontSize: 14, fontWeight: '700', flex: 1, marginRight: 8 },
   detailValue: { fontSize: 13, fontWeight: '600' },
-  sectionTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', marginBottom: 12, marginLeft: 2 },
+  sectionTitle: { fontSize: 10.5, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.4, marginBottom: 12, marginLeft: 2, color: undefined },
   empty: { fontSize: 13, fontStyle: 'italic', marginBottom: 12 },
-  onboardCard: { borderRadius: 18, borderWidth: 1, padding: 24, marginBottom: 14, alignItems: 'center' },
+  onboardCard: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 24, marginBottom: 14, alignItems: 'center' },
   onboardEmoji: { fontSize: 48, marginBottom: 12 },
   onboardTitle: { fontSize: 19, fontWeight: '900', marginBottom: 8, textAlign: 'center' },
   onboardSub: { fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: 20 },

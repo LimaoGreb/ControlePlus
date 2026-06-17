@@ -73,10 +73,10 @@ export default function DueDayChip({ dueDay, onChange, color }) {
 }
 
 const styles = StyleSheet.create({
-  chip: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, marginBottom: 6 },
+  chip: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, marginBottom: 6 },
   chipText: { fontSize: 12.5, fontWeight: '700' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { width: '100%', maxWidth: 360, borderRadius: 20, borderWidth: 1, padding: 18 },
+  card: { width: '100%', maxWidth: 360, borderRadius: 20, padding: 18 },
   title: { fontSize: 16, fontWeight: '800', marginBottom: 14, textAlign: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
   day: { width: 42, height: 42, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', margin: 3 },

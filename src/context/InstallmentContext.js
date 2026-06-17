@@ -171,14 +171,14 @@ export function useInstallment() {
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 28 },
-  card: { width: '100%', maxWidth: 380, borderRadius: 22, borderWidth: 1, padding: 20 },
+  card: { width: '100%', maxWidth: 380, borderRadius: 22, padding: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   iconBadge: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   title: { fontSize: 18, fontWeight: '900' },
   subtitle: { fontSize: 13, fontWeight: '600', marginTop: 1 },
   label: { fontSize: 14, fontWeight: '700', marginBottom: 8 },
   stepperRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  stepBtn: { width: 46, height: 46, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stepBtn: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   parcelasNum: { fontSize: 26, fontWeight: '900', marginHorizontal: 28, minWidth: 60, textAlign: 'center' },
   info: { fontSize: 12.5, lineHeight: 18, marginTop: 12, marginBottom: 16 },
   primaryBtn: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

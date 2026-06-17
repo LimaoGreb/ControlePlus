@@ -15,15 +15,12 @@ import { formatBRL } from '../utils/currency';
 import { projectStats } from '../utils/projects';
 import ProjectCard from '../components/ProjectCard';
 
-function SectionHeader({ icon, title, count, color }) {
+function SectionHeader({ title, count, color, colors }) {
   return (
-    <View style={styles.sectionHeader}>
-      <Ionicons name={icon} size={18} color={color} />
-      <Text style={[styles.sectionTitle, { color }]}>{title}</Text>
+    <View style={[styles.sectionHeader, { borderLeftColor: color }]}>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title.toUpperCase()}</Text>
       {count > 0 && (
-        <View style={[styles.countBadge, { backgroundColor: color + '22' }]}>
-          <Text style={[styles.countText, { color }]}>{count}</Text>
-        </View>
+        <Text style={[styles.countText, { color: colors.textMuted }]}>{count} {count === 1 ? 'projeto' : 'projetos'}</Text>
       )}
     </View>
   );
@@ -31,7 +28,7 @@ function SectionHeader({ icon, title, count, color }) {
 
 function SummaryCard({ saved, target, colors }) {
   return (
-    <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.summaryCard, { backgroundColor: colors.text + '1A', borderColor: colors.border + '80' }]}>
       <View style={styles.summaryCol}>
         <Text style={[styles.sLabel, { color: colors.textSecondary }]}>Já guardado</Text>
         <Text style={[styles.sValue, { color: colors.positive }]} numberOfLines={1} adjustsFontSizeToFit>
@@ -75,10 +72,10 @@ export default function ProjectsScreen() {
 
         {/* ══ PROJETOS PESSOAIS ══ */}
         <SectionHeader
-          icon="person-outline"
           title="Meus Projetos"
           count={projects.length}
           color={colors.primary}
+          colors={colors}
         />
 
         {projects.length > 0 && (
@@ -118,10 +115,10 @@ export default function ProjectsScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <SectionHeader
-              icon="heart-outline"
               title="Projetos do Casal"
               count={coupleProjects.length}
               color={colors.primary}
+              colors={colors}
             />
 
             <Text style={[styles.coupleHint, { color: colors.textMuted }]}>
@@ -181,17 +178,20 @@ export default function ProjectsScreen() {
 const styles = StyleSheet.create({
   content: { padding: 16 },
 
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, marginTop: 4 },
-  sectionTitle: { fontSize: 17, fontWeight: '900', flex: 1 },
-  countBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
-  countText: { fontSize: 12, fontWeight: '700' },
+  sectionHeader: {
+    borderLeftWidth: 3, marginLeft: 16,
+    paddingLeft: 13, paddingRight: 16, paddingVertical: 12,
+    marginBottom: 12, marginTop: 4,
+  },
+  sectionTitle: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.4 },
+  countText: { fontSize: 11.5, marginTop: 3 },
 
-  summaryCard: { flexDirection: 'row', borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
+  summaryCard: { flexDirection: 'row', borderRadius: 12, padding: 16, marginBottom: 14, borderWidth: 1 },
   summaryCol: { flex: 1 },
   sLabel: { fontSize: 13, fontWeight: '600', marginBottom: 4 },
   sValue: { fontSize: 20, fontWeight: '800' },
 
-  empty: { borderWidth: 1, borderRadius: 16, borderStyle: 'dashed', padding: 24, alignItems: 'center', marginBottom: 14, gap: 8 },
+  empty: { borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, padding: 24, alignItems: 'center', marginBottom: 14, gap: 8 },
   emptyText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
   addBtn: {
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   coupleHint: { fontSize: 13, marginBottom: 12, marginTop: -4 },
 
   coupleLockedCard: {
-    borderRadius: 16, borderWidth: 1, padding: 24,
+    borderRadius: 16, padding: 24,
     alignItems: 'center', gap: 8,
   },
   coupleLockedTitle: { fontSize: 16, fontWeight: '800' },

@@ -1,4 +1,4 @@
-// Seção colapsável (accordion) com animação suave (LayoutAnimation).
+// Seção colapsável minimalista: sem card wrapper, barra lateral colorida no header.
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,57 +31,78 @@ export default function Collapsible({
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <TouchableOpacity activeOpacity={0.7} onPress={toggle} style={styles.header}>
+    <View style={[styles.section, { marginBottom: open ? 0 : 24 }]}>
+      {/* Header: barra lateral colorida + título ALL CAPS */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={toggle}
+        style={[styles.header, { borderLeftColor: color }]}
+      >
         <View style={styles.left}>
-          <View style={[styles.iconWrap, { backgroundColor: colors.alpha(color, 0.18) }]}>
-            <Ionicons name={icon} size={18} color={color} />
+          <View style={styles.titleRow}>
+            {icon && <Ionicons name={icon} size={12} color={color} style={{ marginRight: 7, opacity: 0.8 }} />}
+            <Text style={[styles.title, { color: colors.textSecondary }]}>
+              {title.toUpperCase()}
+            </Text>
           </View>
-          <View>
-            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-            {typeof count === 'number' && (
-              <Text style={[styles.count, { color: colors.textMuted }]}>
-                {count} {count === 1 ? 'item' : 'itens'}
-              </Text>
-            )}
-          </View>
+          {typeof count === 'number' && (
+            <Text style={[styles.count, { color: colors.textMuted }]}>
+              {count} {count === 1 ? 'item' : 'itens'}
+            </Text>
+          )}
         </View>
         <View style={styles.right}>
           <Text style={[styles.total, { color }]}>{formatBRL(total)}</Text>
           <Ionicons
             name={open ? 'chevron-up' : 'chevron-down'}
-            size={22}
+            size={15}
             color={colors.textMuted}
-            style={{ marginLeft: 8 }}
+            style={{ marginLeft: 6 }}
           />
         </View>
       </TouchableOpacity>
 
-      {open && <View style={styles.body}>{children}</View>}
+      {/* Body: traço lateral contínuo alinhado com o header */}
+      {open && (
+        <View style={[styles.bodyWrap, { borderLeftColor: color + '45' }]}>
+          <View style={[styles.body, { borderTopColor: colors.border + '50' }]}>
+            {children}
+          </View>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, marginBottom: 12, overflow: 'hidden' },
+  section: {},
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingRight: 16,
+    paddingVertical: 14,
+    paddingLeft: 13,
+    borderLeftWidth: 3,
+    marginLeft: 16,
+    marginBottom: 2,
   },
-  left: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
+  left: { flex: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center' },
+  title: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 1.4,
   },
-  title: { fontSize: 16, fontWeight: '800' },
-  count: { fontSize: 12, marginTop: 1 },
+  count: { fontSize: 11.5, marginTop: 3 },
   right: { flexDirection: 'row', alignItems: 'center' },
-  total: { fontSize: 16, fontWeight: '800' },
-  body: { paddingHorizontal: 16, paddingBottom: 16 },
+  total: { fontSize: 15, fontWeight: '800' },
+  bodyWrap: {
+    marginLeft: 16,
+    marginBottom: 24,
+    borderLeftWidth: 3,
+  },
+  body: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });

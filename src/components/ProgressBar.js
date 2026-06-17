@@ -48,9 +48,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 6,
   },
-  label: { fontSize: 13, fontWeight: '600' },
-  value: { fontSize: 14, fontWeight: '800' },
-  track: { height: 12, borderRadius: 8, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 8 },
+  label: { fontSize: 10.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
+  value: { fontSize: 13, fontWeight: '800' },
+  track: { height: 5, borderRadius: 2.5, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 2.5 },
   over: { marginTop: 6, fontSize: 12, fontWeight: '700' },
 });

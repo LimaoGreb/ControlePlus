@@ -29,31 +29,48 @@ export default function CompleteMonthButton({ monthIndex, month }) {
 
   if (status === 'done') {
     return (
-      <TouchableOpacity
-        style={styles.doneWrap}
-        activeOpacity={0.7}
-        onPress={() =>
-          confirmAction('Reabrir mês', `Reabrir ${label}? Todas as despesas voltam para "a pagar".`, 'Reabrir', () =>
-            concludeAllItems(monthIndex, false)
-          )
-        }
-      >
-        <Ionicons name="checkmark-circle" size={20} color={colors.positive} />
-        <Text style={[styles.doneText, { color: colors.positive }]}>Mês concluído</Text>
-        <Text style={[styles.hint, { color: colors.textMuted }]}>(toque para reabrir)</Text>
-      </TouchableOpacity>
+      <View style={styles.wrap}>
+        <TouchableOpacity
+          style={[styles.doneWrap, { borderTopColor: colors.border + '40' }]}
+          activeOpacity={0.7}
+          onPress={() =>
+            confirmAction('Reabrir mês', `Reabrir ${label}? Todas as despesas voltam para "a pagar".`, 'Reabrir', () =>
+              concludeAllItems(monthIndex, false)
+            )
+          }
+        >
+          <Ionicons name="checkmark-circle" size={18} color={colors.positive} />
+          <Text style={[styles.doneText, { color: colors.positive }]}>Mês concluído</Text>
+          <Text style={[styles.hint, { color: colors.textMuted }]}>(toque para reabrir)</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.btn, { borderTopColor: colors.border + '40' }]}
+          activeOpacity={0.7}
+          onPress={() =>
+            confirmAction(
+              'Apagar dados do mês',
+              `Apagar todos os lançamentos de ${label}? Renda, gastos fixos e variáveis serão removidos. Essa ação não pode ser desfeita.`,
+              'Apagar tudo',
+              () => clearMonth(monthIndex)
+            )
+          }
+        >
+          <Ionicons name="trash-outline" size={17} color={colors.negative} />
+          <Text style={[styles.btnText, { color: colors.negative }]}>Apagar dados do mês</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
   return (
     <View style={styles.wrap}>
       {total > 0 && (
-        <Text style={[styles.progress, { color: colors.textSecondary }]}>
+        <Text style={[styles.progress, { color: colors.textMuted }]}>
           {done}/{total} despesas pagas · arraste cada uma pra concluir →
         </Text>
       )}
       <TouchableOpacity
-        style={[styles.btn, { borderColor: colors.border }]}
+        style={[styles.btn, { borderTopColor: colors.border + '40' }]}
         activeOpacity={0.7}
         onPress={() =>
           confirmAction('Concluir mês', `Marcar todas as despesas de ${label} como pagas?`, 'Concluir tudo', () => {
@@ -62,12 +79,12 @@ export default function CompleteMonthButton({ monthIndex, month }) {
           })
         }
       >
-        <Ionicons name="checkmark-done-outline" size={18} color={colors.textSecondary} />
+        <Ionicons name="checkmark-done-outline" size={17} color={colors.textSecondary} />
         <Text style={[styles.btnText, { color: colors.textSecondary }]}>Concluir mês inteiro</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.btn, styles.clearBtn, { borderColor: colors.negative }]}
+        style={[styles.btn, { borderTopColor: colors.border + '40' }]}
         activeOpacity={0.7}
         onPress={() =>
           confirmAction(
@@ -78,7 +95,7 @@ export default function CompleteMonthButton({ monthIndex, month }) {
           )
         }
       >
-        <Ionicons name="trash-outline" size={18} color={colors.negative} />
+        <Ionicons name="trash-outline" size={17} color={colors.negative} />
         <Text style={[styles.btnText, { color: colors.negative }]}>Apagar dados do mês</Text>
       </TouchableOpacity>
     </View>
@@ -86,20 +103,17 @@ export default function CompleteMonthButton({ monthIndex, month }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'flex-start', marginTop: 6 },
-  progress: { fontSize: 11.5, fontWeight: '600', marginBottom: 6 },
+  wrap: { marginTop: 6 },
+  progress: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingVertical: 9,
-    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  btnText: { fontSize: 13, fontWeight: '600', marginLeft: 6 },
-  clearBtn: { marginTop: 8 },
-  doneWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 6 },
-  doneText: { fontSize: 14, fontWeight: '800', marginLeft: 6 },
+  btnText: { fontSize: 13.5, fontWeight: '700', marginLeft: 9 },
+  clearBtn: {},
+  doneWrap: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, borderTopWidth: StyleSheet.hairlineWidth },
+  doneText: { fontSize: 13.5, fontWeight: '800', marginLeft: 8 },
   hint: { fontSize: 11, marginLeft: 6 },
 });

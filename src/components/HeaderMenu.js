@@ -50,7 +50,7 @@ export default function HeaderMenu() {
 const styles=StyleSheet.create({
   dropdown:{
     position:'absolute',right:12,minWidth:190,
-    borderWidth:1,borderRadius:14,
+    borderRadius:14,
     shadowColor:'#000',shadowOffset:{width:0,height:4},
     shadowOpacity:0.18,shadowRadius:10,elevation:10,
     overflow:'hidden',

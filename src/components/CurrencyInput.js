@@ -69,9 +69,9 @@ export default function CurrencyInput({ value, onChangeValue, editable = true, o
       style={[
         styles.input,
         {
-          backgroundColor: !editable ? 'transparent' : overdue ? 'rgba(255,59,48,0.14)' : colors.inputBg,
-          color: !editable ? colors.textMuted : colors.text,
-          borderColor: !editable ? 'transparent' : overdue ? 'rgba(255,59,48,0.4)' : colors.border,
+          color: !editable ? colors.textMuted : overdue ? '#FF3B30' : colors.text,
+          borderBottomWidth: editable && focused ? 1.5 : 0,
+          borderBottomColor: overdue ? 'rgba(255,59,48,0.7)' : colors.primary,
         },
         style,
       ]}
@@ -81,13 +81,13 @@ export default function CurrencyInput({ value, onChangeValue, editable = true, o
 
 const styles = StyleSheet.create({
   input: {
-    minWidth: 110,
-    height: 48,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    minWidth: 90,
+    height: 40,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    paddingHorizontal: 4,
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
     textAlign: 'right',
   },
 });

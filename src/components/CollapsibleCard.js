@@ -31,7 +31,7 @@ export default function CollapsibleCard({ title, icon, right, defaultOpen = fals
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, marginBottom: 14, overflow: 'hidden' },
+  card: { borderRadius: 16, marginBottom: 14, overflow: 'hidden' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
   left: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   title: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase' },

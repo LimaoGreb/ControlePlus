@@ -135,15 +135,12 @@ export default function InsightCards({ monthIndex, month }) {
       {insights.map((ins, i) => {
         const cfg = TYPE_CONFIG[ins.type] || TYPE_CONFIG.info;
         return (
-          <View key={i} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.bar, { backgroundColor: cfg.color }]} />
-            <View style={styles.body}>
-              <View style={styles.titleRow}>
-                <Ionicons name={ins.icon} size={15} color={cfg.color} style={{ marginRight: 6 }} />
-                <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{ins.title}</Text>
-              </View>
-              <Text style={[styles.desc, { color: colors.textSecondary }]}>{ins.body}</Text>
+          <View key={i} style={[styles.card, { borderLeftColor: cfg.color }]}>
+            <View style={styles.titleRow}>
+              <Ionicons name={ins.icon} size={14} color={cfg.color} style={{ marginRight: 7 }} />
+              <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{ins.title}</Text>
             </View>
+            <Text style={[styles.desc, { color: colors.textSecondary }]}>{ins.body}</Text>
           </View>
         );
       })}
@@ -154,14 +151,13 @@ export default function InsightCards({ monthIndex, month }) {
 const styles = StyleSheet.create({
   wrapper: { marginBottom: 10, gap: 6 },
   card: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    borderWidth: 1,
-    overflow: 'hidden',
+    borderLeftWidth: 3,
+    marginLeft: 16,
+    paddingLeft: 10,
+    paddingVertical: 8,
+    paddingRight: 16,
   },
-  bar: { width: 3 },
-  body: { flex: 1, paddingHorizontal: 10, paddingVertical: 7 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
   title: { fontSize: 12.5, fontWeight: '700', flex: 1 },
   desc: { fontSize: 11.5, lineHeight: 16 },
 });

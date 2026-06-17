@@ -2,6 +2,78 @@
 
 ---
 
+## v2.20.0 — 2026-06-17
+
+### refactor: Dashboard — design final + unlock por cadeado + chips em lista
+
+**MonthlySummaryCard.js:**
+- `Stat`: adicionado `labelDot` (6px colorido) antes do label de RENDA TOTAL e DESPESA TOTAL.
+- `sobraBox`: adicionado `backgroundColor: sobraColor + '12'` (bubble sutil) + `borderTopRightRadius/borderBottomRightRadius: 10`.
+
+**HomeScreen.js:**
+- Search bar: `borderColor` muda de `colors.border` → `'transparent'` quando não está buscando. `borderRadius` 10 → 12, `height` 40 → 38.
+
+**Collapsible.js:**
+- Adicionado ícone inline antes do título (usa prop `icon` que já era passada mas ignorada). Pequeno Ionicons 12px com opacidade 0.8 na cor do acento.
+
+**ItemRow.js:**
+- `isLocked`: removido outer `TouchableOpacity` com long-press (1s) — o card agora é diretamente o `rowContent`, tornando o Swipeable totalmente responsivo em toda a área.
+- Cadeado: convertido de `View` para `TouchableOpacity` com `onPress` + `onLongPress` para desbloquear o card com um toque simples.
+- `chipsSection`: convertido de `flexDirection: 'row' flexWrap: 'wrap'` para layout em coluna com `chipRow` (label à esquerda, chip à direita). Ordem: Categoria → Forma de Pagamento → Vencimento.
+- `confirmRow`: botão "Confirmar" movido para extremo-direito inferior do card.
+
+---
+
+## v2.19.0 — 2026-06-17
+
+### refactor: Design premium — Controle Geral + Settings restantes
+
+**AnnualSummaryScreen.js:**
+- Section headers "Projetos" e "Destaques do Ano" convertidos para padrão accent bar (`borderLeftWidth:3`, ALL CAPS, `letterSpacing:1.4`).
+- Adicionados `sectionHeader`, `sectionTitle`, `sectionSub` ao StyleSheet `s`. Removidos `secTitle` e `secSub`.
+- `s.card.borderRadius` 18 → 16. `s.swipeHint.borderTopWidth: 1` → `StyleSheet.hairlineWidth`.
+- `bgt.card.borderRadius` 18 → 16. `bgt.track` height 7 → 6, borderRadius 4 → 3. `bgt.divider` height 1 → `StyleSheet.hairlineWidth`.
+- `pj.row.borderRadius` 14 → 12. `pj.track` height 8 → 6. `bs.catTrack` height 8 → 6. `dt.track` height 10 → 6.
+
+**SettingsCasalScreen.js — reescrito:**
+- Card wrapper removido. Seções planas com accent bars: STATUS, CÓDIGO DO CASAL, PARCEIRO(A), MODO CASAL, ENTRAR COM CÓDIGO.
+- `syncRow` flat com hairline. `toggleRow` flat com `toggleIconWrap` circular colorido.
+- `orLine` agora usa `StyleSheet.hairlineWidth`. Botões com `marginHorizontal: 16`.
+
+**SettingsInvestimentosScreen.js — reescrito:**
+- Dois card wrappers removidos. Seções INVESTIMENTOS e CONTRIBUIÇÕES com accent bars.
+- Toggle rows flat com `iconWrap`. Goal input em `goalWrap` com hairline top.
+
+**CasalScreen.js:**
+- `partnerFab`: removidos `elevation: 6`, `shadowColor/Opacity/Radius/Offset` e `borderWidth: 1`. `borderRadius` 18 → 14.
+- `backBtn`: removido `borderWidth: 1`, `borderRadius` 20 → 10. Troca `borderColor` → `backgroundColor: colors.cardAlt`.
+- `incomeCard.borderRadius` 14 → 12. `monthNav.borderRadius` 14 → 12.
+
+---
+
+## v2.18.0 — 2026-06-16
+
+### refactor: Design premium — ItemRow flat + Cap unlock em bulk
+
+**Design ItemRow (premium / minimalista):**
+- `src/components/ItemRow.js` — substituídas as `metaPill` (Views com borda e borderRadius) por uma única linha de texto `metaLine` mostrando `💳 Pix  ·  📺 Assinaturas  ·  📅 dia 15`. Sem bordas, sem caixas.
+- `nameInput` agora sempre com `backgroundColor: 'transparent'` (sem caixa de input visível).
+- Imports mortos removidos: `BankBadge`, `getBankForPayment`.
+- `src/components/Collapsible.js` — reescrito como seção flat com barra de acento lateral esquerda (`borderLeftWidth: 3`), título em ALL CAPS com `letterSpacing: 1.4`, sem card wrapper.
+- `src/components/ExpensesSection.js` — botão "Adicionar" flat com ícone e texto em cor de acento, sem background colorido.
+- `src/components/FloatingTabBar.js` — sombra mais forte, `borderRadius` reduzido de 28 → 22.
+- `src/components/MonthlySummaryCard.js` — labels em UPPERCASE, `sobraValue` em `fontWeight: 900`.
+- `src/screens/HomeScreen.js` — `searchBar` com `borderRadius: 10` (menos pill), subtitle em UPPERCASE.
+- `src/components/FixedExpensesSection.js` — copyBtn flat com `borderTopWidth: hairlineWidth`.
+
+**Cap — Unlock em bulk:**
+- `src/utils/editModeSignal.js` — novo módulo de evento global: `triggerBulkUnlock()` (sets `_pending = true` por 2s), `isPendingUnlock()`, `onBulkUnlock(fn)`.
+- `src/components/ItemRow.js` — `useState(() => isPendingUnlock())` para ItemRows que montam dentro da janela de 2s já começarem desbloqueados; `useEffect` para reagir ao evento bulk.
+- `src/services/jarvisLocal.js` — intent `unlock_expenses` chama `triggerBulkUnlock()` + conta itens; `reopen_expense` também chama `triggerBulkUnlock()` antes de reabrir.
+- `bot/geminiClient.js` — classificador: intent `unlock_expenses` (regex: "desbloqu*", "coloque pra editar", "modo de edição") + intent `list_expenses` com subtype.
+
+---
+
 ## v2.17.0 — 2026-06-15
 
 ### feat: Orçamento como 3º slide do carrossel na Dashboard

@@ -75,11 +75,15 @@ export default function MonthCharts({ month }) {
   ];
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.card, { backgroundColor: colors.card }]}>
+      {/* Header: pontinho + ícone do chart + label ALL CAPS */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name={realPages[page].icon} size={18} color={colors.primary} />
-          <Text style={[styles.title, { color: colors.text }]}>{realPages[page].label}</Text>
+          <View style={[styles.titleDot, { backgroundColor: colors.primary }]} />
+          <Ionicons name={realPages[page].icon} size={13} color={colors.primary} style={{ marginRight: 6 }} />
+          <Text style={[styles.title, { color: colors.primary }]}>
+            {realPages[page].label.toUpperCase()}
+          </Text>
         </View>
         <View style={styles.dots}>
           {realPages.map((p, i) => (
@@ -121,11 +125,15 @@ export default function MonthCharts({ month }) {
 }
 
 const styles = StyleSheet.create({
-  card:     { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 12, overflow: 'hidden' },
-  header:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  card:   { borderRadius: 16, marginBottom: 24, overflow: 'hidden', paddingBottom: 14 },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12, marginBottom: 2,
+  },
   titleRow: { flexDirection: 'row', alignItems: 'center' },
-  title:    { fontSize: 16, fontWeight: '800', marginLeft: 8 },
-  dots:     { flexDirection: 'row', alignItems: 'center' },
-  dot:      { height: 8, borderRadius: 4, marginLeft: 6 },
-  hint:     { fontSize: 11, textAlign: 'center', marginTop: 12, fontStyle: 'italic' },
+  titleDot: { width: 7, height: 7, borderRadius: 4, marginRight: 8 },
+  title:  { fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
+  dots:   { flexDirection: 'row', alignItems: 'center' },
+  dot:    { height: 8, borderRadius: 4, marginLeft: 6 },
+  hint:   { fontSize: 10, textAlign: 'center', marginTop: 12, fontStyle: 'italic' },
 });

@@ -27,13 +27,16 @@ function PaymentBar({ entry, color, bank }) {
     <View style={styles.wrap}>
       <TouchableOpacity activeOpacity={0.7} onPress={toggle}>
         <View style={styles.header}>
-          {bank && <BankBadge bank={bank} size={24} />}
-          <Text style={[styles.name, { color: colors.text, marginLeft: bank ? 8 : 0 }]} numberOfLines={1}>{entry.name}</Text>
+          <View style={styles.nameRow}>
+            <View style={styles.badgeSlot}>
+              {bank && <BankBadge bank={bank} size={20} />}
+            </View>
+            <Text style={[styles.name, { color: colors.textSecondary }]} numberOfLines={1}>{entry.name}</Text>
+          </View>
           <View style={styles.right}>
-            <Text style={[styles.value, { color: colors.textSecondary }]}>
-              {formatBRL(entry.value)} · {formatPercent(entry.percent)}
-            </Text>
-            <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} style={{ marginLeft: 6 }} />
+            <Text style={[styles.value, { color }]}>{formatBRL(entry.value)}</Text>
+            <Text style={[styles.pct, { color: colors.textMuted }]}> {formatPercent(entry.percent)}</Text>
+            <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={15} color={colors.textMuted} style={{ marginLeft: 6 }} />
           </View>
         </View>
         <View style={[styles.track, { backgroundColor: colors.cardAlt }]}>
@@ -42,11 +45,17 @@ function PaymentBar({ entry, color, bank }) {
       </TouchableOpacity>
 
       {open && (
-        <View style={[styles.detailBox, { borderColor: colors.border }]}>
-          {sorted.map((it) => {
+        <View style={[styles.detailBox, { borderTopColor: colors.border + '40' }]}>
+          {sorted.map((it, itmIdx) => {
             const pctOfMethod = entry.value > 0 ? (it.value / entry.value) * 100 : 0;
             return (
-              <View key={it.id} style={styles.detailRow}>
+              <View
+                key={it.id}
+                style={[
+                  styles.detailRow,
+                  itmIdx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border + '40' },
+                ]}
+              >
                 <Text style={[styles.detailName, { color: colors.text }]} numberOfLines={1}>
                   {it.name || 'Sem nome'}
                   <Text style={{ color: colors.textMuted }}>  · {it.categoria}</Text>
@@ -84,10 +93,7 @@ export default function PaymentBreakdown({ month }) {
   }
 
   return (
-    <View>
-      <Text style={[styles.tapHint, { color: colors.textMuted }]}>
-        Toque numa forma de pagamento para ver os gastos
-      </Text>
+    <View style={styles.outer}>
       {list.map((entry, idx) => {
         const pm = pmByName[entry.name];
         const bank = getBankForPayment(pm);
@@ -100,18 +106,24 @@ export default function PaymentBreakdown({ month }) {
 }
 
 const styles = StyleSheet.create({
-  placeholder: { textAlign: 'center', paddingVertical: 20, fontSize: 13, lineHeight: 19 },
-  tapHint: { fontSize: 11, marginBottom: 12 },
-  wrap: { marginBottom: 14 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  name: { fontSize: 15, fontWeight: '800', flex: 1, marginRight: 8 },
+  outer: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
+  placeholder: { textAlign: 'center', paddingVertical: 20, paddingHorizontal: 16, fontSize: 13, lineHeight: 19 },
+  wrap: { marginBottom: 4 },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 12, paddingRight: 0,
+  },
+  nameRow: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 },
+  badgeSlot: { width: 28, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
+  name: { fontSize: 10.5, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.4, flex: 1 },
   right: { flexDirection: 'row', alignItems: 'center' },
-  value: { fontSize: 13, fontWeight: '700' },
-  track: { height: 14, borderRadius: 8, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 8 },
-  detailBox: { borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 10 },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
-  detailName: { fontSize: 14, fontWeight: '700', flex: 1, marginRight: 8 },
-  detailValue: { fontSize: 13, fontWeight: '600' },
-  detailHint: { fontSize: 11, fontStyle: 'italic', marginTop: 4 },
+  value: { fontSize: 15, fontWeight: '800' },
+  pct: { fontSize: 11, fontWeight: '600' },
+  track: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3 },
+  detailBox: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 6, marginTop: 8 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
+  detailName: { fontSize: 13, fontWeight: '700', flex: 1, marginRight: 8 },
+  detailValue: { fontSize: 12, fontWeight: '600' },
+  detailHint: { fontSize: 10.5, fontStyle: 'italic', marginTop: 4 },
 });

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -38,24 +38,16 @@ export default function SettingsBackupScreen() {
   const restoreBackup = async (parsed) => {
     const financialData = parsed.data ?? parsed;
     await importData(financialData);
-
-    if (parsed.settings) {
-      await importSettings(parsed.settings);
-    }
-
+    if (parsed.settings) await importSettings(parsed.settings);
     if (parsed.theme) {
       setPalette(parsed.theme.paletteId);
-      if (parsed.theme.mode && parsed.theme.mode !== mode) {
-        toggleTheme();
-      }
+      if (parsed.theme.mode && parsed.theme.mode !== mode) toggleTheme();
     }
-
     if (parsed.coupleCode) {
       try { await connect(parsed.coupleCode); } catch (_) {}
     }
   };
 
-  // ── Backup local ──────────────────────────────────────────────────────────────
   const handleExport = async () => {
     try {
       setBusy(true);
@@ -97,44 +89,48 @@ export default function SettingsBackupScreen() {
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
 
-      {/* Backup local */}
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      {/* ── Backup local ── */}
+      <View style={[styles.sectionHeader, { borderLeftColor: colors.primary }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>BACKUP LOCAL</Text>
-        <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 14 }]}>
-          Exporta um arquivo JSON completo: dados financeiros, perfil, cartões, configurações e tema.
-        </Text>
-        <TouchableOpacity
-          style={[styles.btn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1 }]}
-          onPress={handleExport} disabled={busy}
-        >
-          <Ionicons name="cloud-upload-outline" size={20} color={contrastText(colors.primary)} />
-          <Text style={[styles.btnText, { color: contrastText(colors.primary) }]}>Exportar JSON</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.btnOutline, { borderColor: colors.primary, marginTop: 10 }]} onPress={handleImport}>
-          <Ionicons name="cloud-download-outline" size={20} color={colors.primary} />
-          <Text style={[styles.btnOutlineText, { color: colors.primary }]}>Importar JSON</Text>
-        </TouchableOpacity>
       </View>
 
+      <Text style={[styles.hint, { color: colors.textMuted }]}>
+        Exporta um arquivo JSON completo: dados financeiros, perfil, cartões, configurações e tema.
+      </Text>
 
+      <TouchableOpacity
+        style={[styles.btn, { backgroundColor: colors.primary, opacity: busy ? 0.6 : 1, marginHorizontal: 16 }]}
+        onPress={handleExport}
+        disabled={busy}
+      >
+        <Ionicons name="cloud-upload-outline" size={20} color={contrastText(colors.primary)} />
+        <Text style={[styles.btnText, { color: contrastText(colors.primary) }]}>Exportar JSON</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.btnOutline, { borderColor: colors.primary, marginHorizontal: 16, marginTop: 10 }]}
+        onPress={handleImport}
+      >
+        <Ionicons name="cloud-download-outline" size={20} color={colors.primary} />
+        <Text style={[styles.btnOutlineText, { color: colors.primary }]}>Importar JSON</Text>
+      </TouchableOpacity>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16 },
-  card: { borderRadius: 16, borderWidth: 1, padding: 16 },
-  sectionTitle: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
-  hint: { fontSize: 12, lineHeight: 18 },
+  content: { paddingVertical: 16 },
+  sectionHeader: {
+    borderLeftWidth: 3, marginLeft: 16,
+    paddingLeft: 13, paddingRight: 16, paddingVertical: 12,
+    marginBottom: 8,
+  },
+  sectionTitle: { fontSize: 10.5, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.4 },
+  hint: { fontSize: 12, lineHeight: 18, paddingHorizontal: 16, marginBottom: 14 },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingVertical: 14 },
   btnText: { fontSize: 15, fontWeight: '800', marginLeft: 8 },
   btnOutline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1.5, paddingVertical: 14 },
   btnOutlineText: { fontSize: 15, fontWeight: '800', marginLeft: 8 },
-  accountRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1, padding: 12 },
-  avatar: { width: 38, height: 38, borderRadius: 19 },
-  accountName: { fontSize: 14, fontWeight: '700' },
-  accountEmail: { fontSize: 12, marginTop: 1 },
-  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1.5, paddingVertical: 14, gap: 10 },
-  googleIcon: { fontSize: 18, fontWeight: '900', color: '#1a73e8' },
-  googleBtnText: { fontSize: 15, fontWeight: '700' },
 });

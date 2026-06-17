@@ -1,6 +1,6 @@
 // Base reutilizável para listas dinâmicas de despesas (fixas e variáveis). Colapsável.
 import React from 'react';
-import { Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../theme/ThemeContext';
@@ -84,11 +84,11 @@ export default function ExpensesSection({
       ))}
 
       <TouchableOpacity
-        style={[styles.addBtn, { backgroundColor: color }]}
+        style={[styles.addBtn, { borderTopColor: colors.border + '55' }]}
         onPress={() => addItem(monthIndex, section, '', 0, null)}
       >
-        <Ionicons name="add" size={24} color={onColor} />
-        <Text style={[styles.addText, { color: onColor }]}>{addLabel}</Text>
+        <Ionicons name="add-circle-outline" size={17} color={color} />
+        <Text style={[styles.addText, { color }]}>{addLabel}</Text>
       </TouchableOpacity>
 
       {extraButton}
@@ -101,10 +101,9 @@ const styles = StyleSheet.create({
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
     paddingVertical: 14,
-    marginTop: 4,
+    paddingHorizontal: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  addText: { fontSize: 16, fontWeight: '800', marginLeft: 4 },
+  addText: { fontSize: 13, fontWeight: '700', marginLeft: 7 },
 });

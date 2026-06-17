@@ -27,7 +27,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }) {
         style={[
           styles.bar,
           {
-            backgroundColor: colors.card,
+            backgroundColor: colors.cardAlt,
             borderColor: colors.border,
             shadowColor: '#000',
           },
@@ -75,15 +75,22 @@ export default function FloatingTabBar({ state, descriptors, navigation }) {
                   </View>
                 )}
               </View>
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.label,
-                  { color: focused ? colors.primaryLight : colors.textMuted, fontWeight: focused ? '800' : '600' },
-                ]}
-              >
-                {label}
-              </Text>
+              <View style={styles.labelRow}>
+                {focused && <View style={[styles.labelAccent, { backgroundColor: colors.primaryLight }]} />}
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.label,
+                    {
+                      color: focused ? colors.primaryLight : colors.textMuted,
+                      fontWeight: focused ? '800' : '600',
+                      fontSize: focused ? 11.5 : 10,
+                    },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -102,14 +109,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    height: 64,
-    borderRadius: 28,
-    borderWidth: 1,
+    height: 60,
+    borderRadius: 22,
     paddingHorizontal: 6,
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12,
+    borderWidth: 1,
+    shadowOpacity: 0.45,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 30,
   },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6 },
   iconWrap: {
@@ -119,7 +126,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  label: { fontSize: 10, marginTop: 3 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 3 },
+  labelAccent: { width: 2.5, height: 11, borderRadius: 2 },
+  label: { fontSize: 10 },
   badge: {
     position: 'absolute',
     top: -4,

@@ -26,7 +26,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const CAT_EMOJI = {
   alimentacao:'🍔', moradia:'🏠', transporte:'🚗', saude:'💊',
   assinaturas:'📺', vestuario:'👕', compras:'📦', tech:'💻',
-  lazer:'🎮', educacao:'📚', outros:'🔮',
+  lazer:'🎮', educacao:'📚', outros:'🧾',
 };
 
 // Ordem importa: a primeira categoria que casar vence.
@@ -341,14 +341,14 @@ function PeekCard({cat,anim}) {
 const pk = StyleSheet.create({
   card:{
     backgroundColor:'rgba(6,8,20,0.97)',
-    borderWidth:1.5,borderRadius:24,padding:20,width:280,
+    borderRadius:24,padding:20,width:280,
     overflow:'hidden',
     shadowColor:'#000',shadowOffset:{width:0,height:20},
     shadowOpacity:0.75,shadowRadius:32,elevation:36,
   },
   glowBar:{position:'absolute',top:0,left:0,right:0,height:3},
   head:{flexDirection:'row',alignItems:'center',gap:14,marginBottom:14},
-  emojiRing:{width:56,height:56,borderRadius:18,borderWidth:1.5,alignItems:'center',justifyContent:'center'},
+  emojiRing:{width:56,height:56,borderRadius:18,alignItems:'center',justifyContent:'center'},
   emoji:{fontSize:30},
   headRight:{flex:1},
   catName:{fontSize:15,fontWeight:'900',color:'#fff',marginBottom:2},
@@ -390,7 +390,7 @@ function CategoryDetailPanel({cat}) {
   return (
     <View>
       <View style={dt.header}>
-        <Text style={{fontSize:36}}>{CAT_EMOJI[cat.id]||'🔮'}</Text>
+        <Text style={{fontSize:36}}>{CAT_EMOJI[cat.id]||'🧾'}</Text>
         <View style={{flex:1,marginLeft:14}}>
           <Text style={[dt.title,{color:colors.text}]}>{cat.label}</Text>
           <Text style={[dt.big,{color:cat.color}]}>{formatBRL(cat.total)}</Text>
@@ -419,7 +419,7 @@ function CategoryDetailPanel({cat}) {
                 <Text style={[dt.monthAmt,{color:cat.color}]}>{formatBRL(md.total)}</Text>
                 <Ionicons name={isExp?'chevron-up':'chevron-down'} size={13} color={colors.textMuted}/>
               </TouchableOpacity>
-              {isExp&&<View style={[dt.monthItems,{borderColor:colors.border}]}>
+              {isExp&&<View style={[dt.monthItems,{backgroundColor:colors.text+'08',borderColor:colors.border+'70'}]}>
                 {md.items.map((it,i)=>(
                   <View key={i} style={dt.mItem}>
                     <View style={[dt.dot,{backgroundColor:cat.color}]}/>
@@ -456,10 +456,10 @@ const dt = StyleSheet.create({
   sub:{fontSize:11,fontWeight:'700',textTransform:'uppercase',letterSpacing:0.7,marginBottom:9},
   monthRow:{flexDirection:'row',alignItems:'center',paddingVertical:7,gap:7},
   monthName:{fontSize:13,fontWeight:'700',width:32},
-  track:{flex:1,height:10,borderRadius:6,overflow:'hidden'},
-  fill:{height:'100%',borderRadius:6},
+  track:{flex:1,height:6,borderRadius:3,overflow:'hidden'},
+  fill:{height:'100%',borderRadius:3},
   monthAmt:{fontSize:12,fontWeight:'800',minWidth:80,textAlign:'right'},
-  monthItems:{borderWidth:1,borderRadius:12,padding:11,marginTop:4,marginBottom:6,gap:7},
+  monthItems:{borderRadius:10,padding:11,marginTop:4,marginBottom:6,gap:7,borderWidth:StyleSheet.hairlineWidth},
   mItem:{flexDirection:'row',alignItems:'center',gap:9},
   dot:{width:7,height:7,borderRadius:4},
   mItemName:{flex:1,fontSize:13,fontWeight:'600'},
@@ -524,9 +524,9 @@ function CategoryBottomSheet({visible,cats,selectedCatId,onClose,onSelectCat}) {
             ):(
               cats.map(cat=>(
                 <TouchableOpacity key={cat.id}
-                  style={[bs.catRow,{borderColor:colors.border}]}
+                  style={[bs.catRow,{backgroundColor:colors.text+'0A',borderColor:colors.border+'80'}]}
                   onPress={()=>onSelectCat(cat.id)} activeOpacity={0.75}>
-                  <Text style={{fontSize:24,width:36}}>{CAT_EMOJI[cat.id]||'🔮'}</Text>
+                  <Text style={{fontSize:24,width:36}}>{CAT_EMOJI[cat.id]||'🧾'}</Text>
                   <View style={{flex:1}}>
                     <View style={bs.catRowTop}>
                       <Text style={[bs.catLabel,{color:colors.text}]}>{cat.label}</Text>
@@ -559,12 +559,12 @@ const bs = StyleSheet.create({
   backBtn:{flexDirection:'row',alignItems:'center',gap:2,minWidth:60},
   backTxt:{fontSize:14,fontWeight:'700'},
   content:{paddingHorizontal:18,paddingTop:10},
-  catRow:{flexDirection:'row',alignItems:'center',borderWidth:1,borderRadius:16,padding:14,marginBottom:10,gap:12},
+  catRow:{flexDirection:'row',alignItems:'center',borderRadius:12,padding:14,marginBottom:10,gap:12,borderWidth:StyleSheet.hairlineWidth},
   catRowTop:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:6},
   catLabel:{fontSize:14,fontWeight:'800'},
   catAmt:{fontSize:15,fontWeight:'900'},
-  catTrack:{height:8,borderRadius:5,overflow:'hidden',marginBottom:4},
-  catFill:{height:'100%',borderRadius:5},
+  catTrack:{height:6,borderRadius:3,overflow:'hidden',marginBottom:4},
+  catFill:{height:'100%',borderRadius:3},
   catPct:{fontSize:11},
 });
 
@@ -604,7 +604,7 @@ function DonutChart({cats,selectedId,onSelect,onPressIn,onPressOut,onLongPress,g
           })}
         </Svg>
         <View style={[StyleSheet.absoluteFillObject,{alignItems:'center',justifyContent:'center'}]} pointerEvents="none">
-          <Text style={{fontSize:28,lineHeight:34}}>{activeCat?(CAT_EMOJI[activeCat.id]||'🔮'):'💰'}</Text>
+          <Text style={{fontSize:28,lineHeight:34}}>{activeCat?(CAT_EMOJI[activeCat.id]||'🧾'):'💰'}</Text>
           <Text style={{fontSize:16,fontWeight:'900',color:colors.text,marginTop:4}} numberOfLines={1}>
             {formatBRL(activeCat?activeCat.total:grand)}
           </Text>
@@ -657,7 +657,7 @@ function BudgetEditorSheet({ visible, onClose }) {
               const limit = categoryBudgets[cat.id] || 0;
               const isEditing = editing === cat.id;
               return (
-                <View key={cat.id} style={[be.row, { borderColor: isEditing ? cat.color : colors.border }]}>
+                <View key={cat.id} style={[be.row, { backgroundColor: colors.text+'0D', borderColor: isEditing ? cat.color : colors.border+'80' }]}>
                   <View style={[be.iconBadge, { backgroundColor: cat.color + '22' }]}>
                     <Ionicons name={cat.icon} size={18} color={cat.color} />
                   </View>
@@ -704,7 +704,7 @@ const be = StyleSheet.create({
   title:     { fontSize: 17, fontWeight: '900', marginBottom: 4 },
   sub:       { fontSize: 12 },
   content:   { paddingHorizontal: 18, paddingTop: 6, gap: 10 },
-  row:       { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14 },
+  row:       { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, padding: 14, borderWidth: StyleSheet.hairlineWidth },
   iconBadge: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   catName:   { fontSize: 14, fontWeight: '800' },
   limitTxt:  { fontSize: 12, fontWeight: '600', marginTop: 2 },
@@ -883,13 +883,13 @@ function BudgetSection({ monthData, onOpenEditor, bare = false }) {
 
   if (bare) return inner;
   return (
-    <View style={[bgt.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[bgt.card, { backgroundColor: colors.text+'0D', borderColor: colors.border+'80' }]}>
       {inner}
     </View>
   );
 }
 const bgt = StyleSheet.create({
-  card:        { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 14 },
+  card:        { borderRadius: 12, padding: 16, marginBottom: 14, borderWidth: StyleSheet.hairlineWidth },
   header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   title:       { fontSize: 15, fontWeight: '900' },
   emptyBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderRadius: 12, borderStyle: 'dashed', paddingVertical: 14 },
@@ -903,17 +903,17 @@ const bgt = StyleSheet.create({
   paceLabel:   { fontSize: 10, fontWeight: '600' },
   paceMsg:     { fontSize: 11, fontWeight: '700' },
   paceMark:    { position: 'absolute', top: -3, width: 2, height: 13, borderRadius: 1, backgroundColor: 'transparent', borderWidth: 1 },
-  divider:     { height: 1, marginBottom: 14 },
+  divider:     { height: StyleSheet.hairlineWidth, marginBottom: 14 },
   row:         { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
   iconBadge:   { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   rowTop:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 },
   catName:     { fontSize: 13, fontWeight: '800' },
   amounts:     { fontSize: 12, fontWeight: '800' },
-  track:       { height: 7, borderRadius: 4, flexDirection: 'row', overflow: 'hidden', marginBottom: 4 },
-  fill:        { borderRadius: 4 },
+  track:       { height: 6, borderRadius: 3, flexDirection: 'row', overflow: 'hidden', marginBottom: 4 },
+  fill:        { borderRadius: 3 },
   remaining:   { fontSize: 11, fontWeight: '600' },
   salaryPct:   { fontSize: 11, fontWeight: '700' },
-  warnRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 12 },
+  warnRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 10, padding: 10, marginBottom: 12 },
   warnTxt:     { fontSize: 12, fontWeight: '700', flex: 1 },
 });
 
@@ -923,7 +923,7 @@ function ProjectRow({project}) {
   const stats=projectStats(project);
   const barColor=stats.done?colors.positive:colors.primary;
   return (
-    <View style={[pj.row,{backgroundColor:colors.card,borderColor:colors.border}]}>
+    <View style={[pj.row,{backgroundColor:colors.text+'0D',borderColor:colors.border+'80'}]}>
       <View style={pj.top}>
         <Text style={[pj.name,{color:colors.text}]} numberOfLines={1}>{project.name||'Projeto'}</Text>
         {stats.done?(
@@ -952,13 +952,13 @@ function ProjectRow({project}) {
   );
 }
 const pj = StyleSheet.create({
-  row:{borderRadius:14,borderWidth:1,padding:14,marginBottom:10},
+  row:{borderRadius:10,padding:14,marginBottom:10,borderWidth:StyleSheet.hairlineWidth},
   top:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:9},
   name:{fontSize:15,fontWeight:'800',flex:1,marginRight:8},
   badge:{flexDirection:'row',alignItems:'center',borderRadius:8,paddingHorizontal:8,paddingVertical:3,gap:4},
   badgeTxt:{fontSize:11,fontWeight:'700'},
-  track:{height:8,borderRadius:5,overflow:'hidden',marginBottom:8},
-  fill:{height:'100%',borderRadius:5},
+  track:{height:6,borderRadius:3,overflow:'hidden',marginBottom:8},
+  fill:{height:'100%',borderRadius:3},
   bottom:{flexDirection:'row',alignItems:'center',gap:4,flexWrap:'wrap'},
   saved:{fontSize:15,fontWeight:'900'},
   sep:{fontSize:13},
@@ -1062,30 +1062,46 @@ export default function AnnualSummaryScreen() {
           <LinearGradient colors={[monthHealth.color+'EE',monthHealth.color+'99']}
             start={{x:0,y:0}} end={{x:1,y:1}}
             style={[s.hero,{width:pageW,marginBottom:0}]}>
+            {/* Linha Ring + identificação */}
             <View style={s.heroRow}>
-              <ScoreRing rate={Math.max(0,monthRate)} grade={monthHealth.grade}/>
+              <ScoreRing rate={Math.max(0,monthRate)} grade={monthHealth.grade} size={116}/>
               <View style={s.heroR}>
                 <Text style={s.heroEye}>Saúde de {MONTH_NAMES[currentMonthIdx]}</Text>
                 <Text style={s.heroGrade}>{monthHealth.label}</Text>
-                <Text style={s.heroSobra}>{currentM.sobra>=0?'+':''}{formatBRL(currentM.sobra)}</Text>
+                <Text style={s.heroSobra} numberOfLines={1} adjustsFontSizeToFit>
+                  {currentM.sobra>=0?'+':''}{formatBRL(currentM.sobra)}
+                </Text>
                 <Text style={s.heroSobraLbl}>{currentM.sobra>=0?'de sobra este mês':'acima da renda'}</Text>
-                <View style={s.heroMini}>
-                  <View><Text style={s.heroML}>Renda</Text><Text style={s.heroMV}>{formatBRL(currentM.renda)}</Text></View>
-                  <View style={s.heroDiv}/>
-                  <View><Text style={s.heroML}>Gastos</Text><Text style={s.heroMV}>{formatBRL(currentM.despesa)}</Text></View>
-                  <View style={s.heroDiv}/>
-                  <View><Text style={s.heroML}>Consumido</Text><Text style={s.heroMV}>{Math.round(monthPct)}%</Text></View>
-                </View>
               </View>
             </View>
+            {/* Stats full-width abaixo da linha principal */}
+            {currentM.renda>0&&(
+              <View style={s.heroStats}>
+                <View style={s.heroStatCol}>
+                  <Text style={s.heroML}>RENDA</Text>
+                  <Text style={s.heroMV} numberOfLines={1} adjustsFontSizeToFit>{formatBRL(currentM.renda)}</Text>
+                </View>
+                <View style={s.heroStatDiv}/>
+                <View style={s.heroStatCol}>
+                  <Text style={s.heroML}>GASTOS</Text>
+                  <Text style={s.heroMV} numberOfLines={1} adjustsFontSizeToFit>{formatBRL(currentM.despesa)}</Text>
+                </View>
+                <View style={s.heroStatDiv}/>
+                <View style={s.heroStatCol}>
+                  <Text style={s.heroML}>CONSUMIDO</Text>
+                  <Text style={s.heroMV}>{Math.round(monthPct)}%</Text>
+                </View>
+              </View>
+            )}
+            {/* Barra de progresso + tip */}
             {currentM.renda>0&&<>
-              <View style={s.heroMonthTrack}>
+              <View style={[s.heroMonthTrack,{marginTop:12}]}>
                 <View style={[s.heroMonthFill,{
                   width:`${monthPct}%`,
                   backgroundColor:currentM.sobra>=0?'rgba(255,255,255,0.5)':'rgba(255,120,120,0.65)',
                 }]}/>
               </View>
-              <Text style={[s.heroMonthPct,{textAlign:'center',marginTop:4}]}>{monthHealth.tip}</Text>
+              <Text style={[s.heroMonthPct,{textAlign:'center',marginTop:6}]}>{monthHealth.tip}</Text>
             </>}
             {/* Escala de cores A→F */}
             <View style={s.gradeLegend}>
@@ -1106,19 +1122,33 @@ export default function AnnualSummaryScreen() {
             start={{x:0,y:0}} end={{x:1,y:1}}
             style={[s.hero,{width:pageW,marginBottom:0}]}>
             <View style={s.heroRow}>
-              <ScoreRing rate={Math.max(0,rate)} grade={health.grade}/>
+              <ScoreRing rate={Math.max(0,rate)} grade={health.grade} size={116}/>
               <View style={s.heroR}>
                 <Text style={s.heroEye}>Saúde Financeira {YEAR}</Text>
                 <Text style={s.heroGrade}>{health.label}</Text>
-                <Text style={s.heroSobra}>{formatBRL(totals.sobraTotal)}</Text>
+                <Text style={s.heroSobra} numberOfLines={1} adjustsFontSizeToFit>
+                  {formatBRL(totals.sobraTotal)}
+                </Text>
                 <Text style={s.heroSobraLbl}>sobra acumulada no ano</Text>
-                <View style={s.heroMini}>
-                  <View><Text style={s.heroML}>Renda</Text><Text style={s.heroMV}>{formatBRL(totals.rendaTotal)}</Text></View>
-                  <View style={s.heroDiv}/>
-                  <View><Text style={s.heroML}>Gastos</Text><Text style={s.heroMV}>{formatBRL(totals.despesaTotal)}</Text></View>
-                  {posMonths>0&&<><View style={s.heroDiv}/><View><Text style={s.heroML}>Meses +</Text><Text style={s.heroMV}>{posMonths}/12</Text></View></>}
-                </View>
               </View>
+            </View>
+            <View style={s.heroStats}>
+              <View style={s.heroStatCol}>
+                <Text style={s.heroML}>RENDA</Text>
+                <Text style={s.heroMV} numberOfLines={1} adjustsFontSizeToFit>{formatBRL(totals.rendaTotal)}</Text>
+              </View>
+              <View style={s.heroStatDiv}/>
+              <View style={s.heroStatCol}>
+                <Text style={s.heroML}>GASTOS</Text>
+                <Text style={s.heroMV} numberOfLines={1} adjustsFontSizeToFit>{formatBRL(totals.despesaTotal)}</Text>
+              </View>
+              {posMonths>0&&<>
+                <View style={s.heroStatDiv}/>
+                <View style={s.heroStatCol}>
+                  <Text style={s.heroML}>MESES +</Text>
+                  <Text style={s.heroMV}>{posMonths}/12</Text>
+                </View>
+              </>}
             </View>
             {/* Escala de cores A→F */}
             <View style={s.gradeLegend}>
@@ -1147,7 +1177,7 @@ export default function AnnualSummaryScreen() {
           }}
         >
           {/* Página 0 — Mês atual */}
-          <View style={[s.card,{backgroundColor:colors.card,borderColor:colors.border,width:pageW,marginBottom:0}]}>
+          <View style={[s.card,{backgroundColor:colors.text+'0D',borderColor:colors.border+'80',width:pageW,marginBottom:0}]}>
             <View style={s.cardHead}>
               <View style={{flex:1,marginRight:10}}>
                 <Text style={[s.cardTitle,{color:colors.text}]}>Onde foi o dinheiro este mês?</Text>
@@ -1194,7 +1224,7 @@ export default function AnnualSummaryScreen() {
           </View>
 
           {/* Página 1 — Ano completo */}
-          <View style={[s.card,{backgroundColor:colors.card,borderColor:colors.border,width:pageW,marginBottom:0}]}>
+          <View style={[s.card,{backgroundColor:colors.text+'0D',borderColor:colors.border+'80',width:pageW,marginBottom:0}]}>
             <View style={s.cardHead}>
               <View style={{flex:1,marginRight:10}}>
                 <Text style={[s.cardTitle,{color:colors.text}]}>Onde foi o dinheiro este ano?</Text>
@@ -1247,25 +1277,27 @@ export default function AnnualSummaryScreen() {
 
         {/* ── PROJETOS ── */}
         {projects.length>0&&<>
-          <Text style={[s.secTitle,{color:colors.text}]}>🎯 Projetos</Text>
-          <Text style={[s.secSub,{color:colors.textMuted}]}>
-            {projects.filter(p=>projectStats(p).done).length} de {projects.length} concluídos
-          </Text>
+          <View style={[s.sectionHeader,{borderLeftColor:colors.primary}]}>
+            <Text style={[s.sectionTitle,{color:colors.textSecondary}]}>PROJETOS</Text>
+            <Text style={[s.sectionSub,{color:colors.textMuted}]}>{projects.filter(p=>projectStats(p).done).length} de {projects.length} concluídos</Text>
+          </View>
           {projects.map(p=><ProjectRow key={p.id} project={p}/>)}
         </>}
 
         {/* ── DESTAQUES ── */}
         {(bestM||worstM)&&<>
-          <Text style={[s.secTitle,{color:colors.text}]}>Destaques do Ano</Text>
+          <View style={[s.sectionHeader,{borderLeftColor:colors.primary}]}>
+            <Text style={[s.sectionTitle,{color:colors.textSecondary}]}>DESTAQUES DO ANO</Text>
+          </View>
           <View style={s.hlRow}>
-            {bestM&&<View style={[s.hlCard,{backgroundColor:colors.card,borderColor:colors.border}]}>
+            {bestM&&<View style={[s.hlCard,{backgroundColor:colors.text+'0D',borderColor:colors.border+'80'}]}>
               <Text style={s.hlEmoji}>🏆</Text>
               <Text style={[s.hlLbl,{color:colors.textSecondary}]}>Melhor Mês</Text>
               <Text style={[s.hlMonth,{color:colors.text}]}>{MONTH_NAMES[bestM.index]}</Text>
               <Text style={[s.hlVal,{color:colors.positive}]}>{formatBRL(bestM.sobra)}</Text>
               <Text style={[s.hlSub,{color:colors.textMuted}]}>de sobra</Text>
             </View>}
-            {worstM&&<View style={[s.hlCard,{backgroundColor:colors.card,borderColor:colors.border}]}>
+            {worstM&&<View style={[s.hlCard,{backgroundColor:colors.text+'0D',borderColor:colors.border+'80'}]}>
               <Text style={s.hlEmoji}>🔥</Text>
               <Text style={[s.hlLbl,{color:colors.textSecondary}]}>Maior Gasto</Text>
               <Text style={[s.hlMonth,{color:colors.text}]}>{MONTH_NAMES[worstM.index]}</Text>
@@ -1273,7 +1305,7 @@ export default function AnnualSummaryScreen() {
               <Text style={[s.hlSub,{color:colors.textMuted}]}>em despesas</Text>
             </View>}
           </View>
-          {posMonths>0&&<View style={[s.posRow,{backgroundColor:colors.card,borderColor:colors.border}]}>
+          {posMonths>0&&<View style={[s.posRow,{backgroundColor:colors.text+'0D',borderColor:colors.border+'80'}]}>
             <Ionicons name="checkmark-circle" size={22} color={colors.positive}/>
             <Text style={[s.posTxt,{color:colors.text}]}>
               Você fechou{' '}
@@ -1304,17 +1336,18 @@ export default function AnnualSummaryScreen() {
 // ─── Main Styles ──────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   content:           {padding:16},
-  hero:              {borderRadius:22,padding:18,marginBottom:8},
-  heroRow:           {flexDirection:'row',alignItems:'center',gap:14},
+  hero:              {borderRadius:22,padding:20,marginBottom:8},
+  heroRow:           {flexDirection:'row',alignItems:'center',gap:16},
   heroR:             {flex:1},
-  heroEye:           {fontSize:10,fontWeight:'700',color:'rgba(255,255,255,0.75)',textTransform:'uppercase',letterSpacing:0.6},
-  heroGrade:         {fontSize:22,fontWeight:'900',color:'#fff',marginTop:2},
-  heroSobra:         {fontSize:20,fontWeight:'900',color:'#fff',marginTop:4},
-  heroSobraLbl:      {fontSize:10,color:'rgba(255,255,255,0.7)'},
-  heroMini:          {flexDirection:'row',alignItems:'center',marginTop:10,gap:10,flexWrap:'wrap'},
-  heroDiv:           {width:1,height:26,backgroundColor:'rgba(255,255,255,0.3)'},
-  heroML:            {fontSize:9,color:'rgba(255,255,255,0.7)',textTransform:'uppercase'},
-  heroMV:            {fontSize:12,fontWeight:'800',color:'#fff'},
+  heroEye:           {fontSize:10,fontWeight:'700',color:'rgba(255,255,255,0.75)',textTransform:'uppercase',letterSpacing:0.8},
+  heroGrade:         {fontSize:26,fontWeight:'900',color:'#fff',marginTop:2},
+  heroSobra:         {fontSize:24,fontWeight:'900',color:'#fff',marginTop:6},
+  heroSobraLbl:      {fontSize:11,color:'rgba(255,255,255,0.7)',marginTop:1},
+  heroStats:         {flexDirection:'row',alignItems:'center',backgroundColor:'rgba(0,0,0,0.14)',borderRadius:14,paddingVertical:13,paddingHorizontal:4,marginTop:16},
+  heroStatCol:       {flex:1,alignItems:'center',gap:4},
+  heroStatDiv:       {width:1,height:34,backgroundColor:'rgba(255,255,255,0.22)'},
+  heroML:            {fontSize:9,fontWeight:'700',color:'rgba(255,255,255,0.65)',textTransform:'uppercase',letterSpacing:0.5},
+  heroMV:            {fontSize:13,fontWeight:'900',color:'#fff'},
   heroMonth:         {marginTop:14,borderTopWidth:1,borderTopColor:'rgba(255,255,255,0.2)',paddingTop:12},
   heroMonthHead:     {flexDirection:'row',alignItems:'center',gap:8,marginBottom:8},
   heroMonthLabel:    {fontSize:13,fontWeight:'800',color:'#fff',flex:1},
@@ -1327,16 +1360,16 @@ const s = StyleSheet.create({
   heroMonthStat:     {fontSize:11,color:'rgba(255,255,255,0.75)',fontWeight:'700'},
   heroMonthPct:      {fontSize:11,color:'rgba(255,255,255,0.55)',marginLeft:'auto'},
   tip:          {fontSize:12,textAlign:'center',marginBottom:16,lineHeight:17,paddingHorizontal:8},
-  card:         {borderRadius:18,borderWidth:1,padding:16,marginBottom:14},
+  card:         {borderRadius:14,padding:16,marginBottom:14,borderWidth:StyleSheet.hairlineWidth},
   cardHead:     {flexDirection:'row',alignItems:'flex-start',marginBottom:14},
   cardTitle:    {fontSize:17,fontWeight:'900',marginBottom:2},
   cardSub:      {fontSize:11,lineHeight:16},
-  exploreBtn:   {flexDirection:'row',alignItems:'center',borderWidth:1,borderRadius:14,paddingHorizontal:10,paddingVertical:7,gap:5},
+  exploreBtn:   {flexDirection:'row',alignItems:'center',borderRadius:14,paddingHorizontal:10,paddingVertical:7,gap:5},
   exploreTxt:   {fontSize:12,fontWeight:'800'},
   pills:        {flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:16},
-  pill:         {flexDirection:'row',alignItems:'center',borderWidth:1.5,borderRadius:20,paddingHorizontal:10,paddingVertical:5,gap:5},
+  pill:         {flexDirection:'row',alignItems:'center',borderRadius:20,paddingHorizontal:10,paddingVertical:5,gap:5},
   pillTxt:      {fontSize:12,fontWeight:'700'},
-  swipeHint:    {flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginTop:14,paddingVertical:8,borderTopWidth:1},
+  swipeHint:    {flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginTop:14,paddingVertical:8,borderTopWidth:StyleSheet.hairlineWidth},
   swipeHintTxt: {fontSize:12,fontWeight:'600'},
   peekOnCard:   {alignItems:'center',justifyContent:'center',zIndex:9999,borderRadius:16},
   donutDots:    {flexDirection:'row',justifyContent:'center',alignItems:'center',gap:6,marginTop:10},
@@ -1344,15 +1377,16 @@ const s = StyleSheet.create({
   gradeLegend:  {flexDirection:'row',justifyContent:'center',alignItems:'center',gap:6,marginTop:12,marginBottom:4},
   gradePill:    {width:34,height:28,borderRadius:8,alignItems:'center',justifyContent:'center'},
   gradePillTxt: {fontSize:13,fontWeight:'900'},
-  secTitle:     {fontSize:17,fontWeight:'900',marginBottom:4,marginTop:4},
-  secSub:       {fontSize:12,marginBottom:10},
+  sectionHeader:{borderLeftWidth:3,marginLeft:16,paddingLeft:13,paddingRight:16,paddingVertical:12,marginBottom:4},
+  sectionTitle: {fontSize:10.5,fontWeight:'800',textTransform:'uppercase',letterSpacing:1.4},
+  sectionSub:   {fontSize:12,marginTop:2},
   hlRow:        {flexDirection:'row',gap:10,marginBottom:10},
-  hlCard:       {flex:1,borderRadius:16,borderWidth:1,padding:14,alignItems:'center'},
+  hlCard:       {flex:1,borderRadius:12,padding:14,alignItems:'center',borderWidth:StyleSheet.hairlineWidth},
   hlEmoji:      {fontSize:26,marginBottom:6},
   hlLbl:        {fontSize:10,fontWeight:'700',textTransform:'uppercase',letterSpacing:0.3,marginBottom:4},
   hlMonth:      {fontSize:14,fontWeight:'800',marginBottom:2},
   hlVal:        {fontSize:16,fontWeight:'900'},
   hlSub:        {fontSize:11,marginTop:2},
-  posRow:       {flexDirection:'row',alignItems:'center',borderRadius:14,borderWidth:1,padding:14,gap:10,marginBottom:14},
+  posRow:       {flexDirection:'row',alignItems:'center',borderRadius:12,padding:14,gap:10,marginBottom:14,borderWidth:StyleSheet.hairlineWidth},
   posTxt:       {fontSize:14,fontWeight:'600',flex:1,lineHeight:20},
 });

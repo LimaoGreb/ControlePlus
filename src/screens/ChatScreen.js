@@ -19,13 +19,14 @@ const CAP_BG = require('../../assets/imagem de fundo do cap.png');
 const CAP_AVATAR = require('../../assets/Gemini_Generated_Image_lebrn5lebrn5lebr.png');
 
 const CHIPS = [
-  { label: '📊 Resumo do mês', text: 'como tá o mês?' },
-  { label: '💸 Maiores gastos', text: 'maiores gastos do mês' },
-  { label: '📅 Essa semana', text: 'gastos essa semana' },
-  { label: '🎯 Projetos', text: 'status dos projetos' },
-  { label: '📈 Investimentos', text: 'como estão meus investimentos' },
-  { label: '📋 Análise anual', text: 'análise do ano' },
-  { label: '💳 Cartão', text: 'quanto no cartão esse mês' },
+  { icon: '📊', label: 'Resumo do mês',    text: 'como tá o mês?' },
+  { icon: '💸', label: 'Maiores gastos',   text: 'maiores gastos do mês' },
+  { icon: '📅', label: 'Essa semana',      text: 'gastos essa semana' },
+  { icon: '🎯', label: 'Projetos',         text: 'status dos projetos' },
+  { icon: '📈', label: 'Investimentos',    text: 'como estão meus investimentos' },
+  { icon: '📋', label: 'Análise anual',    text: 'análise do ano' },
+  { icon: '💳', label: 'Cartão',           text: 'quanto no cartão esse mês' },
+  { icon: '🏷️', label: 'Categorias',       text: 'quanto gastei por categoria' },
 ];
 
 // Preset fixo de alturas para waveform decorativo (bolha de áudio enviada)
@@ -131,7 +132,7 @@ function RecordingBar({ secs, onCancel, onSend, colors, paddingBottom }) {
   return (
     <View style={[
       styles.recordingBar,
-      { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom },
+      { backgroundColor: colors.card, borderColor: colors.border, marginBottom: paddingBottom + 8 },
     ]}>
       <TouchableOpacity
         onPress={onCancel}
@@ -305,15 +306,18 @@ function MicButton({ listening, onPress, colors }) {
 function ChipSuggestions({ onSend, colors }) {
   return (
     <View style={styles.chipGrid}>
-      <Text style={[styles.chipLabel, { color: colors.textMuted }]}>Pergunte algo rápido</Text>
+      <View style={[styles.chipLabelRow, { borderLeftColor: colors.primary }]}>
+        <Text style={[styles.chipLabel, { color: colors.textMuted }]}>Pergunte algo rápido</Text>
+      </View>
       <View style={styles.chipRow}>
         {CHIPS.map(chip => (
           <TouchableOpacity
             key={chip.label}
             onPress={() => onSend(chip.text)}
-            style={[styles.chip, { backgroundColor: colors.card, borderColor: colors.border }]}
-            activeOpacity={0.7}
+            style={[styles.chip, { backgroundColor: colors.card }]}
+            activeOpacity={0.75}
           >
+            <Text style={styles.chipIcon}>{chip.icon}</Text>
             <Text style={[styles.chipTxt, { color: colors.textSecondary }]}>{chip.label}</Text>
           </TouchableOpacity>
         ))}
@@ -345,7 +349,13 @@ export default function ChatScreen() {
   const { messages: capMsgs, markAllRead, ready: capReady } = useCapMessages();
 
   const firstName = (userName || 'você').split(' ')[0];
-  const greeting = `Oi ${firstName}! 👋 Sou o *Cap*.\nMe pergunte qualquer coisa — ou toque no 🎤 para falar!`;
+  const GREETINGS = [
+    `Eai, ${firstName}! 👋 Pode mandar — tô aqui.`,
+    `Oi, ${firstName}! 😄 Qual é? Tô de olho nas suas finanças.`,
+    `Olá, ${firstName}! 🙌 Manda a ver, tô ligado.`,
+    `Oi ${firstName}! ✌️ Aqui é o Cap. O que quer saber?`,
+  ];
+  const greeting = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
 
   const [messages, setMessages] = useState([mkMsg('bot', greeting)]);
   const [inputText, setInputText] = useState('');
@@ -571,7 +581,7 @@ export default function ChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* ─── Header ─────────────────────────────────────────────────────── */}
-        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border, paddingTop: insets.top + 10 }]}>
           <View style={styles.avatarContainer}>
             <View style={styles.headerAvatarWrap}>
               <Image source={CAP_AVATAR} style={styles.headerAvatarImg} resizeMode="cover" />
@@ -653,8 +663,8 @@ export default function ChatScreen() {
             styles.inputBar,
             {
               backgroundColor: colors.card,
-              borderTopColor: colors.border,
-              paddingBottom: inputPadBottom,
+              borderColor: colors.border,
+              marginBottom: inputPadBottom + 8,
             },
           ]}>
             <MicButton listening={false} onPress={toggleMic} colors={colors} />
@@ -704,7 +714,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 16,
+    paddingLeft: 10,
+    paddingRight: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
   },
@@ -745,24 +756,40 @@ const styles = StyleSheet.create({
   typingDots: { flexDirection: 'row', gap: 5, paddingVertical: 4, paddingHorizontal: 2 },
   typingDot: { width: 9, height: 9, borderRadius: 5 },
 
-  // Chips grid
+  // Chips grid — layout 2 colunas flat
   chipGrid: { paddingVertical: 10, paddingHorizontal: 4, marginBottom: 10 },
-  chipLabel: {
-    fontSize: 11, fontWeight: '700', textTransform: 'uppercase',
-    letterSpacing: 0.8, marginBottom: 10, paddingHorizontal: 2,
+  chipLabelRow: { borderLeftWidth: 3, paddingLeft: 10, marginBottom: 12, marginLeft: 2 },
+  chipLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  chip: {
+    width: '49%',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 7,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderRadius: 22, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 9 },
-  chipTxt: { fontSize: 13, fontWeight: '600' },
+  chipIcon: { fontSize: 18, marginBottom: 3 },
+  chipTxt: { fontSize: 12, fontWeight: '600' },
 
-  // Input bar
+  // Input bar — flutuante
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 10,
     paddingHorizontal: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
+    paddingVertical: 10,
+    marginHorizontal: 12,
+    borderRadius: 32,
+    borderWidth: 1,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
   },
   iconBtn: {
     width: 42, height: 42, borderRadius: 21,
@@ -782,14 +809,21 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
 
-  // Recording bar
+  // Recording bar — flutuante (mesmo estilo do inputBar)
   recordingBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
+    paddingVertical: 10,
+    marginHorizontal: 12,
+    borderRadius: 32,
+    borderWidth: 1,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
   },
   recordActionBtn: {
     width: 42, height: 42, borderRadius: 21,

@@ -1,12 +1,12 @@
 // Detalhamento de despesas: duas barras (Fixas e Variáveis) clicáveis que
 // expandem (estilo leque/cortina) mostrando o detalhamento de cada item.
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { monthTotals } from '../utils/calculations';
 import { formatBRL, formatPercent } from '../utils/currency';
-import { getCategoryInsight, getMonthInsight } from '../utils/insights';
+import { getCategoryInsight } from '../utils/insights';
 
 // Uma categoria (Fixas ou Variáveis) que abre e mostra seus itens.
 function CategoryBar({ label, icon, color, items, total, grandTotal }) {
@@ -31,16 +31,16 @@ function CategoryBar({ label, icon, color, items, total, grandTotal }) {
         <View style={styles.catHeader}>
           <View style={styles.catLeft}>
             <View style={[styles.catIcon, { backgroundColor: colors.alpha(color, 0.18) }]}>
-              <Ionicons name={icon} size={16} color={color} />
+              <Ionicons name={icon} size={12} color={color} />
             </View>
-            <Text style={[styles.catLabel, { color: colors.text }]}>{label}</Text>
+            <Text style={[styles.catLabel, { color: colors.textSecondary }]}>{label}</Text>
           </View>
           <View style={styles.catRight}>
             <Text style={[styles.catValue, { color }]}>{formatBRL(total)}</Text>
             {hasItems && (
               <Ionicons
                 name={open ? 'chevron-up' : 'chevron-down'}
-                size={18}
+                size={15}
                 color={colors.textMuted}
                 style={{ marginLeft: 6 }}
               />
@@ -59,7 +59,7 @@ function CategoryBar({ label, icon, color, items, total, grandTotal }) {
 
       {/* Detalhamento dos itens (leque) */}
       {open && (
-        <View style={[styles.detailBox, { borderColor: colors.border }]}>
+        <View style={[styles.detailBox, { borderTopColor: colors.border + '40' }]}>
           {(() => {
             const msg = getCategoryInsight(sorted);
             return msg ? (
@@ -109,34 +109,8 @@ export default function ExpensesBreakdown({ month }) {
     );
   }
 
-  const pctVar = totals.rendaTotal > 0 ? (totals.variableTotal / totals.rendaTotal) * 100 : 0;
-  const pctFix = totals.rendaTotal > 0 ? (totals.fixedTotal / totals.rendaTotal) * 100 : 0;
-
   return (
-    <View>
-      {/* Resumo rápido em % da renda (sem repetir o valor total) */}
-      {totals.rendaTotal > 0 ? (
-        <Text style={[styles.summary, { color: colors.textSecondary }]}>
-          Você comprometeu <Text style={{ color: colors.variable, fontWeight: '800' }}>{formatPercent(pctVar)}</Text> da renda com variáveis e{' '}
-          <Text style={{ color: colors.fixed, fontWeight: '800' }}>{formatPercent(pctFix)}</Text> com fixas.
-        </Text>
-      ) : (
-        <Text style={[styles.summary, { color: colors.textMuted }]}>
-          Lance sua renda para ver o % comprometido com despesas.
-        </Text>
-      )}
-
-      {(() => {
-        const msg = getMonthInsight(month);
-        return msg ? (
-          <View style={[styles.monthInsight, { backgroundColor: colors.alpha(colors.primary, 0.12), borderColor: colors.alpha(colors.primary, 0.4) }]}>
-            <Text style={[styles.monthInsightText, { color: colors.text }]}>{msg}</Text>
-          </View>
-        ) : null;
-      })()}
-
-      <Text style={[styles.tapHint, { color: colors.textMuted }]}>Toque numa categoria para ver os detalhes</Text>
-
+    <View style={styles.wrap}>
       <CategoryBar
         label="Gastos Fixos"
         icon="repeat-outline"
@@ -158,29 +132,29 @@ export default function ExpensesBreakdown({ month }) {
 }
 
 const styles = StyleSheet.create({
-  placeholder: { textAlign: 'center', paddingVertical: 20, fontSize: 13, lineHeight: 19 },
-  summary: { fontSize: 14, fontWeight: '600', lineHeight: 20, marginBottom: 12 },
-  tapHint: { fontSize: 11, marginBottom: 12, marginTop: 2 },
-  monthInsight: { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 14 },
-  monthInsightText: { fontSize: 13, fontWeight: '600', lineHeight: 19 },
-  insight: { borderRadius: 10, padding: 10, marginBottom: 12 },
+  placeholder: { textAlign: 'center', paddingVertical: 20, paddingHorizontal: 16, fontSize: 13, lineHeight: 19 },
+  wrap: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
+  insight: { borderRadius: 8, padding: 10, marginBottom: 12 },
   insightText: { fontSize: 13, fontWeight: '600', lineHeight: 19 },
-  catWrap: { marginBottom: 16 },
-  catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  catWrap: { marginBottom: 4 },
+  catHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 14, paddingRight: 16,
+  },
   catLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  catIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  catLabel: { fontSize: 15, fontWeight: '800' },
+  catIcon: { width: 20, height: 20, borderRadius: 4, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  catLabel: { fontSize: 10.5, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.4 },
   catRight: { flexDirection: 'row', alignItems: 'center' },
-  catValue: { fontSize: 17, fontWeight: '800' },
-  track: { height: 14, borderRadius: 8, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 8 },
-  catPct: { fontSize: 12, fontWeight: '600', marginTop: 4 },
-  detailBox: { borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 10 },
+  catValue: { fontSize: 15, fontWeight: '800' },
+  track: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3 },
+  catPct: { fontSize: 10.5, fontWeight: '600', marginTop: 4, marginBottom: 4 },
+  detailBox: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, marginTop: 8 },
   detailRow: { marginBottom: 10 },
   detailTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  detailName: { fontSize: 14, fontWeight: '700', flex: 1, marginRight: 8 },
-  detailValue: { fontSize: 13, fontWeight: '600' },
-  detailTrack: { height: 8, borderRadius: 6, overflow: 'hidden' },
-  detailFill: { height: '100%', borderRadius: 6 },
-  detailHint: { fontSize: 11, fontStyle: 'italic', marginTop: 2 },
+  detailName: { fontSize: 13, fontWeight: '700', flex: 1, marginRight: 8 },
+  detailValue: { fontSize: 12, fontWeight: '600' },
+  detailTrack: { height: 3, borderRadius: 2, overflow: 'hidden' },
+  detailFill: { height: '100%', borderRadius: 2 },
+  detailHint: { fontSize: 10.5, fontStyle: 'italic', marginTop: 4 },
 });

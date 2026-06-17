@@ -146,17 +146,17 @@ export default function InvestmentCard({
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 12 },
+  card: { borderRadius: 16, padding: 14, marginBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  nameInput: { flex: 1, height: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, marginRight: 8 },
+  nameInput: { flex: 1, height: 48, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, marginRight: 8 },
   trash: { paddingLeft: 6, paddingVertical: 6 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
-  chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 6, marginRight: 7, marginBottom: 7 },
+  chip: { borderRadius: 10, paddingHorizontal: 11, paddingVertical: 6, marginRight: 7, marginBottom: 7 },
   chipText: { fontSize: 12.5, fontWeight: '700' },
-  quoteBox: { borderWidth: 1, borderRadius: 12, padding: 10, marginBottom: 12 },
+  quoteBox: { borderRadius: 12, padding: 10, marginBottom: 12 },
   quoteRow: { flexDirection: 'row', alignItems: 'center' },
-  ticker: { flex: 1, height: 44, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, fontSize: 14, fontWeight: '700', marginRight: 8 },
-  qty: { width: 70, height: 44, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, fontSize: 14, fontWeight: '700', textAlign: 'center', marginRight: 8 },
+  ticker: { flex: 1, height: 44, borderRadius: 10, paddingHorizontal: 10, fontSize: 14, fontWeight: '700', marginRight: 8 },
+  qty: { width: 70, height: 44, borderRadius: 10, paddingHorizontal: 10, fontSize: 14, fontWeight: '700', textAlign: 'center', marginRight: 8 },
   refreshBtn: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   quoteInfo: { fontSize: 11.5, fontWeight: '600', marginTop: 8, lineHeight: 16 },
   valuesRow: { flexDirection: 'row', justifyContent: 'space-between' },

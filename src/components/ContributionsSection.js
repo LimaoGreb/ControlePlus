@@ -93,7 +93,7 @@ export default function ContributionsSection({ monthIndex, month, goalPct = 10 }
 }
 
 const styles = StyleSheet.create({
-  goalBox: { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 14 },
+  goalBox: { borderRadius: 12, padding: 12, marginBottom: 14 },
   goalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   goalLabel: { fontSize: 14, fontWeight: '800' },
   goalTarget: { fontSize: 13, fontWeight: '700' },
