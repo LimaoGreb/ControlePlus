@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  ScrollView, View, Text, TextInput, TouchableOpacity,
+  StyleSheet, Modal, TouchableWithoutFeedback, KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
@@ -20,8 +23,8 @@ export default function SettingsCartoesScreen() {
     setPaymentLimit,
   } = useSettings();
   const [newPayment, setNewPayment] = useState('');
-  const [expandedId, setExpandedId] = useState(null);
-  const [bankSearch, setBankSearch] = useState({});
+  const [bankModalId, setBankModalId] = useState(null);
+  const [bankSearch, setBankSearch] = useState('');
 
   useEffect(() => {
     paymentMethods.forEach(pm => {
@@ -34,33 +37,31 @@ export default function SettingsCartoesScreen() {
 
   const handleAdd = () => { if (addPaymentMethod(newPayment)) setNewPayment(''); };
 
+  const modalPm = paymentMethods.find(p => p.id === bankModalId);
+  const filteredBanks = BANKS.filter(b =>
+    b.name.toLowerCase().includes(bankSearch.toLowerCase())
+  );
+
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
 
       {/* ── Lista de formas ── */}
       {paymentMethods.length === 0 ? (
-        <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 10 }]}>
+        <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 10, paddingHorizontal: 16 }]}>
           Nenhuma cadastrada. Adicione para escolher na hora de lançar despesas.
         </Text>
       ) : (
         <View style={styles.section}>
-          {paymentMethods.map((pm, idx) => {
+          {paymentMethods.map((pm) => {
             const bank = getBankForPayment(pm);
             const isNonCredit = bank?.id === 'pix' || bank?.id === 'debito';
-            const isExpanded = expandedId === pm.id;
 
             return (
               <View
                 key={pm.id}
-                style={[
-                  styles.pmWrap,
-                  {
-                    backgroundColor: colors.text + '0D',
-                    borderColor: colors.border + '80',
-                  },
-                ]}
+                style={[styles.pmWrap, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}
               >
-                {/* Linha principal */}
+                {/* ── Linha 1: ícone + nome + chip crédito + lixo ── */}
                 <View style={styles.pmRow}>
                   {bank
                     ? <BankBadge bank={bank} size={28} />
@@ -71,7 +72,7 @@ export default function SettingsCartoesScreen() {
                   <TextInput
                     value={pm.name}
                     onChangeText={(t) => updatePaymentMethod(pm.id, t)}
-                    placeholder="Nome (ex.: Crédito Nubank)"
+                    placeholder="Nome do cartão"
                     placeholderTextColor={colors.textMuted}
                     style={[styles.pmNameInput, { color: colors.text }]}
                   />
@@ -80,7 +81,7 @@ export default function SettingsCartoesScreen() {
                       onPress={() => setPaymentCredit(pm.id, !pm.isCredit)}
                       style={[styles.chip, {
                         backgroundColor: pm.isCredit ? colors.primary : 'transparent',
-                        borderColor: pm.isCredit ? colors.primary : colors.border,
+                        borderColor: pm.isCredit ? colors.primary : colors.border + '80',
                       }]}
                     >
                       <Text style={[styles.chipText, { color: pm.isCredit ? contrastText(colors.primary) : colors.textMuted }]}>
@@ -88,69 +89,39 @@ export default function SettingsCartoesScreen() {
                       </Text>
                     </TouchableOpacity>
                   )}
-                  {pm.isCredit && !isNonCredit && (
-                    <TouchableOpacity
-                      onPress={() => setExpandedId(isExpanded ? null : pm.id)}
-                      hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                      style={{ marginRight: 6 }}
-                    >
-                      <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={17} color={colors.textMuted} />
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity onPress={() => removePaymentMethod(pm.id)} hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => removePaymentMethod(pm.id)}
+                    hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                    style={{ marginLeft: 4 }}
+                  >
                     <Ionicons name="trash-outline" size={18} color={colors.negative} />
                   </TouchableOpacity>
                 </View>
 
-                {/* Painel expandido — banco + limite */}
-                {pm.isCredit && isExpanded && (
-                  <View style={[styles.expandPanel, { borderTopColor: colors.border + '40' }]}>
-                    <Text style={[styles.panelLabel, { color: colors.textMuted }]}>Banco emissor</Text>
-                    <View style={[styles.bankSearchBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
-                      <Ionicons name="search-outline" size={15} color={colors.textMuted} />
-                      <TextInput
-                        value={bankSearch[pm.id] || ''}
-                        onChangeText={t => setBankSearch(prev => ({ ...prev, [pm.id]: t }))}
-                        placeholder="Buscar banco..."
-                        placeholderTextColor={colors.textMuted}
-                        style={[styles.bankSearchInput, { color: colors.text }]}
-                      />
-                      {!!bankSearch[pm.id] && (
-                        <TouchableOpacity onPress={() => setBankSearch(prev => ({ ...prev, [pm.id]: '' }))}>
-                          <Ionicons name="close-circle" size={15} color={colors.textMuted} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    <View style={[styles.bankList, { borderColor: colors.border + '40' }]}>
-                      {BANKS
-                        .filter(b => b.name.toLowerCase().includes((bankSearch[pm.id] || '').toLowerCase()))
-                        .map((b, bi) => {
-                          const selected = pm.bank === b.id;
-                          return (
-                            <TouchableOpacity
-                              key={b.id}
-                              onPress={() => setPaymentBank(pm.id, selected ? null : b.id)}
-                              style={[
-                                styles.bankRow,
-                                bi > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border + '40' },
-                                selected && { backgroundColor: b.color + '12' },
-                              ]}
-                            >
-                              <BankBadge bank={b} size={26} />
-                              <Text style={[styles.bankRowText, { color: selected ? b.color : colors.text }]}>
-                                {b.name}
-                              </Text>
-                              {selected && (
-                                <Ionicons name="checkmark-circle" size={18} color={b.color} />
-                              )}
-                            </TouchableOpacity>
-                          );
-                        })}
-                    </View>
+                {/* ── Linha 2: Banco (só se crédito) ── */}
+                {pm.isCredit && !isNonCredit && (
+                  <TouchableOpacity
+                    style={[styles.fieldRow, { borderTopColor: colors.border + '40' }]}
+                    onPress={() => { setBankSearch(''); setBankModalId(pm.id); }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Banco</Text>
+                    {pm.bank && bank ? (
+                      <View style={styles.bankSelected}>
+                        <BankBadge bank={bank} size={20} />
+                        <Text style={[styles.bankSelectedText, { color: colors.text }]}>{bank.name}</Text>
+                      </View>
+                    ) : (
+                      <Text style={[styles.fieldPlaceholder, { color: colors.textMuted }]}>Selecionar banco</Text>
+                    )}
+                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                )}
 
-                    <Text style={[styles.panelLabel, { color: colors.textMuted, marginTop: 12 }]}>
-                      Limite de crédito <Text style={{ fontStyle: 'italic' }}>(opcional)</Text>
-                    </Text>
+                {/* ── Linha 3: Limite (só se crédito) ── */}
+                {pm.isCredit && !isNonCredit && (
+                  <View style={[styles.fieldRow, { borderTopColor: colors.border + '40' }]}>
+                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Limite</Text>
                     <TextInput
                       value={pm.creditLimit ? String(pm.creditLimit) : ''}
                       onChangeText={(t) => {
@@ -160,11 +131,11 @@ export default function SettingsCartoesScreen() {
                       placeholder="Ex.: 5000"
                       keyboardType="decimal-pad"
                       placeholderTextColor={colors.textMuted}
-                      style={[styles.limitInput, { backgroundColor: colors.inputBg, color: colors.text }]}
+                      style={[styles.limitInput, { color: colors.text }]}
                     />
                     {pm.creditLimit > 0 && (
-                      <Text style={[styles.limitHint, { color: colors.textMuted }]}>
-                        Limite: {formatBRL(pm.creditLimit)} · alerta ao atingir 80%
+                      <Text style={[styles.limitValue, { color: colors.textSecondary }]}>
+                        {formatBRL(pm.creditLimit)}
                       </Text>
                     )}
                   </View>
@@ -177,13 +148,13 @@ export default function SettingsCartoesScreen() {
 
       {/* ── Adicionar nova ── */}
       <Text style={[styles.hint, { color: colors.textMuted, marginBottom: 10, paddingHorizontal: 16 }]}>
-        Marque "Crédito" e expanda (▾) para definir banco e limite.
+        Adicione e marque "Crédito" para definir banco e limite.
       </Text>
       <View style={[styles.addRow, { paddingHorizontal: 16 }]}>
         <TextInput
           value={newPayment}
           onChangeText={setNewPayment}
-          placeholder="Ex.: PIX, Crédito Nubank, Boleto"
+          placeholder="Ex.: PIX, Crédito Nubank, Débito"
           placeholderTextColor={colors.textMuted}
           onSubmitEditing={handleAdd}
           style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: colors.inputBg, color: colors.text }]}
@@ -194,38 +165,144 @@ export default function SettingsCartoesScreen() {
       </View>
 
       <View style={{ height: 40 }} />
+
+      {/* ── Modal de seleção de banco ── */}
+      <Modal
+        transparent
+        visible={!!bankModalId}
+        animationType="slide"
+        onRequestClose={() => setBankModalId(null)}
+        statusBarTranslucent
+      >
+        <TouchableWithoutFeedback onPress={() => setBankModalId(null)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <View style={[styles.modalSheet, { backgroundColor: colors.card, borderColor: colors.border + '80' }]}>
+
+                  {/* Header */}
+                  <View style={[styles.modalHeader, { borderBottomColor: colors.border + '40' }]}>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>Banco emissor</Text>
+                    <TouchableOpacity onPress={() => setBankModalId(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Ionicons name="close" size={22} color={colors.textMuted} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Busca */}
+                  <View style={[styles.searchBox, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}>
+                    <Ionicons name="search-outline" size={16} color={colors.textMuted} />
+                    <TextInput
+                      value={bankSearch}
+                      onChangeText={setBankSearch}
+                      placeholder="Buscar banco..."
+                      placeholderTextColor={colors.textMuted}
+                      autoFocus
+                      style={[styles.searchInput, { color: colors.text }]}
+                    />
+                    {!!bankSearch && (
+                      <TouchableOpacity onPress={() => setBankSearch('')}>
+                        <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Lista de bancos */}
+                  <ScrollView style={styles.bankScroll} keyboardShouldPersistTaps="handled">
+                    {modalPm?.bank && (
+                      <TouchableOpacity
+                        style={[styles.bankItem, { borderBottomColor: colors.border + '40' }]}
+                        onPress={() => { setPaymentBank(bankModalId, null); setBankModalId(null); }}
+                      >
+                        <Ionicons name="close-circle-outline" size={22} color={colors.textMuted} />
+                        <Text style={[styles.bankItemText, { color: colors.textMuted }]}>Remover banco</Text>
+                      </TouchableOpacity>
+                    )}
+                    {filteredBanks.map((b, i) => {
+                      const selected = modalPm?.bank === b.id;
+                      return (
+                        <TouchableOpacity
+                          key={b.id}
+                          style={[
+                            styles.bankItem,
+                            { borderBottomColor: colors.border + '40' },
+                            selected && { backgroundColor: b.color + '12' },
+                          ]}
+                          onPress={() => { setPaymentBank(bankModalId, b.id); setBankModalId(null); }}
+                        >
+                          <BankBadge bank={b} size={30} />
+                          <Text style={[styles.bankItemText, { color: selected ? b.color : colors.text, fontWeight: selected ? '800' : '600' }]}>
+                            {b.name}
+                          </Text>
+                          {selected && <Ionicons name="checkmark-circle" size={20} color={b.color} />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingVertical: 16 },
-  section: { paddingHorizontal: 16, marginBottom: 4 },
+  section: { paddingHorizontal: 16, marginBottom: 8 },
   hint: { fontSize: 12, lineHeight: 18 },
-  input: { height: 48, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, marginBottom: 8 },
+  input: { height: 48, borderRadius: 10, paddingHorizontal: 12, fontSize: 15 },
   addRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   addBtn: { width: 48, height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
 
-  pmWrap: {
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 6,
-    overflow: 'hidden',
-  },
-  pmRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12 },
+  // Card de cada forma de pagamento
+  pmWrap: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, marginBottom: 8, overflow: 'hidden' },
+  pmRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 8 },
   pmIcon: { width: 28, height: 28, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  pmNameInput: { flex: 1, fontSize: 14, fontWeight: '600', marginLeft: 10, paddingVertical: 0, height: 24 },
-
-  chip: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, marginRight: 6, borderWidth: 1 },
+  pmNameInput: { flex: 1, fontSize: 14, fontWeight: '600', paddingVertical: 0, height: 24 },
+  chip: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1 },
   chipText: { fontSize: 11.5, fontWeight: '700' },
 
-  expandPanel: { borderTopWidth: StyleSheet.hairlineWidth, paddingBottom: 12, paddingHorizontal: 12 },
-  panelLabel: { fontSize: 10.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
-  bankSearchBox: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, gap: 6, marginBottom: 8, borderWidth: 1 },
-  bankSearchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
-  bankList: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', marginBottom: 4 },
-  bankRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 10, gap: 10 },
-  bankRowText: { flex: 1, fontSize: 14, fontWeight: '700' },
-  limitInput: { height: 44, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, marginBottom: 4 },
-  limitHint: { fontSize: 11, fontStyle: 'italic' },
+  // Linhas de campo (banco / limite)
+  fieldRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 11, paddingHorizontal: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 8,
+  },
+  fieldLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, width: 52 },
+  fieldPlaceholder: { flex: 1, fontSize: 14 },
+  bankSelected: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  bankSelectedText: { fontSize: 14, fontWeight: '700' },
+  limitInput: { flex: 1, fontSize: 14, fontWeight: '600', paddingVertical: 0 },
+  limitValue: { fontSize: 12, fontWeight: '600' },
+
+  // Modal de banco
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalSheet: {
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderWidth: 1, borderBottomWidth: 0,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 18, paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  modalTitle: { fontSize: 16, fontWeight: '800' },
+  searchBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: 16, marginVertical: 12,
+    paddingHorizontal: 12, paddingVertical: 9,
+    borderRadius: 10, borderWidth: StyleSheet.hairlineWidth,
+  },
+  searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
+  bankScroll: { maxHeight: 400 },
+  bankItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  bankItemText: { flex: 1, fontSize: 15 },
 });
