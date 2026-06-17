@@ -121,28 +121,32 @@ export default function SettingsCartoesScreen() {
                         </TouchableOpacity>
                       )}
                     </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bankScroll}>
+                    <View style={[styles.bankList, { borderColor: colors.border + '40' }]}>
                       {BANKS
                         .filter(b => b.name.toLowerCase().includes((bankSearch[pm.id] || '').toLowerCase()))
-                        .map((b) => {
+                        .map((b, bi) => {
                           const selected = pm.bank === b.id;
                           return (
                             <TouchableOpacity
                               key={b.id}
                               onPress={() => setPaymentBank(pm.id, selected ? null : b.id)}
-                              style={[styles.bankChip, {
-                                backgroundColor: selected ? b.color : b.color + '18',
-                                borderColor: b.color,
-                              }]}
+                              style={[
+                                styles.bankRow,
+                                bi > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border + '40' },
+                                selected && { backgroundColor: b.color + '12' },
+                              ]}
                             >
-                              <BankBadge bank={b} size={20} />
-                              <Text style={[styles.bankChipText, { color: selected ? '#fff' : b.color, marginLeft: 6 }]}>
+                              <BankBadge bank={b} size={26} />
+                              <Text style={[styles.bankRowText, { color: selected ? b.color : colors.text }]}>
                                 {b.name}
                               </Text>
+                              {selected && (
+                                <Ionicons name="checkmark-circle" size={18} color={b.color} />
+                              )}
                             </TouchableOpacity>
                           );
                         })}
-                    </ScrollView>
+                    </View>
 
                     <Text style={[styles.panelLabel, { color: colors.textMuted, marginTop: 12 }]}>
                       Limite de crédito <Text style={{ fontStyle: 'italic' }}>(opcional)</Text>
@@ -217,11 +221,11 @@ const styles = StyleSheet.create({
 
   expandPanel: { borderTopWidth: StyleSheet.hairlineWidth, paddingBottom: 12, paddingHorizontal: 12 },
   panelLabel: { fontSize: 10.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 },
-  bankSearchBox: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, gap: 6, marginBottom: 10, borderWidth: 1 },
+  bankSearchBox: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, gap: 6, marginBottom: 8, borderWidth: 1 },
   bankSearchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
-  bankScroll: { flexGrow: 0 },
-  bankChip: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, borderWidth: 1 },
-  bankChipText: { fontSize: 12, fontWeight: '700' },
+  bankList: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', marginBottom: 4 },
+  bankRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 10, gap: 10 },
+  bankRowText: { flex: 1, fontSize: 14, fontWeight: '700' },
   limitInput: { height: 44, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, marginBottom: 4 },
   limitHint: { fontSize: 11, fontStyle: 'italic' },
 });
