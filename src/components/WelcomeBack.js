@@ -14,7 +14,7 @@ function getGreeting() {
 export default function WelcomeBack() {
   const { colors } = useTheme();
   const { userName } = useSettings();
-  const appState = useRef(AppState.currentState);
+  const appState = useRef('active'); // força 'active' para ignorar transição de cold start no Android
   const [visible, setVisible] = useState(false);
 
   const screenOpacity   = useRef(new Animated.Value(0)).current;

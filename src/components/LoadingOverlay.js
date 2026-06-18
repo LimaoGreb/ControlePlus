@@ -100,16 +100,6 @@ export default function LoadingOverlay({ appReady, userName, onDone }) {
           Seu dinheiro, do seu jeito 💸
         </Animated.Text>
 
-        {/* Bem vindo de volta — aparece só quando AsyncStorage carrega o nome */}
-        {firstName ? (
-          <Animated.View
-            style={[styles.welcomeCard, { opacity: welcomeAnim, transform: [{ translateY: welcomeY }] }]}
-          >
-            <Text style={styles.welcomeText}>
-              Bem vindo de volta, {firstName}! 👋
-            </Text>
-          </Animated.View>
-        ) : null}
       </Animated.View>
     </Animated.View>
   );
