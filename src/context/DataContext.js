@@ -6,9 +6,30 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadData, saveData, replaceData, loadYearData, saveYearData, getYearKey } from '../services/storage';
 import { YEAR, buildInitialMonths } from '../data/initialData';
+import { logActivity } from '../services/activityLog';
+
+const fmtLog = (v) => {
+  if (v == null || isNaN(Number(v))) return '';
+  const n = Number(v); const f = n.toFixed(2).split('.');
+  f[0] = f[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); return `R$ ${f[0]},${f[1]}`;
+};
+
+const SECTION_META = {
+  incomes:       { label: 'Renda',           icon: 'trending-up-outline', color: '#34C759', fem: true  },
+  fixed:         { label: 'Gasto fixo',      icon: 'receipt-outline',     color: '#FF6B6B', fem: false },
+  variable:      { label: 'Gasto variável',  icon: 'cash-outline',        color: '#FF9500', fem: false },
+  contributions: { label: 'Contribuição',    icon: 'star-outline',        color: '#7C3AED', fem: true  },
+};
+
+const CAT_NAMES = {
+  alimentacao: 'Alimentação', transporte: 'Transporte', moradia: 'Moradia',
+  saude: 'Saúde', lazer: 'Lazer', educacao: 'Educação', vestuario: 'Vestuário',
+  assinaturas: 'Assinaturas', tech: 'Tech', outros: 'Outros',
+};
 
 export const DataContext = createContext(null);
 // Contexto dedicado para a aba Casal — prioridade sobre DataContext em useData().
@@ -33,6 +54,7 @@ function ensureMonth(m) {
     variable: (m && m.variable) || [],
     contributions: (m && m.contributions) || [],
     completed: !!(m && m.completed),
+    simulation: (m && m.simulation) || [],
   };
 }
 
@@ -46,6 +68,7 @@ export function DataProvider({ children }) {
   const switchingRef = useRef(false);
   const dataRef = useRef(null);
   const yearCache = useRef({});       // cache em memória: { ano: data } — troca instantânea
+  const pendingLogTimers = useRef({});
 
   useEffect(() => {
     loadData().then((d) => {
@@ -126,6 +149,16 @@ export function DataProvider({ children }) {
 
   // section: 'incomes' | 'fixed' | 'variable'
   const addItem = (monthIndex, section, name = '', value = 0, payment = null, extras = {}) => {
+    const meta = SECTION_META[section];
+    if (meta && (name || value > 0)) {
+      const suffix = meta.fem ? 'a' : 'o';
+      logActivity({
+        type: `${section}_add`,
+        title: `${meta.label} adicionad${suffix}`,
+        detail: name ? `${name}${value > 0 ? ` · ${fmtLog(value)}` : ''}` : fmtLog(value) || null,
+        icon: meta.icon, color: meta.color,
+      });
+    }
     updateMonth(monthIndex, (m) => ({
       ...m,
       [section]: [...m[section], { id: uid(section), name, value, payment, date: new Date().toISOString(), ...extras }],
@@ -133,6 +166,17 @@ export function DataProvider({ children }) {
   };
 
   const removeItem = (monthIndex, section, id) => {
+    const meta = SECTION_META[section];
+    const item = dataRef.current?.months?.[monthIndex]?.[section]?.find(it => it.id === id);
+    if (meta && item) {
+      const suffix = meta.fem ? 'a' : 'o';
+      logActivity({
+        type: `${section}_remove`,
+        title: `${meta.label} removid${suffix}`,
+        detail: item.name ? `${item.name}${item.value > 0 ? ` · ${fmtLog(item.value)}` : ''}` : null,
+        icon: meta.icon, color: meta.color,
+      });
+    }
     updateMonth(monthIndex, (m) => ({
       ...m,
       [section]: m[section].filter((it) => it.id !== id),
@@ -140,6 +184,58 @@ export function DataProvider({ children }) {
   };
 
   const updateItem = (monthIndex, section, id, field, value) => {
+    // Campos discretos: loga imediatamente (não disparam por keystroke).
+    if (field === 'concluded' || field === 'category' || field === 'payment') {
+      const item = dataRef.current?.months?.[monthIndex]?.[section]?.find(it => it.id === id);
+      if (item) {
+        if (field === 'concluded') {
+          logActivity({
+            type: value ? 'expense_concluded' : 'expense_reopened',
+            title: value ? 'Despesa concluída' : 'Despesa reaberta',
+            detail: item.name || null,
+            icon: value ? 'checkmark-circle-outline' : 'refresh-outline',
+            color: value ? '#34C759' : '#FF9500',
+          });
+        } else if (field === 'category') {
+          const catName = value ? (CAT_NAMES[value] || value) : null;
+          logActivity({
+            type: 'expense_categorized',
+            title: value ? 'Categoria definida' : 'Categoria removida',
+            detail: item.name && catName ? `${item.name} · ${catName}` : item.name || catName || null,
+            icon: 'pricetag-outline',
+            color: '#007AFF',
+          });
+        } else if (field === 'payment' && value) {
+          logActivity({
+            type: 'expense_payment_set',
+            title: 'Pagamento definido',
+            detail: item.name ? `${item.name} · ${value}` : value,
+            icon: 'card-outline',
+            color: '#5856D6',
+          });
+        }
+      }
+    }
+
+    // Renda editada: debounce 1.2s — evita log por keystroke, captura o valor final.
+    if (section === 'incomes' && (field === 'name' || field === 'value')) {
+      const timerKey = `${id}_${field}`;
+      if (pendingLogTimers.current[timerKey]) clearTimeout(pendingLogTimers.current[timerKey]);
+      pendingLogTimers.current[timerKey] = setTimeout(() => {
+        delete pendingLogTimers.current[timerKey];
+        const item = dataRef.current?.months?.[monthIndex]?.incomes?.find(it => it.id === id);
+        if (!item) return;
+        const detail = [item.name, Number(item.value) > 0 ? fmtLog(item.value) : null].filter(Boolean).join(' · ') || null;
+        logActivity({
+          type: 'income_edited',
+          title: 'Renda editada',
+          detail,
+          icon: 'trending-up-outline',
+          color: '#34C759',
+        });
+      }, 1200);
+    }
+
     updateMonth(monthIndex, (m) => ({
       ...m,
       [section]: m[section].map((it) =>
@@ -150,7 +246,7 @@ export function DataProvider({ children }) {
 
   const copyFixedFromPrevious = (monthIndex) => {
     if (monthIndex <= 0) return false;
-    const prevMonth = ensureMonth(data.months[monthIndex - 1]);
+    const prevMonth = ensureMonth(dataRef.current?.months?.[monthIndex - 1]);
     if (!prevMonth.fixed.length) return false;
     let added = 0;
     updateMonth(monthIndex, (m) => {
@@ -203,6 +299,7 @@ export function DataProvider({ children }) {
     });
 
     // Parcelas de anos futuros (assíncrono, cada ano em sequência)
+    let failedYears = [];
     for (const [offsetStr, items] of Object.entries(futureByYear)) {
       const targetYear = activeYearRef.current + Number(offsetStr);
       try {
@@ -224,19 +321,45 @@ export function DataProvider({ children }) {
         await saveYearData(targetYear, { ...yearData, months });
       } catch (e) {
         console.warn(`[installments] erro ao salvar no ano ${targetYear}:`, e?.message);
+        failedYears.push(targetYear);
       }
     }
+    if (failedYears.length > 0) {
+      Alert.alert(
+        'Parcelas incompletas',
+        `Algumas parcelas de ${failedYears.join(', ')} não foram salvas por um erro de armazenamento. Tente novamente ou verifique o espaço disponível no dispositivo.`
+      );
+    }
 
+    logActivity({
+      type: 'installments_add',
+      title: 'Parcelamento criado',
+      detail: `${name} · ${count}x de ${fmtLog(parcelaValue)}`,
+      icon: 'card-outline', color: '#7C3AED',
+    });
     return count;
   };
 
   // Marca/desmarca o mês como concluído (conclusão manual).
   const setMonthCompleted = (monthIndex, completed) => {
+    if (completed) {
+      logActivity({
+        type: 'month_completed',
+        title: 'Mês concluído',
+        icon: 'checkmark-circle-outline', color: '#34C759',
+      });
+    }
     updateMonth(monthIndex, (m) => ({ ...m, completed }));
   };
 
   // Conclui/reabre TODAS as despesas do mês de uma vez (e o flag do mês).
   const concludeAllItems = (monthIndex, value) => {
+    logActivity({
+      type: value ? 'all_concluded' : 'all_reopened',
+      title: value ? 'Todas as despesas concluídas' : 'Despesas reabertas',
+      icon: value ? 'checkmark-done-outline' : 'refresh-outline',
+      color: value ? '#34C759' : '#FF9500',
+    });
     updateMonth(monthIndex, (m) => ({
       ...m,
       fixed: m.fixed.map((it) => ({ ...it, concluded: value })),
@@ -273,12 +396,41 @@ export function DataProvider({ children }) {
 
   // Apaga todos os lançamentos de um mês (renda, fixos e variáveis).
   const clearMonth = (monthIndex) => {
+    logActivity({
+      type: 'month_cleared',
+      title: 'Mês limpo',
+      icon: 'trash-outline', color: '#FF3B30',
+    });
     updateMonth(monthIndex, () => ({
       incomes: [],
       fixed: [],
       variable: [],
       contributions: [],
       completed: false,
+    }));
+  };
+
+  // ── Modo Simulação ────────────────────────────────────────────────────────
+  const addSimItem = (monthIndex) => {
+    updateMonth(monthIndex, (m) => ({
+      ...m,
+      simulation: [...(m.simulation || []), { id: uid('sim'), name: '', value: 0 }],
+    }));
+  };
+
+  const removeSimItem = (monthIndex, id) => {
+    updateMonth(monthIndex, (m) => ({
+      ...m,
+      simulation: (m.simulation || []).filter((it) => it.id !== id),
+    }));
+  };
+
+  const updateSimItem = (monthIndex, id, field, value) => {
+    updateMonth(monthIndex, (m) => ({
+      ...m,
+      simulation: (m.simulation || []).map((it) =>
+        it.id === id ? { ...it, [field]: value } : it
+      ),
     }));
   };
 
@@ -325,6 +477,9 @@ export function DataProvider({ children }) {
     clearMonth,
     importData,
     clearFutureYears,
+    addSimItem,
+    removeSimItem,
+    updateSimItem,
   };
 
   return (

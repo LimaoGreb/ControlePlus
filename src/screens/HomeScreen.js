@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MonthContent from '../components/MonthContent';
 import Avatar from '../components/Avatar';
 import QuickAddFab from '../components/QuickAddFab';
+import ActivityLogScreen from './ActivityLogScreen';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { useSync } from '../context/SyncContext';
@@ -15,8 +16,9 @@ import { MONTH_NAMES } from '../data/initialData';
 
 const MENU_ITEMS = [
   { key: 'perfil',   screen: 'SettingsPerfil',  icon: 'person-outline',       label: 'Perfil' },
-  { key: 'cartoes',  screen: 'SettingsCartoes', icon: 'card-outline',          label: 'Pagamentos' },
-  { key: 'temas',    screen: 'SettingsTemas',   icon: 'color-palette-outline', label: 'Temas' },
+  { key: 'cartoes',     screen: 'SettingsCartoes',    icon: 'card-outline',          label: 'Pagamentos' },
+  { key: 'categorias', screen: 'SettingsCategories', icon: 'pricetag-outline',      label: 'Categorias' },
+  { key: 'temas',      screen: 'SettingsTemas',      icon: 'color-palette-outline', label: 'Temas' },
   { key: 'backup',   screen: 'SettingsBackup',  icon: 'cloud-upload-outline',  label: 'Backup' },
   { key: 'geral',    screen: 'Settings',        icon: 'settings-outline',      label: 'Configurações' },
 ];
@@ -34,6 +36,7 @@ export default function HomeScreen() {
 
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const isPartnerMode = activeProfile === 'partner' && !!partnerPersonalData;
   const displayName = isPartnerMode ? (partnerName || 'Parceiro(a)') : (userName || '');
@@ -86,6 +89,18 @@ export default function HomeScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Linha 3: atalho histórico */}
+        <TouchableOpacity
+          style={[styles.historyBtn, { borderTopColor: colors.border + '40' }]}
+          onPress={() => setHistoryOpen(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="time-outline" size={17} color={colors.textSecondary} />
+          <Text style={[styles.historyBtnText, { color: colors.textSecondary }]}>Ver histórico</Text>
+          <Text style={[styles.historyHint, { color: colors.textMuted }]}>(toque para abrir)</Text>
+        </TouchableOpacity>
+
       </View>
 
       {/* ── Conteúdo do mês — rola por baixo do header fixo ── */}
@@ -95,6 +110,9 @@ export default function HomeScreen() {
         searchTerm={search}
       />
       <QuickAddFab monthIndex={currentMonth} />
+
+      {/* Modal de histórico de ações */}
+      <ActivityLogScreen visible={historyOpen} onClose={() => setHistoryOpen(false)} />
 
       {/* ── Dropdown dos três pontinhos ── */}
       <Modal transparent visible={menuOpen} animationType="fade" onRequestClose={() => setMenuOpen(false)}>
@@ -129,7 +147,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingBottom: 0,
     zIndex: 10,
   },
   topRow: {
@@ -149,6 +167,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchInput: { flex: 1, fontSize: 14, fontWeight: '400', paddingVertical: 0 },
+  historyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 7,
+    paddingVertical: 10,
+    marginTop: 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  historyBtnText: { fontSize: 13.5, fontWeight: '700' },
+  historyHint: { fontSize: 11, fontWeight: '500' },
   overlay: { flex: 1 },
   dropdown: {
     position: 'absolute',

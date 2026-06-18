@@ -1,69 +1,51 @@
+// Widget 2x2 — Saldo do mes (renda, sobra, barra de progresso).
 import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
-import { fmtBRL, progressColor } from './widgetUtils';
+import { formatBRL } from '../utils/currency';
 
-export function SaldoWidget({ mes, ano, renda, gastos, sobra, pct, status, colors }) {
-  const barColor = progressColor(pct, colors);
-  const fillFlex = Math.max(0.02, Math.min(0.98, pct || 0));
-  const isNeg = sobra < 0;
-  const statusLabel = status === 'done' ? '✓ Concluído' : status === 'progress' ? 'Em andamento' : 'Vazio';
-  const statusColor = status === 'done' ? colors.positive : status === 'progress' ? colors.warning : colors.textMuted;
+const C = {
+  bg: '#141E2D', card: '#1E2C3F', accent: '#E0A52E',
+  text: '#FFFFFF', textSec: '#7A90A8',
+  positive: '#2BB673', negative: '#E5484D', warn: '#F5A524', empty: '#2E3F52',
+};
+
+function ProgressBar({ pct }) {
+  const filled = Math.max(Math.min(Math.round(pct), 99), 1);
+  const empty = 100 - filled;
+  const color = pct > 90 ? C.negative : pct > 70 ? C.warn : C.positive;
+  return (
+    <FlexWidget style={{ width: 'match_parent', height: 6, borderRadius: 3, backgroundColor: C.empty, flexDirection: 'row', overflow: 'hidden' }}>
+      <FlexWidget style={{ flex: filled, height: 'match_parent', backgroundColor: color, borderRadius: 3 }} />
+      <FlexWidget style={{ flex: empty, height: 'match_parent', backgroundColor: '#00000000' }} />
+    </FlexWidget>
+  );
+}
+
+export function SaldoWidget({ data }) {
+  const { totals, monthName, year } = data;
+  const { sobraTotal, rendaTotal, percentGasto } = totals;
+  const pct = Math.min(Math.max(Math.round(percentGasto), 0), 100);
+  const sobraColor = sobraTotal >= 0 ? C.positive : C.negative;
 
   return (
     <FlexWidget
+      style={{ width: 'match_parent', height: 'match_parent', backgroundColor: C.bg, borderRadius: 16, flexDirection: 'column', justifyContent: 'space-between', padding: 14 }}
       clickAction="OPEN_APP"
-      style={{
-        height: 'match_parent',
-        width: 'match_parent',
-        flexDirection: 'column',
-        backgroundColor: colors.bg,
-        borderRadius: 20,
-        padding: 16,
-        justifyContent: 'space-between',
-      }}
     >
-      {/* Cabeçalho: mês + status */}
-      <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <TextWidget
-          text={`${mes} ${ano}`}
-          style={{ fontSize: 13, color: colors.textMuted, fontWeight: '700' }}
-        />
-        <TextWidget
-          text={statusLabel}
-          style={{ fontSize: 11, color: statusColor, fontWeight: '600' }}
-        />
-      </FlexWidget>
-
-      {/* Valor principal */}
       <FlexWidget style={{ flexDirection: 'column' }}>
-        <TextWidget
-          text="Sobra"
-          style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}
-        />
-        <TextWidget
-          text={fmtBRL(sobra)}
-          style={{ fontSize: 24, color: isNeg ? colors.negative : colors.text, fontWeight: '900' }}
-        />
+        <TextWidget text="Controle+" style={{ fontSize: 11, fontWeight: '700', color: C.accent }} />
+        <TextWidget text={monthName + ' ' + year} style={{ fontSize: 10, color: C.textSec, marginTop: 1 }} />
       </FlexWidget>
-
-      {/* Barra de progresso */}
       <FlexWidget style={{ flexDirection: 'column' }}>
-        <FlexWidget
-          style={{
-            width: 'match_parent',
-            height: 7,
-            borderRadius: 4,
-            backgroundColor: colors.bgBar,
-            flexDirection: 'row',
-          }}
-        >
-          <FlexWidget style={{ flex: fillFlex, backgroundColor: barColor, borderRadius: 4 }} />
-          <FlexWidget style={{ flex: 1 - fillFlex }} />
+        <TextWidget text={rendaTotal === 0 ? 'Sem dados' : formatBRL(sobraTotal)} style={{ fontSize: 22, fontWeight: '900', color: sobraColor }} maxLines={1} />
+        <TextWidget text="sobra do mes" style={{ fontSize: 11, color: C.textSec, marginTop: 2 }} />
+      </FlexWidget>
+      <FlexWidget style={{ flexDirection: 'column' }}>
+        <ProgressBar pct={pct} />
+        <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
+          <TextWidget text={pct + '% dos gastos'} style={{ fontSize: 10, color: C.textSec }} />
+          <TextWidget text={rendaTotal > 0 ? formatBRL(rendaTotal) : '--'} style={{ fontSize: 10, color: C.textSec }} />
         </FlexWidget>
-        <TextWidget
-          text={`${Math.round((pct || 0) * 100)}% dos gastos · ${fmtBRL(renda)} renda`}
-          style={{ fontSize: 10, color: colors.textMuted, marginTop: 5 }}
-        />
       </FlexWidget>
     </FlexWidget>
   );

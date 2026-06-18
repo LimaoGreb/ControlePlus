@@ -1,85 +1,72 @@
+// Widget 4x2 — Resumo dos investimentos (total aportado vs valor atual).
 import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
-import { fmtBRL } from './widgetUtils';
+import { formatBRL } from '../utils/currency';
 
-function InvestRow({ name, value, pct, colors }) {
-  const isPos = pct >= 0;
-  const pctStr = (isPos ? '+' : '') + (pct || 0).toFixed(1) + '%';
+const C = {
+  bg: '#141E2D', card: '#1E2C3F', accent: '#E0A52E',
+  text: '#FFFFFF', textSec: '#7A90A8',
+  positive: '#2BB673', negative: '#E5484D', empty: '#2E3F52',
+};
+
+function InvRow({ name, invested, current }) {
+  const diff = (current || 0) - (invested || 0);
+  const diffColor = diff >= 0 ? C.positive : C.negative;
+  const sign = diff >= 0 ? '+' : '';
   return (
-    <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-      <TextWidget
-        text={name || '—'}
-        style={{ fontSize: 12, color: colors.textSub, fontWeight: '600', flex: 1 }}
-      />
-      <TextWidget
-        text={fmtBRL(value || 0)}
-        style={{ fontSize: 12, color: colors.text, fontWeight: '700', marginRight: 8 }}
-      />
-      <TextWidget
-        text={pctStr}
-        style={{ fontSize: 11, color: isPos ? colors.positive : colors.negative, fontWeight: '700' }}
-      />
+    <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <TextWidget text={name || 'Ativo'} style={{ fontSize: 12, color: C.text, fontWeight: '600' }} maxLines={1} />
+      <FlexWidget style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TextWidget text={formatBRL(current || 0)} style={{ fontSize: 12, fontWeight: '700', color: C.text }} />
+        {diff !== 0 && (
+          <TextWidget text={'  ' + sign + formatBRL(Math.abs(diff))} style={{ fontSize: 10, color: diffColor, marginLeft: 4 }} />
+        )}
+      </FlexWidget>
     </FlexWidget>
   );
 }
 
-export function PortfolioWidget({ investments = [], colors }) {
-  const total = investments.reduce((s, i) => s + (i.current || 0), 0);
-  // Mostra até 3 investimentos mais valiosos
-  const top = [...investments]
-    .sort((a, b) => (b.current || 0) - (a.current || 0))
-    .slice(0, 3);
+export function PortfolioWidget({ data }) {
+  const { investments } = data;
+  const totalInvested = investments.reduce((s, i) => s + (Number(i.invested) || 0), 0);
+  const totalCurrent  = investments.reduce((s, i) => s + (Number(i.current)  || 0), 0);
+  const totalDiff     = totalCurrent - totalInvested;
+  const diffColor     = totalDiff >= 0 ? C.positive : C.negative;
+  const sign          = totalDiff >= 0 ? '+' : '';
+  const top3          = investments.slice(0, 3);
 
   return (
     <FlexWidget
+      style={{ width: 'match_parent', height: 'match_parent', backgroundColor: C.bg, borderRadius: 16, flexDirection: 'column', justifyContent: 'space-between', padding: 14 }}
       clickAction="OPEN_APP"
-      style={{
-        height: 'match_parent',
-        width: 'match_parent',
-        flexDirection: 'column',
-        backgroundColor: colors.bg,
-        borderRadius: 20,
-        padding: 18,
-        justifyContent: 'space-between',
-      }}
     >
-      {/* Cabeçalho */}
+      {/* Cabecalho */}
       <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <TextWidget
-          text="Portfólio"
-          style={{ fontSize: 12, color: colors.textMuted, fontWeight: '700', textTransform: 'uppercase' }}
-        />
-        <TextWidget
-          text={`${investments.length} ativo${investments.length !== 1 ? 's' : ''}`}
-          style={{ fontSize: 11, color: colors.textMuted }}
-        />
+        <TextWidget text={'Portfolio  ' + investments.length + ' ativo' + (investments.length !== 1 ? 's' : '')} style={{ fontSize: 12, fontWeight: '800', color: C.accent }} />
+        <FlexWidget style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
+          <TextWidget text={formatBRL(totalCurrent)} style={{ fontSize: 13, fontWeight: '900', color: C.text }} />
+          {totalDiff !== 0 && (
+            <TextWidget text={sign + formatBRL(Math.abs(totalDiff))} style={{ fontSize: 10, color: diffColor }} />
+          )}
+        </FlexWidget>
       </FlexWidget>
 
-      {/* Total */}
-      <TextWidget
-        text={fmtBRL(total)}
-        style={{ fontSize: 26, color: colors.text, fontWeight: '900' }}
-      />
+      {/* Divisor */}
+      <FlexWidget style={{ width: 'match_parent', height: 1, backgroundColor: C.empty }} />
 
-      {/* Lista dos top ativos */}
-      <FlexWidget style={{ flexDirection: 'column' }}>
-        {top.length === 0 ? (
-          <TextWidget
-            text="Nenhum investimento cadastrado"
-            style={{ fontSize: 12, color: colors.textMuted }}
-          />
-        ) : (
-          top.map((inv, i) => (
-            <InvestRow
-              key={i}
-              name={inv.ticker || inv.name || 'Ativo'}
-              value={inv.current || 0}
-              pct={inv.variation || 0}
-              colors={colors}
-            />
-          ))
-        )}
-      </FlexWidget>
+      {/* Lista de ativos */}
+      {investments.length === 0 ? (
+        <TextWidget text="Nenhum investimento cadastrado" style={{ fontSize: 12, color: C.textSec }} />
+      ) : (
+        <FlexWidget style={{ flexDirection: 'column', justifyContent: 'space-between', flex: 1 }}>
+          {top3.map((inv) => (
+            <InvRow key={inv.id} name={inv.name} invested={inv.invested} current={inv.current} />
+          ))}
+          {investments.length > 3 && (
+            <TextWidget text={'+ ' + (investments.length - 3) + ' mais...'} style={{ fontSize: 10, color: C.textSec }} />
+          )}
+        </FlexWidget>
+      )}
     </FlexWidget>
   );
 }

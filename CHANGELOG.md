@@ -2,6 +2,212 @@
 
 ---
 
+## v2.30.0 — 2026-06-18
+
+### fix: Auditoria de bugs críticos + performance
+
+**Bugs corrigidos:**
+- `CasalQuickFab.js` — crash potencial: `addInstallments` não era verificado antes da chamada (fix: guard `if (!addItem || !addInstallments) return`)
+- `CasalQuickFab.js` — parcelas do casal cortadas silenciosamente: agora compara `added < parcelas` e exibe alerta quando parcelas ultrapassam dezembro
+- `useBotSync.js` — listener Firebase nunca removido: `off(pendingRef, 'value', unsubscribe)` estava errado (SDK v9 — `unsubscribe` é função, não callback). Fix: `return () => unsubscribe()`
+- `SyncContext.js` — timers de debounce sem cleanup nos `useEffect`: adicionado `return () => clearTimeout(pushTimer.current)` e `personalPushTimer`
+- `AnnualSummaryScreen.js` — `data.months` acessado sem null guard antes dos `useMemo`: extraído `const months = data?.months || {}` antes de todos os usages; deps do segundo `useMemo` corrigidas para `[months[currentMonthIdx]]`
+- `DataContext.js` — `copyFixedFromPrevious` usava `data.months` (closure potencialmente stale): trocado para `dataRef.current?.months`
+- `InvestmentsScreen.js` — loop async `updateAllQuotes` sem cleanup: adicionado `mountedRef` para abortar loop e setState quando tela desmonta
+- `SettingsCategoriesScreen.js` — `useEffect([], [])` não re-disparava ao navegar de volta + abrir de novo: migrado para `useFocusEffect(useCallback(...))` com dep `route.params?.openAdd`
+
+---
+
+## v2.29.0 — 2026-06-18
+
+### feat: Widgets Android — 6 widgets para a home screen
+
+**Pacote:** `react-native-android-widget` v0.20.3 (já configurado em `app.json`)
+
+**Novos arquivos em `src/widgets/`:**
+- `widgetData.js` — loader assíncrono de todos os dados (AsyncStorage): mês atual, totais, investimentos, projetos, formas de pagamento
+- `SaldoWidget.js` — 2×2: balance + barra de progresso + porcentagem gasta
+- `ResumoWidget.js` — 4×2: renda / gastos / sobra em 3 colunas + barra
+- `LancamentoWidget.js` — 2×1: botão "Lançar despesa", abre o app
+- `PortfolioWidget.js` — 4×2: top 3 investimentos + total atual vs aportado
+- `ProjetoWidget.js` — 2×2: primeiro projeto ativo, progresso + valores
+- `CartoesWidget.js` — 4×2: cartões com limite de crédito cadastrado
+- `widgetTaskHandler.js` — handler registrado em `index.js`; dispara `loadWidgetData` + renderiza o componente correto por `widgetName`
+- `updateAllWidgets.js` — chamado pelo `WidgetSyncManager` (App.js) ao app ir para background; usa `requestWidgetUpdate` para todos os 6 widgets
+
+**`index.js`** — já estava configurado para `registerWidgetTaskHandler`
+**`app.json`** — plugin e 6 definições de widget já existiam
+
+---
+
+## v2.28.0 — 2026-06-18
+
+### feat: FABs contextuais por aba (estilo WhatsApp)
+
+Cada aba agora tem um botão flutuante com função própria.
+
+**Novos componentes:**
+- `src/components/ControleFab.js` — speed-dial para Controle: "+" rotaciona, 2 opções surgem ("Nova categoria" + "Editar categorias"), ambas navegam para `SettingsCategories`
+- `src/components/CasalQuickFab.js` — clone do QuickAddFab mas salva nos dados compartilhados (`useSharedData().sharedContextValue`); ícone ♥+, modal "Gasto do casal"
+- `src/components/ProjetosFab.js` — FAB com ícone de bandeira; modal com nome + meta R$; chama `addProjectFull()`
+- `src/components/InvestimentosFab.js` — FAB simples; chama `addInvestment()` + haptic; sem modal
+
+**Telas modificadas:**
+- `AnnualSummaryScreen.js` — `<ControleFab />` antes do `</View>` raiz
+- `CasalScreen.js` — `<CasalQuickFab monthIndex={monthIndex} />` no return principal (não no partner view)
+- `ProjectsScreen.js` — `<ProjetosFab />` dentro do `<KeyboardAvoidingView>`
+- `InvestmentsScreen.js` — envolvido em `<View flex:1>`; `<InvestimentosFab />` abaixo do ScrollView
+- `SettingsCategoriesScreen.js` — `useRoute` + `useEffect` para auto-abrir modal quando `route.params.openAdd === true`
+
+**Meses (AllMonths)** e **Dashboard (Home)** — sem alteração (já está correto conforme spec).
+
+---
+
+## v2.27.0 — 2026-06-18
+
+### feat: Categorias personalizadas de despesa
+
+**Arquivos alterados:**
+- `src/services/storage.js`: adicionadas `loadCustomCategories` / `saveCustomCategories` (key `@financas:categoriasCustom`)
+- `src/context/SettingsContext.js`: estado `customCategories`, CRUD (`addCustomCategory`, `updateCustomCategory`, `removeCustomCategory`), carregamento no `Promise.all` inicial, exposto no context value
+- `src/components/CategoryChip.js` (reescrito): exibe categorias padrão + personalizadas lado a lado; emoji em `<Text>` para custom; footer com "Gerenciar categorias →" que navega para `SettingsCategories`
+- `src/components/ItemRow.js`: `catMeta` dinâmico que mescla `CAT_META` estático + `customCategories`; substituídas todas as referências `CAT_META[item.category]` por `catMeta[item.category]`
+- `src/screens/SettingsCategoriesScreen.js` (NOVO): lista categorias padrão (read-only, grid de chips), lista customizadas (rows com faixa colorida + emoji), botão "Criar categoria", modal com campo nome (24 chars), campo emoji (qualquer emoji do teclado), grid de 12 cores com seletor visual, chip de prévia em tempo real
+- `src/screens/SettingsScreen.js`: nova entrada `SettingsCategories` (pricetag-outline) no array SECTIONS
+- `App.js`: import + `<RootStack.Screen name="SettingsCategories">` registrado no navigator
+
+**Estrutura de dados custom:** `{ id: 'cat_xxx', name: string, color: string, emoji: string, isCustom: true }`
+
+---
+
+## v2.26.0 — 2026-06-17
+
+### feat: Modo Simulação + Cap com histórico permanente
+
+**Modo Simulação (`MonthContent`, `MonthlySummaryCard`, `SimulationSection`, `DataContext`):**
+- Toggle "Modo Simulação" no rodapé de cada mês (antes do CompleteMonthButton). Ativa/desativa localmente (reseta ao sair da tela — intencional).
+- Quando ativo: seções reais ficam em `opacity: 0.38`; banner fixo amarelo no topo do scroll com botão fechar.
+- `SimulationSection` (NOVO): container dashed dourado com lista editável de despesas simuladas (nome + valor + lixeira) e botão "Adicionar despesa simulada". Cada item tem `id` único, persistido via `AsyncStorage` junto com os dados do mês.
+- Card de simulação em `MonthlySummaryCard`: aparece acima da linha de renda/despesa, mostra quanto *sobra* ou *falta* se as despesas simuladas fossem reais. Valor em `fontSize:28, fontWeight:'900'`.
+- `DataContext`: adicionadas `addSimItem`, `removeSimItem`, `updateSimItem`. `ensureMonth` já inclui `simulation: []`. `clearMonth` elimina os itens (comportamento correto: limpar mês = limpar tudo).
+- `SharedDataContext.ensureMonth`: adicionado `simulation: []` para paridade com DataContext.
+
+**Cap — Histórico permanente entre sessões (`ChatScreen.js`):**
+- `@capChat_v1` (AsyncStorage): histórico completo de até 200 mensagens persiste entre reinicializações do app.
+- `chatLoadedRef` flag: impede salvar antes do carregamento inicial terminar (evita sobrescrever histórico com estado default).
+- Debounce de 600ms no save: não grava a cada keystroke, só 600ms após a última mudança.
+- `historyRef` atualizado: ao carregar histórico do AsyncStorage, context window é reconstruída (últimas 20 mensagens user/bot).
+- Cleanup no unmount: cancela debounce timer pendente + para TTS.
+
+---
+
+## v2.24.0 — 2026-06-17
+
+### feat: Tela de loading animada + otimizações de performance
+
+**`src/components/LoadingOverlay.js`** (NOVO):
+- Tela de carregamento que substitui o splash nativo: exibe "Controle+" com spring animation + "Bem vindo de volta, [nome]" assim que SettingsContext carrega o userName.
+- Mínimo 1000ms visível + 400ms grace após `appReady` + 340ms fade-out. Total ~1.7s de tela visível para cargas rápidas.
+- Chama `SplashScreen.hideAsync()` no próprio mount — substitui imediatamente o splash nativo.
+
+**`App.js` — `Navigation()`:**
+- Removido `if (!appReady) return null`. Substituído por `LoadingOverlay` com estado `loadingDone`.
+- Deep link + notification listeners agora iniciam após `loadingDone` (antes: após `appReady`).
+- `SplashScreen.hideAsync()` movido para dentro do `LoadingOverlay`.
+
+**`src/components/ItemRow.js`:**
+- `React.memo` com comparador customizado: ignora callbacks (`onChangeName`, `onChangeValue`, etc.) e compara apenas `item`, `isOverdue`, `accentColor`, `showPayment`, `showCategory`, `paymentMethods`, `swipeable`. Evita re-render de 10-50+ linhas quando apenas um item é editado.
+
+**`src/components/InsightCards.js`:**
+- `useMemo` dependency: `data` → `data?.months?.[monthIndex - 1]`. `buildInsights` só consulta o mês anterior — usar o objeto `data` inteiro disparava recálculo em qualquer mudança de qualquer mês do app.
+
+**`src/components/MonthContent.js`:**
+- `import React, { useMemo }` adicionado.
+- `month` derivado via `useMemo([rawMonth])` — elimina novo objeto a cada render.
+- `totals` via `useMemo([month])`.
+- `displayTotals` via `useMemo([isCasal, additionalIncome, totals])`.
+- `filteredFixed`, `filteredVariable` via `useMemo([q, month.fixed/variable])` — evita re-filtrar listas longas sem mudança de busca.
+- `searchSum` via `useMemo([filteredFixed, filteredVariable])`.
+- Todos os `useMemo` movidos para antes do `if (!data) return null` (regra dos hooks).
+
+---
+
+## v2.23.0 — 2026-06-17
+
+### fix: Activity Log — instrumentação completa de updateItem + animação do bottom sheet + Cap unlock
+
+**`src/context/DataContext.js`:**
+- `updateItem` agora loga `concluded` (concluir/reabrir item individual), `category` (categoria definida/removida) e `payment` (pagamento definido). Campos `name`, `value` e `dueDay` são ignorados intencionalmente (disparam por keystroke). Utiliza `dataRef.current` para buscar o item antes da mutação (mesmo padrão do `removeItem`).
+- `CAT_NAMES` dict adicionado no escopo do módulo para exibir nome legível da categoria no log.
+
+**`src/screens/ActivityLogScreen.js`:**
+- Migrado de `animationType="slide"` para `animationType="none"` + `Animated.parallel` (backdrop fade + sheet spring simultâneos). Backdrop é `absoluteFillObject`; sheet tem `borderRadius:28`, sombra sutil e `sheetContainer` com `justifyContent:'flex-end'`.
+- `handleClose` anima a saída antes de chamar `onClose()` — evita flash de desaparecimento.
+
+**`src/components/MonthlySummaryCard.js`:**
+- Botão "Ver histórico" ganha legenda `(toque para abrir)` no estilo do CompleteMonthButton.
+
+**`bot/geminiClient.js`:**
+- `unlock_expenses`: 5 padrões independentes em vez de 2 — cobre "colocar todas as despesas no modo de edição" (sujeito antes do verbo), "abrir para edição" (sem a palavra "modo"), "quero editar as despesas", "liberar para edição", etc.
+
+---
+
+## v2.22.0 — 2026-06-17
+
+### fix: Auditoria geral — 9 bugs corrigidos (crashes, memory leaks, dados inconsistentes)
+
+**`src/screens/ActivityLogScreen.js`:**
+- ScrollView substituído por `FlatList` com `removeClippedSubviews`, `maxToRenderPerBatch:20`, `windowSize:10` para listas longas.
+- Removido `ListHeaderComponent` com `centerLineOverlay` (só aparecia no topo, não cobria a lista). Os `connector` Views dentro de cada `TimelineItem` já formam a linha visual.
+- Removidos estilos mortos: `timelineWrap`, `centerLine`.
+
+**`src/screens/AllMonthsScreen.js`:**
+- `CURRENT_MONTH` removido do escopo de módulo (causava `ReferenceError` no render após o fix anterior que removeu o `const` mas não atualizou o uso). Substituído por `new Date().getMonth()` inline no `renderItem`.
+- `useState` inicializado com `() => new Date().getMonth()` (lazy initializer — correto na virada de mês).
+- Cleanup `useEffect` adicionado para limpar todos os `tapTimerRef` ao desmontar.
+
+**`src/screens/InvestmentsScreen.js`:**
+- Pull-to-refresh: verificação de ticker mudada de `if (inv.ticker)` para `inv.ticker?.trim().length > 0` — evita chamar API com string vazia.
+
+**`src/screens/AnnualSummaryScreen.js`:**
+- `maxMT` usa `Math.max(1, ...)` — previne divisão por zero quando todos os valores do mês são 0.
+- `PeekCard` usa `monthlyData ?? []` como fallback.
+
+**`src/context/SyncContext.js`:**
+- `updatePartnerPersonal(null)`: agora limpa estado + cache AsyncStorage em vez de silenciar (parceiro desconectado).
+- `listenPersonalData`: passa `data` diretamente (null ou objeto) para `updatePartnerPersonal`.
+
+**`src/context/DataContext.js`:**
+- `addInstallments`: parcelas com anos falhados acumulam em `failedYears[]` e exibem `Alert` ao usuário.
+
+**`src/context/SettingsContext.js`:**
+- `importSettings`: reescrito com `Promise.allSettled` — falhas individuais de campos são detectadas e lançam erro descritivo; UI já responde com estado em memória antes das escritas.
+
+**`src/components/MonthContent.js`:**
+- Proteção contra NaN quando `additionalIncome === 0` no Modo Casal (`percentGasto`, `percentSobra`).
+
+**`src/components/ItemRow.js`:**
+- Cleanup `useEffect` adicionado: cancela `blurTimer` e reseta `chipPressed` ao desmontar.
+
+---
+
+## v2.21.0 — 2026-06-17
+
+### feat: Histórico de ações do app (Activity Log)
+
+**Arquivos criados:**
+- `src/services/activityLog.js` — store AsyncStorage (`@activityLog_v1`), máx 500 entradas LIFO. Funções: `logActivity()`, `getActivityLog()`, `clearActivityLog()`.
+- `src/screens/ActivityLogScreen.js` — bottom sheet modal com timeline alternado esquerda/direita. Dot colorido com ícone Ionicons no centro, cards com título + detalhe + timestamp + badge de ator (⚡ Cap / 👫 Casal). Pull-to-refresh + botão lixeira com Alert de confirmação.
+
+**Arquivos modificados:**
+- `src/context/DataContext.js` — hooks de log em: `addItem` (se tiver nome/valor), `removeItem` (busca item via `dataRef` antes de remover), `addInstallments`, `setMonthCompleted`, `concludeAllItems`, `clearMonth`.
+- `src/context/SettingsContext.js` — hooks de log em: `addPaymentMethod`, `removePaymentMethod`, `addInvestment`, `removeInvestment`, `addProject`, `addProjectFull`, `updateProject` (só `field=saved`), `removeProject`. `setCategoryBudget` extraído de inline para função nomeada para poder logar.
+- `src/components/MonthlySummaryCard.js` — botão "Ver histórico" acima da linha de Contribuições, alinhado à direita (mesmo estilo do CompleteMonthButton). Props: `onHistoryPress`.
+- `src/components/MonthContent.js` — repassa prop `onHistoryPress` para `MonthlySummaryCard`.
+- `src/screens/HomeScreen.js` — passa `onHistoryPress` para `MonthContent` + renderiza `ActivityLogScreen` modal com estado `historyOpen`.
+
+---
+
 ## v2.20.0 — 2026-06-17
 
 ### refactor: Dashboard — design final + unlock por cadeado + chips em lista

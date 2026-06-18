@@ -93,7 +93,7 @@ export default function ProjectCard({ project, onChangeName, onChangeField, onRe
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border + '80', borderLeftColor: mainColor }]}>
 
       {/* Nome + lixeira */}
       <View style={styles.topRow}>
@@ -299,7 +299,7 @@ export default function ProjectCard({ project, onChangeName, onChangeField, onRe
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, padding: 16, marginBottom: 14 },
+  card: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderLeftWidth: 3, padding: 16, marginBottom: 14 },
 
   topRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   nameInput: { flex: 1, height: 48, borderRadius: 10, paddingHorizontal: 12, fontSize: 16, fontWeight: '600', marginRight: 8 },

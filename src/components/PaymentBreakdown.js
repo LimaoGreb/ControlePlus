@@ -24,7 +24,7 @@ function PaymentBar({ entry, color, bank }) {
   };
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { borderLeftColor: color }]}>
       <TouchableOpacity activeOpacity={0.7} onPress={toggle}>
         <View style={styles.header}>
           <View style={styles.nameRow}>
@@ -108,7 +108,7 @@ export default function PaymentBreakdown({ month }) {
 const styles = StyleSheet.create({
   outer: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
   placeholder: { textAlign: 'center', paddingVertical: 20, paddingHorizontal: 16, fontSize: 13, lineHeight: 19 },
-  wrap: { marginBottom: 4 },
+  wrap: { marginBottom: 4, borderLeftWidth: 3, paddingLeft: 12, borderRadius: 2 },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 12, paddingRight: 0,

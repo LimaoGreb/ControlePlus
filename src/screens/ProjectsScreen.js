@@ -14,6 +14,7 @@ import { contrastText } from '../utils/colorUtils';
 import { formatBRL } from '../utils/currency';
 import { projectStats } from '../utils/projects';
 import ProjectCard from '../components/ProjectCard';
+import ProjetosFab from '../components/ProjetosFab';
 
 function SectionHeader({ title, count, color, colors }) {
   return (
@@ -28,14 +29,14 @@ function SectionHeader({ title, count, color, colors }) {
 
 function SummaryCard({ saved, target, colors }) {
   return (
-    <View style={[styles.summaryCard, { backgroundColor: colors.text + '1A', borderColor: colors.border + '80' }]}>
+    <View style={[styles.summaryCard, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80', borderLeftColor: colors.positive }]}>
       <View style={styles.summaryCol}>
         <Text style={[styles.sLabel, { color: colors.textSecondary }]}>Já guardado</Text>
         <Text style={[styles.sValue, { color: colors.positive }]} numberOfLines={1} adjustsFontSizeToFit>
           {formatBRL(saved)}
         </Text>
       </View>
-      <View style={styles.summaryCol}>
+      <View style={[styles.summaryCol, { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.border + '40', paddingLeft: 16 }]}>
         <Text style={[styles.sLabel, { color: colors.textSecondary }]}>Soma das metas</Text>
         <Text style={[styles.sValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
           {formatBRL(target)}
@@ -171,6 +172,7 @@ export default function ProjectsScreen() {
 
         <View style={{ height: 96 }} />
       </ScrollView>
+      <ProjetosFab />
     </KeyboardAvoidingView>
   );
 }
@@ -186,7 +188,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.4 },
   countText: { fontSize: 11.5, marginTop: 3 },
 
-  summaryCard: { flexDirection: 'row', borderRadius: 12, padding: 16, marginBottom: 14, borderWidth: 1 },
+  summaryCard: { flexDirection: 'row', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderLeftWidth: 3, padding: 16, marginBottom: 14 },
   summaryCol: { flex: 1 },
   sLabel: { fontSize: 13, fontWeight: '600', marginBottom: 4 },
   sValue: { fontSize: 20, fontWeight: '800' },

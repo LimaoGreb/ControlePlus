@@ -11,6 +11,7 @@ import { useData, PersonalDataContext } from '../context/DataContext';
 import { SharedMonthData, PartnerDataProvider } from '../context/SharedDataContext';
 import Avatar from '../components/Avatar';
 import MonthContent from '../components/MonthContent';
+import CasalQuickFab from '../components/CasalQuickFab';
 import { monthTotals } from '../utils/calculations';
 import { formatBRL } from '../utils/currency';
 import { MONTH_NAMES, YEAR } from '../data/initialData';
@@ -269,15 +270,7 @@ export default function CasalScreen({ navigation }) {
           isCouple
         />
       </SharedMonthData>
-      {partnerPersonalData && (
-        <TouchableOpacity
-          style={[styles.partnerFab, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}
-          onPress={() => setShowPartnerView(true)}
-        >
-          <Avatar avatar={partnerAvatar} size={36} />
-          <Text style={[styles.partnerFabLabel, { color: colors.textMuted }]}>{theirName}</Text>
-        </TouchableOpacity>
-      )}
+      <CasalQuickFab monthIndex={monthIndex} />
     </View>
   );
 }

@@ -14,7 +14,6 @@ import { formatBRL } from '../utils/currency';
 
 const MONTH_ABBR = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const YEARS = Array.from({ length: 8 }, (_, i) => YEAR + i);
-const CURRENT_MONTH = new Date().getMonth();
 
 const STATS = (totals, colors) => [
   { l: 'Renda',  v: totals.rendaTotal,   c: colors.positive },
@@ -27,7 +26,8 @@ export default function AllMonthsScreen({ navigation }) {
   const { data, activeYear, switchYear, switching } = useData();
   const { width: SW } = useWindowDimensions();
 
-  const [selMonth, setSelMonth] = useState(CURRENT_MONTH);
+  // Calculado no render (não no import) para ser correto se o app ficar aberto na virada do mês.
+  const [selMonth, setSelMonth] = useState(() => new Date().getMonth());
 
   const carouselRef = useRef(null);
   const yearTabsRef = useRef(null);
@@ -35,6 +35,15 @@ export default function AllMonthsScreen({ navigation }) {
 
   const tapCountRef = useRef({});
   const tapTimerRef = useRef({});
+
+  // Limpa todos os timers pendentes ao desmontar (evita memory leak).
+  useEffect(() => {
+    return () => {
+      Object.values(tapTimerRef.current).forEach((t) => { if (t) clearTimeout(t); });
+      tapTimerRef.current = {};
+      tapCountRef.current = {};
+    };
+  }, []);
 
   useEffect(() => {
     navigation.setOptions({ title: `Meses de ${activeYear}` });
@@ -234,7 +243,7 @@ export default function AllMonthsScreen({ navigation }) {
                 const mData = getMonthData(year, mi);
                 const s     = monthStatus(mData);
                 const isSel = year === activeYear && mi === selMonth;
-                const isCur = year === YEAR && mi === CURRENT_MONTH;
+                const isCur = year === YEAR && mi === new Date().getMonth();
                 const dotC  = { done: colors.positive, progress: colors.warning, empty: 'transparent' }[s];
 
                 return (

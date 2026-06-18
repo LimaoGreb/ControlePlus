@@ -1,91 +1,68 @@
+// Widget 4x2 — Limites dos cartoes de credito cadastrados.
 import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
-import { fmtBRL, progressColor } from './widgetUtils';
+import { formatBRL } from '../utils/currency';
 
-const BANK_LABELS = {
-  nubank: 'Nubank',
-  c6: 'C6 Bank',
-  picpay: 'PicPay',
-  inter: 'Inter',
-  itau: 'Itaú',
-  bradesco: 'Bradesco',
-  santander: 'Santander',
-  bb: 'Banco do Brasil',
+const C = {
+  bg: '#141E2D', card: '#1E2C3F', accent: '#E0A52E',
+  text: '#FFFFFF', textSec: '#7A90A8',
+  positive: '#2BB673', negative: '#E5484D', empty: '#2E3F52',
 };
 
-function CardRow({ card, used, colors }) {
-  const limit = card.creditLimit || 0;
-  const livre = Math.max(0, limit - used);
-  const pct = limit > 0 ? Math.min(used / limit, 1) : 0;
-  const fillFlex = Math.max(0.02, Math.min(0.98, pct));
-  const barColor = progressColor(pct, colors);
-  const bankLabel = BANK_LABELS[card.bank] || card.name || 'Cartão';
-
+function CartaoRow({ name, limit, isLast }) {
   return (
-    <FlexWidget style={{ flexDirection: 'column', marginTop: 10 }}>
-      <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <TextWidget text={bankLabel} style={{ fontSize: 12, color: colors.text, fontWeight: '700' }} />
+    <FlexWidget style={{ flexDirection: 'column' }}>
+      <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 5 }}>
+        <TextWidget text={name} style={{ fontSize: 13, color: C.text, fontWeight: '600' }} maxLines={1} />
         <TextWidget
-          text={`${fmtBRL(livre)} livre`}
-          style={{ fontSize: 11, color: livre > 0 ? colors.positive : colors.negative, fontWeight: '600' }}
+          text={limit > 0 ? formatBRL(limit) : 'Sem limite'}
+          style={{ fontSize: 13, fontWeight: '700', color: limit > 0 ? C.positive : C.textSec }}
         />
       </FlexWidget>
-      <FlexWidget
-        style={{
-          width: 'match_parent',
-          height: 5,
-          borderRadius: 3,
-          backgroundColor: colors.bgBar,
-          flexDirection: 'row',
-          marginTop: 5,
-        }}
-      >
-        <FlexWidget style={{ flex: fillFlex, backgroundColor: barColor, borderRadius: 3 }} />
-        <FlexWidget style={{ flex: 1 - fillFlex }} />
-      </FlexWidget>
-      <TextWidget
-        text={`${fmtBRL(used)} de ${fmtBRL(limit)}`}
-        style={{ fontSize: 10, color: colors.textMuted, marginTop: 3 }}
-      />
+      {!isLast && (
+        <FlexWidget style={{ width: 'match_parent', height: 1, backgroundColor: C.empty }} />
+      )}
     </FlexWidget>
   );
 }
 
-export function CartoesWidget({ cards = [], cardUsage = {}, colors }) {
-  const creditCards = cards.filter(c => c.isCredit && c.creditLimit > 0).slice(0, 3);
+export function CartoesWidget({ data }) {
+  const { paymentMethods } = data;
+  const cartoes = paymentMethods.filter((pm) => pm.creditLimit > 0);
+  const total   = cartoes.reduce((s, pm) => s + (Number(pm.creditLimit) || 0), 0);
+  const top4    = cartoes.slice(0, 4);
 
   return (
     <FlexWidget
+      style={{ width: 'match_parent', height: 'match_parent', backgroundColor: C.bg, borderRadius: 16, flexDirection: 'column', justifyContent: 'space-between', padding: 14 }}
       clickAction="OPEN_APP"
-      style={{
-        height: 'match_parent',
-        width: 'match_parent',
-        flexDirection: 'column',
-        backgroundColor: colors.bg,
-        borderRadius: 20,
-        padding: 18,
-        justifyContent: 'flex-start',
-      }}
     >
-      <TextWidget
-        text="Cartões de Crédito"
-        style={{ fontSize: 12, color: colors.textMuted, fontWeight: '700', textTransform: 'uppercase' }}
-      />
+      {/* Cabecalho */}
+      <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <TextWidget text="Cartoes de Credito" style={{ fontSize: 12, fontWeight: '800', color: C.accent }} />
+        {total > 0 && (
+          <TextWidget text={'Total: ' + formatBRL(total)} style={{ fontSize: 11, color: C.textSec }} />
+        )}
+      </FlexWidget>
 
-      {creditCards.length === 0 ? (
-        <TextWidget
-          text="Nenhum cartão com limite cadastrado"
-          style={{ fontSize: 12, color: colors.textMuted, marginTop: 16 }}
-        />
+      {/* Divisor */}
+      <FlexWidget style={{ width: 'match_parent', height: 1, backgroundColor: C.empty }} />
+
+      {/* Lista */}
+      {cartoes.length === 0 ? (
+        <FlexWidget style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <TextWidget text="Nenhum cartao com limite cadastrado" style={{ fontSize: 12, color: C.textSec }} />
+          <TextWidget text="Adicione em Pagamentos nas Configuracoes" style={{ fontSize: 10, color: C.textSec, marginTop: 4 }} />
+        </FlexWidget>
       ) : (
-        creditCards.map((card, i) => (
-          <CardRow
-            key={i}
-            card={card}
-            used={cardUsage[card.id] || 0}
-            colors={colors}
-          />
-        ))
+        <FlexWidget style={{ flexDirection: 'column', flex: 1, justifyContent: 'space-around' }}>
+          {top4.map((pm, i) => (
+            <CartaoRow key={pm.id} name={pm.name} limit={Number(pm.creditLimit) || 0} isLast={i === top4.length - 1} />
+          ))}
+          {cartoes.length > 4 && (
+            <TextWidget text={'+ ' + (cartoes.length - 4) + ' mais cartoes...'} style={{ fontSize: 10, color: C.textSec, marginTop: 4 }} />
+          )}
+        </FlexWidget>
       )}
     </FlexWidget>
   );

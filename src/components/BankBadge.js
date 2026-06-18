@@ -35,37 +35,50 @@ class SVGErrorBoundary extends React.Component {
   }
 }
 
+// Prepara o SVG para renderização no react-native-svg:
+// 1. Injeta viewBox se ausente (sem viewBox, RN clipa em vez de escalar)
+// 2. Converte class="stX" para fill inline (RN tem suporte limitado a <style>)
+// 3. Se whiteLogo, troca todos os fills por branco (logo colorido no próprio fundo)
+function prepareSvg(svgString, bank) {
+  let s = svgString;
+
+  if (!s.includes('viewBox') && s.includes('width="2500"')) {
+    s = s.replace('<svg ', '<svg viewBox="0 0 2500 2500" ');
+  }
+
+  const classMap = {};
+  for (const m of s.matchAll(/\.([\w-]+)\{fill:([^;}]+)[;}]/g)) {
+    classMap[m[1]] = m[2].trim();
+  }
+  if (Object.keys(classMap).length > 0) {
+    s = s.replace(/class="([\w-\s]+)"/g, (_, classes) => {
+      const first = classes.trim().split(/\s+/)[0];
+      return classMap[first] ? `fill="${classMap[first]}"` : `class="${classes}"`;
+    });
+  }
+
+  if (bank.whiteLogo) {
+    s = s.replace(/fill="(?!none)[^"]+"/g, 'fill="#ffffff"');
+  }
+
+  return s;
+}
+
 export default function BankBadge({ bank, size = 28 }) {
   if (!bank) return null;
   const svgString = logos[bank.id];
   const radius = Math.round(size * 0.24);
 
-  if (!svgString) return <TextBadge bank={bank} size={size} />;
+  if (!svgString || bank.noLogo) return <TextBadge bank={bank} size={size} />;
 
-  // lightBg: logo com paths coloridos precisa de fundo branco pra aparecer.
-  // Fundo branco + borda colorida fina usando View externo (sem borderWidth
-  // dentro de overflow:hidden, que causa crash no SvgXml em alguns devices).
-  const bg = bank.lightBg ? '#fff' : bank.color;
-
-  // SVG renderizado 15% maior que o badge e centralizado via margem negativa.
-  // Isso enquadra logos que têm conteúdo descentrado no viewBox original.
-  const svgSize = Math.round(size * 1.15);
-  const offset = -Math.round((svgSize - size) / 2);
+  const svgInner = Math.round(size * 0.78);
+  const prepared = prepareSvg(svgString, bank);
 
   return (
     <SVGErrorBoundary fallback={<TextBadge bank={bank} size={size} />}>
-      {bank.lightBg ? (
-        // Anel colorido via View externo (padding) + inner branco sem border
-        <View style={{ width: size, height: size, borderRadius: radius, backgroundColor: bank.color, padding: 1.5 }}>
-          <View style={{ flex: 1, borderRadius: Math.max(0, radius - 2), overflow: 'hidden', backgroundColor: '#fff' }}>
-            <SvgXml xml={svgString} width={svgSize - 3} height={svgSize - 3} style={{ margin: offset }} />
-          </View>
-        </View>
-      ) : (
-        <View style={{ width: size, height: size, borderRadius: radius, overflow: 'hidden', backgroundColor: bg }}>
-          <SvgXml xml={svgString} width={svgSize} height={svgSize} style={{ margin: offset }} />
-        </View>
-      )}
+      <View style={{ width: size, height: size, borderRadius: radius, overflow: 'hidden', backgroundColor: bank.color, alignItems: 'center', justifyContent: 'center' }}>
+        <SvgXml xml={prepared} width={svgInner} height={svgInner} />
+      </View>
     </SVGErrorBoundary>
   );
 }

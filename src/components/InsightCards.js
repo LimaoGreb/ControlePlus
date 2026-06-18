@@ -122,10 +122,14 @@ export default function InsightCards({ monthIndex, month }) {
   const { data } = useData();
   const { colors } = useTheme();
 
+  // Depende apenas do mês anterior (único mês externo que buildInsights consulta),
+  // não do objeto `data` inteiro — evita recalcular insights a cada mudança em
+  // qualquer outro mês.
+  const prevMonth = data?.months?.[monthIndex - 1];
   const insights = useMemo(
     () => buildInsights(monthIndex, month, data || {}),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [monthIndex, month, data]
+    [monthIndex, month, prevMonth]
   );
 
   if (!insights.length) return null;

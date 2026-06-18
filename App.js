@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StatusBar, Platform, UIManager, TouchableOpacity, Linking, AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -34,6 +34,7 @@ import SettingsCasalScreen from './src/screens/SettingsCasalScreen';
 import SettingsInvestimentosScreen from './src/screens/SettingsInvestimentosScreen';
 import SettingsBackupScreen from './src/screens/SettingsBackupScreen';
 import SettingsBudgetScreen from './src/screens/SettingsBudgetScreen';
+import SettingsCategoriesScreen from './src/screens/SettingsCategoriesScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import FloatingTabBar from './src/components/FloatingTabBar';
 import NotificationsManager from './src/components/NotificationsManager';
@@ -42,6 +43,7 @@ import JarvisSyncManager from './src/components/JarvisSyncManager';
 import Avatar from './src/components/Avatar';
 import HeaderMenu from './src/components/HeaderMenu';
 import WelcomeBack from './src/components/WelcomeBack';
+import LoadingOverlay from './src/components/LoadingOverlay';
 import { useSync } from './src/context/SyncContext';
 import { MONTH_NAMES, YEAR } from './src/data/initialData';
 
@@ -265,17 +267,12 @@ function Navigation() {
   const { ready: dataReady } = useData();
   const { ready: settingsReady, userName } = useSettings();
   const navigationRef = useNavigationContainerRef();
+  const [loadingDone, setLoadingDone] = useState(false);
 
   const appReady = themeReady && dataReady && settingsReady;
 
   useEffect(() => {
-    if (appReady) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [appReady]);
-
-  useEffect(() => {
-    if (!appReady) return;
+    if (!loadingDone) return;
     const handleDeepLink = (url) => {
       if (!url) return;
       try {
@@ -308,10 +305,18 @@ function Navigation() {
     });
 
     return () => { linkSub.remove(); notifSub.remove(); };
-  }, [appReady]);
+  }, [loadingDone]);
 
-  // Splash nativo ainda visível enquanto não está pronto — não renderiza nada.
-  if (!appReady) return null;
+  // Loading overlay substitui o splash nativo com animação própria.
+  if (!loadingDone) {
+    return (
+      <LoadingOverlay
+        appReady={appReady}
+        userName={settingsReady ? userName : null}
+        onDone={() => setLoadingDone(true)}
+      />
+    );
+  }
 
   // Primeiro acesso: sem nome definido -> tela de boas-vindas (aparece só uma vez).
   if (!userName || !userName.trim()) {
@@ -351,6 +356,7 @@ function Navigation() {
         <RootStack.Screen name="SettingsInvestimentos" component={SettingsInvestimentosScreen} options={{ title: 'Investimentos' }} />
         <RootStack.Screen name="SettingsBackup" component={SettingsBackupScreen} options={{ title: 'Backup' }} />
         <RootStack.Screen name="SettingsBudget" component={SettingsBudgetScreen} options={{ title: 'Orçamento por Categoria' }} />
+        <RootStack.Screen name="SettingsCategories" component={SettingsCategoriesScreen} options={{ title: 'Categorias' }} />
       </RootStack.Navigator>
     </NavigationContainer>
   );

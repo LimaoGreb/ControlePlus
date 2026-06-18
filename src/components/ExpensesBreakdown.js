@@ -26,7 +26,7 @@ function CategoryBar({ label, icon, color, items, total, grandTotal }) {
   };
 
   return (
-    <View style={styles.catWrap}>
+    <View style={[styles.catWrap, { borderLeftColor: color }]}>
       <TouchableOpacity activeOpacity={0.7} onPress={toggle} disabled={!hasItems}>
         <View style={styles.catHeader}>
           <View style={styles.catLeft}>
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
   insight: { borderRadius: 8, padding: 10, marginBottom: 12 },
   insightText: { fontSize: 13, fontWeight: '600', lineHeight: 19 },
-  catWrap: { marginBottom: 4 },
+  catWrap: { marginBottom: 4, borderLeftWidth: 3, paddingLeft: 12, borderRadius: 2 },
   catHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: 14, paddingRight: 16,

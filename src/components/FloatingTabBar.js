@@ -76,7 +76,6 @@ export default function FloatingTabBar({ state, descriptors, navigation }) {
                 )}
               </View>
               <View style={styles.labelRow}>
-                {focused && <View style={[styles.labelAccent, { backgroundColor: colors.primaryLight }]} />}
                 <Text
                   numberOfLines={1}
                   style={[
@@ -126,8 +125,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  labelRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 3 },
-  labelAccent: { width: 2.5, height: 11, borderRadius: 2 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
   label: { fontSize: 10 },
   badge: {
     position: 'absolute',

@@ -27,6 +27,7 @@ function ensureMonth(m) {
     variable: (m && m.variable) || [],
     contributions: (m && m.contributions) || [],
     completed: !!(m && m.completed),
+    simulation: (m && m.simulation) || [],
   };
 }
 

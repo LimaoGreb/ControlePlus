@@ -11,8 +11,9 @@ import { YEAR } from '../data/initialData';
 
 const SECTIONS = [
   { key: 'SettingsPerfil',  icon: 'person-outline',        label: 'Perfil',              desc: 'Nome, foto, investidor, contribuições e modo casal' },
-  { key: 'SettingsCartoes', icon: 'card-outline',          label: 'Formas de Pagamento', desc: 'Cartões e métodos de pagamento' },
-  { key: 'SettingsTemas',   icon: 'color-palette-outline', label: 'Temas',               desc: 'Tema escuro e paleta de cores' },
+  { key: 'SettingsCartoes',    icon: 'card-outline',          label: 'Formas de Pagamento',    desc: 'Cartões e métodos de pagamento' },
+  { key: 'SettingsCategories', icon: 'pricetag-outline',     label: 'Categorias',             desc: 'Crie categorias personalizadas para despesas' },
+  { key: 'SettingsTemas',      icon: 'color-palette-outline', label: 'Temas',                 desc: 'Tema escuro e paleta de cores' },
   { key: 'SettingsBackup',  icon: 'cloud-upload-outline',  label: 'Backup',              desc: 'Exportar e importar dados (JSON)' },
 ];
 

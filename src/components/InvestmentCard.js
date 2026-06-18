@@ -48,8 +48,11 @@ export default function InvestmentCard({
     if (qty > 0) onChangeField('current', Math.round(p * qty * 100) / 100);
   };
 
+  const typeObj = INVESTMENT_TYPES.find(t => t.id === investment.typeId);
+  const accentColor = typeObj ? groupColor(typeObj.group) : colors.primary;
+
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border + '80', borderLeftColor: accentColor }]}>
       <View style={styles.row}>
         <TextInput
           value={investment.name}
@@ -135,7 +138,7 @@ export default function InvestmentCard({
       </View>
 
       {/* Rentabilidade */}
-      <View style={[styles.resultBox, { borderColor: colors.border }]}>
+      <View style={[styles.resultBox, { borderColor: colors.border + '40', borderLeftColor: resultColor }]}>
         <Text style={[styles.resultLabel, { color: colors.textSecondary }]}>Rentabilidade</Text>
         <Text style={[styles.resultValue, { color: resultColor }]}>
           {res.invested > 0 || res.current > 0 ? `${sign}${formatBRL(res.result)}  (${sign}${formatPercent(res.resultPct)})` : '—'}
@@ -146,7 +149,7 @@ export default function InvestmentCard({
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, padding: 14, marginBottom: 12 },
+  card: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderLeftWidth: 3, padding: 14, marginBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   nameInput: { flex: 1, height: 48, borderRadius: 10, paddingHorizontal: 12, fontSize: 15, marginRight: 8 },
   trash: { paddingLeft: 6, paddingVertical: 6 },
@@ -163,7 +166,7 @@ const styles = StyleSheet.create({
   valueCol: { flex: 1, marginRight: 8 },
   valueLabel: { fontSize: 12, fontWeight: '600', marginBottom: 4 },
   valueInput: { width: '100%' },
-  resultBox: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, marginTop: 12, paddingTop: 10 },
+  resultBox: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderLeftWidth: 3, paddingLeft: 10, marginTop: 12, paddingTop: 10 },
   resultLabel: { fontSize: 13, fontWeight: '600' },
   resultValue: { fontSize: 15, fontWeight: '800' },
 });

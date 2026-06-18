@@ -249,6 +249,24 @@ export async function saveCategoryBudgets(budgets) {
   }
 }
 
+// ─── Categorias personalizadas ───────────────────────────────────────────────
+const CUSTOM_CATS_KEY = '@financas:categoriasCustom';
+
+export async function loadCustomCategories() {
+  try {
+    const raw = await AsyncStorage.getItem(CUSTOM_CATS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export async function saveCustomCategories(cats) {
+  try {
+    await AsyncStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(cats || []));
+  } catch (e) {
+    console.warn('Falha ao salvar categorias customizadas:', e);
+  }
+}
+
 // ─── Multi-ano ────────────────────────────────────────────────────────────────
 export const getYearKey = (year) => `@financas:dados:${year}`;
 

@@ -20,6 +20,7 @@ import { portfolioTotals, byGroup } from '../utils/investments';
 import { isQuotable, fetchQuote, fetchCurrencies } from '../services/quotes';
 import { fetchIndicadores } from '../services/bacen';
 import InvestmentCard from '../components/InvestmentCard';
+import InvestimentosFab from '../components/InvestimentosFab';
 
 // Barra de alocação por classe, clicável (abre os itens daquela classe).
 function AllocationBar({ entry, color }) {
@@ -93,16 +94,22 @@ export default function InvestmentsScreen() {
     fetchIndicadores().then(setIndicadores);
   }, []);
 
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+
   const updateAllQuotes = async () => {
     setUpdatingAll(true);
     for (const inv of investments) {
-      if (isQuotable(inv.typeId) && inv.ticker) {
+      if (!mountedRef.current) break;
+      if (isQuotable(inv.typeId) && inv.ticker?.trim().length > 0) {
         const p = await fetchQuote(inv.typeId, inv.ticker);
         const qty = Number(inv.quantity) || 0;
-        if (p != null && qty > 0) updateInvestment(inv.id, 'current', Math.round(p * qty * 100) / 100);
+        if (p != null && qty > 0 && mountedRef.current) {
+          updateInvestment(inv.id, 'current', Math.round(p * qty * 100) / 100);
+        }
       }
     }
-    setUpdatingAll(false);
+    if (mountedRef.current) setUpdatingAll(false);
   };
 
   const onRefresh = async () => {
@@ -116,6 +123,7 @@ export default function InvestmentsScreen() {
   };
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
       ref={scrollRef}
       style={{ backgroundColor: colors.background }}
@@ -125,7 +133,7 @@ export default function InvestmentsScreen() {
       <Text style={[styles.title, { color: colors.text }]}>Investimentos</Text>
 
       {/* Câmbio */}
-      <View style={[styles.card, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80', padding: 14 }]}>
+      <View style={[styles.card, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80', borderLeftColor: colors.primary, padding: 14 }]}>
         <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 12 }]}>Câmbio</Text>
         <View style={styles.marketGrid}>
           {[
@@ -147,7 +155,7 @@ export default function InvestmentsScreen() {
       </View>
 
       {/* Indicadores Econômicos — BACEN */}
-      <View style={[styles.card, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80', padding: 14 }]}>
+      <View style={[styles.card, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80', borderLeftColor: colors.positive, padding: 14 }]}>
         <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 12 }]}>Indicadores (BACEN)</Text>
         <View style={styles.indicGrid}>
           {[
@@ -170,7 +178,7 @@ export default function InvestmentsScreen() {
 
       {/* Resumo da carteira — só mostra quando há investimentos */}
       {investments.length > 0 && (
-        <View style={[styles.card, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80' }]}>
+        <View style={[styles.card, { backgroundColor: colors.text + '0D', borderColor: colors.border + '80', borderLeftColor: resultColor }]}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryCol}>
               <Text style={[styles.sLabel, { color: colors.textSecondary }]}>Investido</Text>
@@ -185,7 +193,7 @@ export default function InvestmentsScreen() {
               </Text>
             </View>
           </View>
-          <View style={[styles.resultBanner, { backgroundColor: colors.alpha(resultColor, 0.12), borderColor: resultColor }]}>
+          <View style={[styles.resultBanner, { backgroundColor: colors.alpha(resultColor, 0.12), borderColor: resultColor + '60', borderLeftColor: resultColor }]}>
             <Text style={[styles.rLabel, { color: colors.textSecondary }]}>Rentabilidade total</Text>
             <Text style={[styles.rValue, { color: resultColor }]}>
               {sign}{formatBRL(totals.result)}
@@ -287,20 +295,22 @@ export default function InvestmentsScreen() {
 
       <View style={{ height: 96 }} />
     </ScrollView>
+    <InvestimentosFab />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   content: { padding: 16 },
   title: { fontSize: 24, fontWeight: '900', marginBottom: 14 },
-  card: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 16, marginBottom: 14 },
+  card: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderLeftWidth: 3, padding: 16, marginBottom: 14 },
   cardTitle: { fontSize: 16, fontWeight: '800' },
   hint: { fontSize: 11 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   summaryCol: { flex: 1, paddingRight: 8 },
   sLabel: { fontSize: 13, fontWeight: '600', marginBottom: 4 },
   sValue: { fontSize: 20, fontWeight: '800' },
-  resultBanner: { borderRadius: 14, padding: 14, alignItems: 'center' },
+  resultBanner: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, borderLeftWidth: 3, padding: 14, alignItems: 'center', marginTop: 8 },
   rLabel: { fontSize: 13, fontWeight: '600' },
   rValue: { fontSize: 26, fontWeight: '900', marginTop: 2 },
   rPct: { fontSize: 14, fontWeight: '700' },

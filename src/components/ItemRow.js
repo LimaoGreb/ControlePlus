@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'r
 import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+import { useSettings } from '../context/SettingsContext';
 import { hapticTap, hapticSuccess } from '../utils/haptics';
 import { onBulkUnlock, isPendingUnlock } from '../utils/editModeSignal';
 import { MONTH_NAMES } from '../data/initialData';
@@ -10,6 +11,8 @@ import CurrencyInput from './CurrencyInput';
 import DueDayChip from './DueDayChip';
 import CategoryChip from './CategoryChip';
 import PaymentChip from './PaymentChip';
+import BankBadge from './BankBadge';
+import { getBankForPayment } from '../data/banks';
 
 const CAT_META = {
   alimentacao: { icon: '🍔', name: 'Alimentação' }, transporte: { icon: '🚗', name: 'Transporte' },
@@ -19,7 +22,7 @@ const CAT_META = {
   tech:        { icon: '💻', name: 'Tech' },        outros:     { icon: '🔮', name: 'Outros' },
 };
 
-export default function ItemRow({
+function ItemRow({
   item,
   namePlaceholder = 'Nome',
   onChangeName,
@@ -39,7 +42,12 @@ export default function ItemRow({
   onChangeCategory,
 }) {
   const { colors } = useTheme();
+  const { customCategories } = useSettings();
   const accent = accentColor || colors.primary;
+
+  // Meta unificada: padrão + customizadas (para pills no estado travado/concluído)
+  const catMeta = { ...CAT_META };
+  (customCategories || []).forEach(c => { catMeta[c.id] = { icon: c.emoji, name: c.name }; });
   const swipeRef = useRef(null);
 
   const [unlocked, setUnlocked] = useState(() => isPendingUnlock());
@@ -52,6 +60,15 @@ export default function ItemRow({
   const isLocked = lockConditionMet && !unlocked && !concluded;
 
   useEffect(() => onBulkUnlock(() => setUnlocked(true)), []);
+
+  // Cleanup ao desmontar: evita setState em componente morto e garante que
+  // chipPressed não fique "true" eternamente se o timeout for cancelado.
+  useEffect(() => {
+    return () => {
+      if (blurTimer.current) clearTimeout(blurTimer.current);
+      chipPressed.current = false;
+    };
+  }, []);
 
   const handleInputFocus = () => {
     focusCount.current++;
@@ -93,13 +110,11 @@ export default function ItemRow({
     );
   }
 
-  // ── Meta text para estado travado/concluído ──────────────────────────────────
-  const metaParts = [];
-  if (item.payment) metaParts.push(`💳 ${item.payment}`);
-  if (item.category && CAT_META[item.category]) metaParts.push(`${CAT_META[item.category].icon} ${CAT_META[item.category].name}`);
-  if (item.dueDay) metaParts.push(`📅 dia ${item.dueDay}`);
-  const metaText = metaParts.join('  ·  ');
-  const hasMetaPills = (isLocked || concluded) && metaText.length > 0;
+  // ── Meta pills para estado travado/concluído ──────────────────────────────────
+  const metaPaymentPm = item.payment ? paymentMethods.find(p => p.name === item.payment) : null;
+  // Fallback: passa o nome como objeto sintético — getBankForPayment reconhece "Pix", "Débito" pelo nome
+  const metaPaymentBank = item.payment ? getBankForPayment(metaPaymentPm || { name: item.payment }) : null;
+  const hasMetaPills = (isLocked || concluded) && (item.payment || (item.category && catMeta[item.category]) || item.dueDay);
 
   const hasChips = !isLocked && !concluded &&
     ((swipeable && onChangeDueDay) || (showPayment && paymentMethods.length > 0) || showCategory);
@@ -175,11 +190,31 @@ export default function ItemRow({
         ) : null}
       </View>
 
-      {/* ── Estado TRAVADO / CONCLUÍDO: linha de meta flat ── */}
+      {/* ── Estado TRAVADO / CONCLUÍDO: pills de meta com badge ── */}
       {hasMetaPills && (
-        <Text numberOfLines={1} style={[styles.metaLine, { color: colors.textMuted }]}>
-          {metaText}
-        </Text>
+        <View style={styles.metaPills}>
+          {item.payment && (
+            <View style={styles.metaPill}>
+              {metaPaymentBank
+                ? <BankBadge bank={metaPaymentBank} size={14} />
+                : <Ionicons name="card-outline" size={12} color={colors.textMuted} />
+              }
+              <Text style={[styles.metaPillText, { color: colors.textMuted }]}>{item.payment}</Text>
+            </View>
+          )}
+          {item.category && catMeta[item.category] && (
+            <View style={styles.metaPill}>
+              <Text style={[styles.metaPillText, { color: colors.textMuted }]}>
+                {catMeta[item.category].icon} {catMeta[item.category].name}
+              </Text>
+            </View>
+          )}
+          {item.dueDay && (
+            <View style={styles.metaPill}>
+              <Text style={[styles.metaPillText, { color: colors.textMuted }]}>📅 dia {item.dueDay}</Text>
+            </View>
+          )}
+        </View>
       )}
 
       {/* ── Estado EDIÇÃO: Categoria · Pagamento · Vencimento (lista) ── */}
@@ -298,15 +333,13 @@ const styles = StyleSheet.create({
   valueInput: { width: 100 },
   iconBtn: { paddingLeft: 6, paddingVertical: 4, opacity: 0.8 },
 
-  // ── Meta linha flat (travado / concluído) ─────────────────────────────────
-  metaLine: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    paddingLeft: 40,
-    paddingRight: 12,
-    paddingBottom: 10,
+  // ── Meta pills (travado / concluído) ──────────────────────────────────────
+  metaPills: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+    paddingLeft: 40, paddingRight: 12, paddingBottom: 10,
   },
+  metaPill: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  metaPillText: { fontSize: 11.5, fontWeight: '600' },
 
   // ── Chips de edição (lista vertical) ─────────────────────────────────────
   chipsSection: {},
@@ -351,3 +384,20 @@ const styles = StyleSheet.create({
   refName: { fontSize: 13, fontWeight: '700' },
   refTag:  { fontSize: 11, marginTop: 2 },
 });
+
+// Callbacks (onChangeName, onChangeValue, etc.) têm novas referências a cada render
+// do pai mas NÃO afetam o visual — ignorá-los evita re-renders desnecessários em
+// listas longas quando apenas outro item do mês foi editado.
+function areEqual(prev, next) {
+  return (
+    prev.item === next.item &&
+    prev.isOverdue === next.isOverdue &&
+    prev.accentColor === next.accentColor &&
+    prev.showPayment === next.showPayment &&
+    prev.showCategory === next.showCategory &&
+    prev.paymentMethods === next.paymentMethods &&
+    prev.swipeable === next.swipeable
+  );
+}
+
+export default React.memo(ItemRow, areEqual);

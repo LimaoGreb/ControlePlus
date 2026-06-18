@@ -379,9 +379,18 @@ export function localClassify(t) {
   }
 
   // ── Desbloquear despesas para edição (unlock_expenses) ───────────────────
-  if (/\bdesbloqu[aeio][ir]?\w*\b/i.test(t) ||
-      (/\b(coloque?|poe|põe|quero|deixa|vai)\b.{0,20}\b(pra?\s+editar|no\s+modo\s+(de\s+)?edi[çc][aã]o|editar)\b.{0,35}\b(todas?|despesas?|gastos?|tudo\b|m[eê]s\b)\b/i.test(t)) ||
-      (/\b(abr[ae][r]?|ativa[r]?|ligar?)\b.{0,20}\bmodo\s+(de\s+)?edi[çc][aã]o\b/i.test(t))) {
+  if (
+    // "desbloquear"
+    /\bdesbloqu\w+\b/i.test(t) ||
+    // verbo de ação + (pra editar | no/em modo de edição | para edição)
+    /\b(coloca[r]?|coloqu[eo]?|poe|põe|quero|deixa[r]?|vai|manda[r]?|libera[r]?|bota[r]?)\b.{0,40}\b(pra?\s+editar|n[oa]\s+modo\s+(de\s+)?edi[çc][aã]o|para?\s+(a\s+)?edi[çc][aã]o)\b/i.test(t) ||
+    // sujeito (despesas/todas/tudo) + contexto de edição (ordem invertida)
+    /\b(todas?(\s+as)?\s+)?(despesas?|gastos?|tudo)\b.{0,40}\b(pra?\s+editar|n[oa]\s+modo\s+(de\s+)?edi[çc][aã]o|para?\s+(a\s+)?edi[çc][aã]o|editá[vv]eis?)\b/i.test(t) ||
+    // abrir/ativar/ligar/liberar + modo de edição | para edição | só "edição"
+    /\b(abr[ae][r]?|ativa[r]?|liga[r]?|libera[r]?)\b.{0,30}\b(modo\s+(de\s+)?edi[çc][aã]o|para?\s+(a\s+)?edi[çc][aã]o|edi[çc][aã]o)\b/i.test(t) ||
+    // "quero editar todas/as despesas" sem mencionar item específico
+    (/\b(quero|vou|preciso)\s+(editar|modificar|alterar)\b.{0,30}\b(todas?(\s+as)?\s+)?(despesas?|gastos?|tudo)\b/i.test(t) && !/\bnome\b|\bvalor\b|\bpagamento\b/i.test(t))
+  ) {
     return { intent: 'unlock_expenses', params: { month } };
   }
 

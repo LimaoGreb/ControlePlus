@@ -17,6 +17,7 @@ import { annualTotals } from '../utils/calculations';
 import { formatBRL, formatPercent } from '../utils/currency';
 import { projectStats } from '../utils/projects';
 import { YEAR, MONTH_NAMES } from '../data/initialData';
+import ControleFab from '../components/ControleFab';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -245,10 +246,11 @@ const MEDAL = ['🥇','🥈','🥉','🏅','🎖️'];
 function PeekCard({cat,anim}) {
   if (!cat) return null;
   const topItems = cat.topItems?.slice(0,5) || [];
-  const peakM = cat.monthlyData?.length > 0
-    ? cat.monthlyData.reduce((a,b) => b.total > a.total ? b : a, cat.monthlyData[0])
+  const monthlyData = cat.monthlyData ?? [];
+  const peakM = monthlyData.length > 0
+    ? monthlyData.reduce((a,b) => b.total > a.total ? b : a, monthlyData[0])
     : null;
-  const avgPerMonth = cat.monthlyData?.length > 0 ? cat.total / cat.monthlyData.length : cat.total;
+  const avgPerMonth = monthlyData.length > 0 ? cat.total / monthlyData.length : cat.total;
   const totalOccurrences = topItems.reduce((s,it) => s + (it.count || 0), 0);
 
   return (
@@ -380,7 +382,7 @@ const pk = StyleSheet.create({
 function CategoryDetailPanel({cat}) {
   const {colors}=useTheme();
   const [expandedMonth,setExpandedMonth]=useState(null);
-  const maxMT=cat.monthlyData.length>0?Math.max(...cat.monthlyData.map(m=>m.total)):1;
+  const maxMT=cat.monthlyData.length>0?Math.max(1,...cat.monthlyData.map(m=>m.total)):1;
   const avgActive=cat.total/Math.max(1,cat.monthlyData.length);
   const peakM=cat.monthlyData.length>0?cat.monthlyData.reduce((a,b)=>b.total>a.total?b:a,cat.monthlyData[0]):null;
   const toggle=idx=>{
@@ -989,20 +991,21 @@ export default function AnnualSummaryScreen() {
   const scrollRef=useRef(null);
   useScrollToTop(scrollRef);
 
-  const totals=useMemo(()=>annualTotals(data.months),[data.months]);
-  const {cats,grand}=useMemo(()=>categorize(data.months),[data.months]);
+  const months = data?.months || {};
+  const totals=useMemo(()=>annualTotals(months),[months]);
+  const {cats,grand}=useMemo(()=>categorize(months),[months]);
 
   // Categorias do mês atual
   const currentMonthIdx=new Date().getMonth();
   const {cats: mCats, grand: mGrand}=useMemo(()=>{
-    const m={}; m[currentMonthIdx]=data.months?.[currentMonthIdx]; return categorize(m);
-  },[data.months,currentMonthIdx]);
+    const m={}; m[currentMonthIdx]=months[currentMonthIdx]; return categorize(m);
+  },[months[currentMonthIdx]]);
 
   const rate=totals.rendaTotal>0?(totals.sobraTotal/totals.rendaTotal)*100:0;
   const health=getHealth(rate);
   // Destaques do Ano: somente meses já concluídos pelo usuário
-  const mwd=totals.perMonth.filter(m=>(data.months[m.index]?.completed)&&(m.renda>0||m.despesa>0));
-  const posMonths=totals.perMonth.filter(m=>(data.months[m.index]?.completed)&&m.sobra>0).length;
+  const mwd=totals.perMonth.filter(m=>(months[m.index]?.completed)&&(m.renda>0||m.despesa>0));
+  const posMonths=totals.perMonth.filter(m=>(months[m.index]?.completed)&&m.sobra>0).length;
   const bestM=mwd.length>0?mwd.reduce((a,b)=>b.sobra>a.sobra?b:a,mwd[0]):null;
   const worstM=mwd.length>0?mwd.reduce((a,b)=>b.despesa>a.despesa?b:a,mwd[0]):null;
 
@@ -1273,7 +1276,7 @@ export default function AnnualSummaryScreen() {
         </ScrollView>
 
         {/* ── ORÇAMENTO DO MÊS ── */}
-        <BudgetSection monthData={data.months?.[currentMonthIdx]} onOpenEditor={() => setBudgetEditorOpen(true)} />
+        <BudgetSection monthData={months[currentMonthIdx]} onOpenEditor={() => setBudgetEditorOpen(true)} />
 
         {/* ── PROJETOS ── */}
         {projects.length>0&&<>
@@ -1329,6 +1332,7 @@ export default function AnnualSummaryScreen() {
         onClose={closeSheet}
         onSelectCat={setSheetCatId}
       />
+      <ControleFab />
     </View>
   );
 }

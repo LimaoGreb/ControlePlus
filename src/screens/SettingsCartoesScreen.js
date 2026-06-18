@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ScrollView, View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Modal, TouchableWithoutFeedback, KeyboardAvoidingView, Platform,
+  StyleSheet, Modal, TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
@@ -177,8 +177,10 @@ export default function SettingsCartoesScreen() {
         <TouchableWithoutFeedback onPress={() => setBankModalId(null)}>
           <View style={styles.modalBackdrop}>
             <TouchableWithoutFeedback>
-              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                <View style={[styles.modalSheet, { backgroundColor: colors.card, borderColor: colors.border + '80' }]}>
+                <View style={[styles.modalSheet, { backgroundColor: colors.card, borderColor: colors.border + '60' }]}>
+
+                  {/* Handle */}
+                  <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
 
                   {/* Header */}
                   <View style={[styles.modalHeader, { borderBottomColor: colors.border + '40' }]}>
@@ -196,7 +198,6 @@ export default function SettingsCartoesScreen() {
                       onChangeText={setBankSearch}
                       placeholder="Buscar banco..."
                       placeholderTextColor={colors.textMuted}
-                      autoFocus
                       style={[styles.searchInput, { color: colors.text }]}
                     />
                     {!!bankSearch && (
@@ -206,40 +207,53 @@ export default function SettingsCartoesScreen() {
                     )}
                   </View>
 
-                  {/* Lista de bancos */}
+                  {/* Grid de bancos */}
                   <ScrollView style={styles.bankScroll} keyboardShouldPersistTaps="handled">
                     {modalPm?.bank && (
                       <TouchableOpacity
-                        style={[styles.bankItem, { borderBottomColor: colors.border + '40' }]}
+                        style={[styles.removeRow, { borderBottomColor: colors.border + '30' }]}
                         onPress={() => { setPaymentBank(bankModalId, null); setBankModalId(null); }}
                       >
-                        <Ionicons name="close-circle-outline" size={22} color={colors.textMuted} />
-                        <Text style={[styles.bankItemText, { color: colors.textMuted }]}>Remover banco</Text>
+                        <Ionicons name="close-circle-outline" size={16} color={colors.negative} />
+                        <Text style={[styles.removeText, { color: colors.negative }]}>Remover banco</Text>
                       </TouchableOpacity>
                     )}
-                    {filteredBanks.map((b, i) => {
-                      const selected = modalPm?.bank === b.id;
-                      return (
-                        <TouchableOpacity
-                          key={b.id}
-                          style={[
-                            styles.bankItem,
-                            { borderBottomColor: colors.border + '40' },
-                            selected && { backgroundColor: b.color + '12' },
-                          ]}
-                          onPress={() => { setPaymentBank(bankModalId, b.id); setBankModalId(null); }}
-                        >
-                          <BankBadge bank={b} size={30} />
-                          <Text style={[styles.bankItemText, { color: selected ? b.color : colors.text, fontWeight: selected ? '800' : '600' }]}>
-                            {b.name}
-                          </Text>
-                          {selected && <Ionicons name="checkmark-circle" size={20} color={b.color} />}
-                        </TouchableOpacity>
-                      );
-                    })}
+                    <View style={styles.bankGrid}>
+                      {filteredBanks.map((b) => {
+                        const selected = modalPm?.bank === b.id;
+                        return (
+                          <TouchableOpacity
+                            key={b.id}
+                            style={[
+                              styles.bankCell,
+                              selected && { backgroundColor: b.color + '15' },
+                            ]}
+                            onPress={() => { setPaymentBank(bankModalId, b.id); setBankModalId(null); }}
+                            activeOpacity={0.7}
+                          >
+                            <View style={[
+                              styles.badgeWrap,
+                              selected && { borderWidth: 2.5, borderColor: b.color, borderRadius: 16 },
+                            ]}>
+                              <BankBadge bank={b} size={44} />
+                              {selected && (
+                                <View style={[styles.checkDot, { backgroundColor: b.color }]}>
+                                  <Ionicons name="checkmark" size={9} color="#fff" />
+                                </View>
+                              )}
+                            </View>
+                            <Text numberOfLines={1} style={[
+                              styles.bankCellText,
+                              { color: selected ? b.color : colors.text, fontWeight: selected ? '800' : '500' },
+                            ]}>
+                              {b.name}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                   </ScrollView>
                 </View>
-              </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
@@ -279,15 +293,18 @@ const styles = StyleSheet.create({
   limitValue: { fontSize: 12, fontWeight: '600' },
 
   // Modal de banco
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet: {
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    borderWidth: 1, borderBottomWidth: 0,
-    maxHeight: '80%',
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1,
+    maxHeight: '84%',
+    overflow: 'hidden',
+    paddingBottom: 28,
   },
+  modalHandle: { width: 38, height: 4, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 2, opacity: 0.35 },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 18, paddingVertical: 16,
+    paddingHorizontal: 18, paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   modalTitle: { fontSize: 16, fontWeight: '800' },
@@ -298,11 +315,21 @@ const styles = StyleSheet.create({
     borderRadius: 10, borderWidth: StyleSheet.hairlineWidth,
   },
   searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
-  bankScroll: { maxHeight: 400 },
-  bankItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 13,
+  bankScroll: { maxHeight: 420 },
+  removeRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  bankItemText: { flex: 1, fontSize: 15 },
+  removeText: { fontSize: 13, fontWeight: '700' },
+  bankGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8, paddingTop: 4, paddingBottom: 20 },
+  bankCell: { width: '33.33%', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4, borderRadius: 14 },
+  badgeWrap: { position: 'relative', marginBottom: 7 },
+  checkDot: {
+    position: 'absolute', top: -4, right: -4,
+    width: 16, height: 16, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#fff',
+  },
+  bankCellText: { fontSize: 11, textAlign: 'center' },
 });

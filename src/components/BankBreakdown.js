@@ -61,7 +61,7 @@ export default function BankBreakdown({ month }) {
         const alertColor = overLimit ? '#FF3B30' : nearLimit ? '#FF9500' : entry.color;
 
         return (
-          <View key={entry.pmName} style={styles.row}>
+          <View key={entry.pmName} style={[styles.row, { borderLeftColor: entry.color }]}>
             {/* Linha: nome + valor */}
             <View style={styles.labelRow}>
               {entry.bank
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   empty: { paddingVertical: 24, alignItems: 'center' },
   emptyText: { fontSize: 13, textAlign: 'center' },
 
-  row: { marginBottom: 14 },
+  row: { marginBottom: 14, borderLeftWidth: 3, paddingLeft: 10, borderRadius: 2 },
   labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
   colorDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
   pmName: { flex: 1, fontSize: 13, fontWeight: '700' },

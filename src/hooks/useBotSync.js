@@ -79,6 +79,6 @@ export function useBotSync(telegramChatId, addItem) {
       }
     });
 
-    return () => off(pendingRef, 'value', unsubscribe);
+    return () => unsubscribe();
   }, [telegramChatId]);
 }

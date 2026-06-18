@@ -4,6 +4,7 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform,
   Animated, Image, ImageBackground, Keyboard,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -14,6 +15,10 @@ import { useSettings } from '../context/SettingsContext';
 import { useCapMessages } from '../context/CapContext';
 import { useVoiceChat } from '../hooks/useVoiceChat';
 import { processMessage } from '../services/jarvisLocal';
+
+const CHAT_STORAGE_KEY = '@capChat_v1';
+const MAX_CHAT_MESSAGES = 200;
+const HISTORY_CONTEXT = 20;
 
 const CAP_BG = require('../../assets/imagem de fundo do cap.png');
 const CAP_AVATAR = require('../../assets/Gemini_Generated_Image_lebrn5lebrn5lebr.png');
@@ -371,12 +376,44 @@ export default function ChatScreen() {
   const historyRef = useRef([]);
   const cancelledRef = useRef(false);
   const mountedRef = useRef(true);
+  const chatLoadedRef = useRef(false);
+  const saveChatTimer = useRef(null);
+
+  // Carrega histórico de conversas anteriores do AsyncStorage.
+  useEffect(() => {
+    AsyncStorage.getItem(CHAT_STORAGE_KEY)
+      .then((raw) => {
+        if (raw) {
+          const saved = JSON.parse(raw);
+          if (saved.length > 0) {
+            setMessages(saved);
+            historyRef.current = saved
+              .filter((m) => m.from === 'user' || m.from === 'bot')
+              .map((m) => ({ role: m.from, text: m.text }))
+              .slice(-HISTORY_CONTEXT);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => { chatLoadedRef.current = true; });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Salva mensagens sempre que mudam (debounce 600ms).
+  useEffect(() => {
+    if (!chatLoadedRef.current) return;
+    if (saveChatTimer.current) clearTimeout(saveChatTimer.current);
+    saveChatTimer.current = setTimeout(() => {
+      AsyncStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-MAX_CHAT_MESSAGES))).catch(() => {});
+    }, 600);
+    return () => { if (saveChatTimer.current) clearTimeout(saveChatTimer.current); };
+  }, [messages]);
 
   // Cleanup TTS ao desmontar
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      if (saveChatTimer.current) clearTimeout(saveChatTimer.current);
       try { Speech.stop(); } catch {}
     };
   }, []);
@@ -417,10 +454,12 @@ export default function ChatScreen() {
   }, []);
 
   const clearConversation = useCallback(() => {
-    setMessages([mkMsg('bot', `Oi ${firstName}! 👋 Conversa reiniciada. O que posso fazer por você?`)]);
+    const newMsg = mkMsg('bot', `Oi ${firstName}! 👋 Conversa reiniciada. O que posso fazer por você?`);
+    setMessages([newMsg]);
     setPendingOp(null);
     setInputText('');
     historyRef.current = [];
+    AsyncStorage.removeItem(CHAT_STORAGE_KEY).catch(() => {});
     try { Speech.stop(); } catch {}
     if (mountedRef.current) setSpeakingId(null);
   }, [firstName]);
@@ -502,7 +541,7 @@ export default function ChatScreen() {
             { data, investments, projects, paymentMethods, userName },
             { addItem, updateItem, removeItem },
             { setUserName, setIsInvestor, setMakesContributions, addProjectFull, updateProject, removeProject, setContributionGoalPct },
-            historyRef.current.slice(-10)
+            historyRef.current.slice(-HISTORY_CONTEXT)
           );
           botText = result.botText;
           if (result.pendingOp) setPendingOp(result.pendingOp);
@@ -515,7 +554,7 @@ export default function ChatScreen() {
         ...historyRef.current,
         { role: 'user', text },
         { role: 'bot', text: botText },
-      ].slice(-10);
+      ].slice(-HISTORY_CONTEXT);
 
       // Captura o ID da próxima mensagem antes de criá-la
       const nextBotId = String(_id);

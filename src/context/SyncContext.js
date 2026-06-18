@@ -91,13 +91,25 @@ export function SyncProvider({ children }) {
 
   // Persiste os dados pessoais e o avatar do(a) parceiro(a) localmente (cache entre sessões).
   const updatePartnerPersonal = useCallback((rawData) => {
-    if (!rawData) return;
+    if (!rawData) {
+      // Parceiro desconectou — limpa dados locais
+      setPartnerPersonalData(null);
+      setPartnerAvatar(null);
+      AsyncStorage.multiRemove([PARTNER_PERSONAL_KEY, PARTNER_AVATAR_KEY]).catch((e) =>
+        console.warn('[Casal] erro ao limpar cache do(a) parceiro(a):', e?.message)
+      );
+      return;
+    }
     const { _avatar, ...pureData } = rawData;
     setPartnerPersonalData(pureData);
-    AsyncStorage.setItem(PARTNER_PERSONAL_KEY, JSON.stringify(pureData)).catch(() => {});
+    AsyncStorage.setItem(PARTNER_PERSONAL_KEY, JSON.stringify(pureData)).catch((e) =>
+      console.warn('[Casal] erro ao salvar dados pessoais do(a) parceiro(a):', e?.message)
+    );
     if (_avatar) {
       setPartnerAvatar(_avatar);
-      AsyncStorage.setItem(PARTNER_AVATAR_KEY, JSON.stringify(_avatar)).catch(() => {});
+      AsyncStorage.setItem(PARTNER_AVATAR_KEY, JSON.stringify(_avatar)).catch((e) =>
+        console.warn('[Casal] erro ao salvar avatar do(a) parceiro(a):', e?.message)
+      );
     }
   }, []);
 
@@ -198,11 +210,9 @@ export function SyncProvider({ children }) {
       .catch((e) => console.error('[Casal] fetchPersonalData erro:', e));
 
     stopListenPersonal.current = listenPersonalData(coupleCode, deviceId, (data) => {
-      if (data) {
-        console.warn('[Casal] dados pessoais do(a) parceiro(a) atualizados via listener');
-        updatePartnerPersonal(data);
-        setLastPartnerActivity(Date.now());
-      }
+      console.warn('[Casal] listener pessoal:', data ? 'dados recebidos' : 'parceiro(a) desconectou');
+      updatePartnerPersonal(data); // null é tratado dentro de updatePartnerPersonal
+      if (data) setLastPartnerActivity(Date.now());
     });
 
     return () => { if (stopListenPersonal.current) stopListenPersonal.current(); };
@@ -213,12 +223,14 @@ export function SyncProvider({ children }) {
     if (!coupleCode || !sharedData || !ready || !FIREBASE_CONFIGURED) return;
     if (ignoreNextSharedPush.current) { ignoreNextSharedPush.current = false; return; }
     debouncedPush();
+    return () => { if (pushTimer.current) clearTimeout(pushTimer.current); };
   }, [sharedData, coupleCode, ready]);
 
   // Dados pessoais mudaram → push separado para o node próprio.
   useEffect(() => {
     if (!coupleCode || !personalData || !ready || !FIREBASE_CONFIGURED || !sharePersonal || !deviceId) return;
     debouncedPersonalPush();
+    return () => { if (personalPushTimer.current) clearTimeout(personalPushTimer.current); };
   }, [personalData, coupleCode, ready, sharePersonal, deviceId]);
 
   // Push de dados compartilhados — inclui deviceId para compatibilidade com clientes antigos.
