@@ -1,9 +1,35 @@
-// Wrapper minimalista para a API HTTP do Telegram Bot.
+import { isVoiceReply, textToSpeech } from './ttsService.js';
+
 const fetch = (...args) => import('node-fetch').then(m => m.default(...args));
 
 const BASE = () => `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 
+export async function sendRecordingAction(chatId) {
+  await fetch(`${BASE()}/sendChatAction`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, action: 'record_voice' }),
+  });
+}
+
+export async function sendVoice(chatId, audioBuffer) {
+  const fd = new FormData();
+  fd.append('chat_id', String(chatId));
+  fd.append('voice', new Blob([audioBuffer], { type: 'audio/mpeg' }), 'response.mp3');
+  await fetch(`${BASE()}/sendVoice`, { method: 'POST', body: fd });
+}
+
 export async function sendMessage(chatId, text, extra = {}) {
+  if (isVoiceReply(chatId)) {
+    try {
+      await sendRecordingAction(chatId);
+      const buf = await textToSpeech(text, chatId);
+      await sendVoice(chatId, buf);
+      return;
+    } catch (e) {
+      console.warn('[TTS] fallback para texto:', e.message);
+    }
+  }
   await fetch(`${BASE()}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -31,7 +57,6 @@ export async function sendDocument(chatId, filename, content, caption) {
   }
 }
 
-// Registra o webhook com a URL pública do servidor (chamar 1x no deploy).
 export async function setWebhook(url) {
   const res = await fetch(`${BASE()}/setWebhook`, {
     method: 'POST',
@@ -41,7 +66,6 @@ export async function setWebhook(url) {
   return res.json();
 }
 
-// Retorna o file_path de um arquivo do Telegram para download.
 export async function getFile(fileId) {
   try {
     const res = await fetch(`${BASE()}/getFile?file_id=${encodeURIComponent(fileId)}`);
@@ -53,14 +77,13 @@ export async function getFile(fileId) {
   }
 }
 
-// Baixa um arquivo do Telegram e retorna como string base64.
 export async function downloadFileAsBase64(filePath) {
   try {
     const url = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${filePath}`;
     const res = await fetch(url);
     const buffer = await res.arrayBuffer();
     const b64 = Buffer.from(buffer).toString('base64');
-    if (b64.length > 700000) console.warn('[Telegram] foto grande:', Math.round(b64.length / 1024), 'KB');
+    if (b64.length > 700000) console.warn('[Telegram] arquivo grande:', Math.round(b64.length / 1024), 'KB');
     return b64;
   } catch (e) {
     console.warn('[Telegram] downloadFile error:', e.message);

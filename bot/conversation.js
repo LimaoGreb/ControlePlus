@@ -14,6 +14,7 @@ import { answerQuery } from './queryHandler.js';
 import { generateCSV } from './exportHandler.js';
 import { addPendingExpense, readUserSnapshot, writeCommand, pollCommandResult, writeSessionContext, readSessionContext } from './firebaseWriter.js';
 import { sendMessage, sendTyping, sendDocument, getFile, downloadFileAsBase64 } from './telegramApi.js';
+import { AVAILABLE_VOICES, setVoiceForChat, getVoiceForChat } from './ttsService.js';
 
 const MONTH_NAMES = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -92,8 +93,38 @@ function detectFollowUp(text, lastQuery) {
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
+async function handleVozCommand(chatId, text) {
+  const arg = text.replace(/^\/voz\s*/i, '').trim().toLowerCase();
+  if (!arg) {
+    const current = getVoiceForChat(chatId);
+    const lines = AVAILABLE_VOICES.map((v, i) =>
+      `${v.id === current ? '✅' : `${i + 1}.`} *${v.label}*`
+    ).join('\n');
+    await sendMessage(chatId,
+      `🎙️ *Vozes disponíveis:*\n\n${lines}\n\n` +
+      `Para trocar:\n_/voz francisca_  _/voz antonio_  _/voz thalita_`
+    );
+    return;
+  }
+  const found = AVAILABLE_VOICES.find(v =>
+    v.id.toLowerCase().includes(arg) || v.label.toLowerCase().includes(arg)
+  );
+  if (!found) {
+    await sendMessage(chatId, `❌ Voz não encontrada. Use /voz para ver as opções.`);
+    return;
+  }
+  setVoiceForChat(chatId, found.id);
+  await sendMessage(chatId, `✅ Voz alterada para *${found.label}*!`);
+}
+
 export async function handleMessage(chatId, text, firstName) {
   const session = getSession(chatId, firstName);
+
+  // /voz — lista ou troca a voz do Cap
+  if (/^\/voz(\s|$)/i.test(text.trim())) {
+    await handleVozCommand(chatId, text.trim());
+    return;
+  }
 
   // Expira estados ativos após 5 min de silêncio
   if (ACTIVE_STEPS.has(session.step) && Date.now() - (session.lastActivity || 0) > SESSION_STEP_TTL) {

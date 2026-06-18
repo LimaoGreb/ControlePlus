@@ -853,6 +853,32 @@ Exemplos:
 
 Retorne apenas o JSON, nada mais.`;
 
+export async function transcribeAudio(audioBase64, mimeType = 'audio/ogg') {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(`${GEMINI_URL}?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: 'Transcreva o áudio em português. Retorne apenas o texto transcrito, sem explicações ou pontuação extra.' },
+            { inline_data: { mime_type: mimeType, data: audioBase64 } },
+          ],
+        }],
+        generationConfig: { temperature: 0, maxOutputTokens: 500 },
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+  } catch (e) {
+    console.warn('[Gemini] transcribeAudio error:', e.message);
+    return null;
+  }
+}
+
 export async function classifyIntent(text, history = []) {
   const local = localClassify(text.toLowerCase());
   if (local) return local;

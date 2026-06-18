@@ -19,9 +19,10 @@
 
 import express from 'express';
 import { handleMessage, handlePhotoMessage } from './conversation.js';
-import { setWebhook, sendMessage } from './telegramApi.js';
+import { setWebhook, sendMessage, getFile, downloadFileAsBase64 } from './telegramApi.js';
+import { activateVoiceReply, deactivateVoiceReply } from './ttsService.js';
 import { getAllChatIds, readUserSnapshot } from './firebaseWriter.js';
-import { classifyIntent } from './geminiClient.js';
+import { classifyIntent, transcribeAudio } from './geminiClient.js';
 
 const app = express();
 app.use(express.json());
@@ -45,6 +46,30 @@ app.post('/webhook', async (req, res) => {
       await handlePhotoMessage(chatId, msg.photo, firstName);
     } catch (e) {
       console.error('[Jarvis] erro no handlePhotoMessage:', e.message);
+    }
+    return;
+  }
+
+  // Mensagem de voz
+  if (msg.voice) {
+    console.log(`[${new Date().toISOString()}] ${firstName} (${chatId}): [VOZ ${msg.voice.duration}s]`);
+    try {
+      const filePath = await getFile(msg.voice.file_id);
+      if (!filePath) return;
+      const audioB64 = await downloadFileAsBase64(filePath);
+      if (!audioB64) return;
+      const transcribed = await transcribeAudio(audioB64, 'audio/ogg');
+      if (!transcribed) {
+        await sendMessage(chatId, '🎙️ Não consegui entender o áudio. Pode repetir?');
+        return;
+      }
+      console.log(`[${new Date().toISOString()}] ${firstName} (${chatId}) [transcrito]: ${transcribed}`);
+      activateVoiceReply(chatId);
+      await handleMessage(chatId, transcribed, firstName);
+    } catch (e) {
+      console.error('[Jarvis] erro no voice handling:', e.message);
+    } finally {
+      deactivateVoiceReply(chatId);
     }
     return;
   }
