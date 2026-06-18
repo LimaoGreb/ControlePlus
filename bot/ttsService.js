@@ -1,12 +1,12 @@
-import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
+const fetch = (...args) => import('node-fetch').then(m => m.default(...args));
 
 export const AVAILABLE_VOICES = [
-  { id: 'pt-BR-FranciscaNeural', label: 'Francisca (feminina, padrão)' },
-  { id: 'pt-BR-AntonioNeural',   label: 'Antonio (masculino)' },
-  { id: 'pt-BR-ThalitaNeural',   label: 'Thalita (feminina, jovem)' },
+  { id: '21m00Tcm4TlvDq8ikWAM', label: 'Rachel (feminina, padrão)' },
+  { id: 'pNInz6obpgDQGcFmaJgB', label: 'Adam (masculino)' },
+  { id: 'ErXwobaYiN019PkySvjV', label: 'Antoni (masculino, jovem)' },
 ];
 
-const DEFAULT_VOICE = 'pt-BR-FranciscaNeural';
+const DEFAULT_VOICE = '21m00Tcm4TlvDq8ikWAM';
 
 const _voicePrefs = new Map();
 const _voiceReplyChats = new Set();
@@ -46,23 +46,31 @@ function stripMarkdown(text) {
 }
 
 export async function textToSpeech(text, chatId) {
-  const voice = getVoiceForChat(chatId);
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (!key) throw new Error('ELEVENLABS_API_KEY não configurada');
+
+  const voiceId = getVoiceForChat(chatId);
   const clean = stripMarkdown(text);
-  console.log(`[TTS] iniciando: voz=${voice}, chars=${clean.length}`);
+  console.log(`[TTS] ElevenLabs: voz=${voiceId}, chars=${clean.length}`);
 
-  const tts = new MsEdgeTTS();
-  await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-  console.log('[TTS] metadata ok, abrindo stream');
-
-  const chunks = [];
-  await new Promise((resolve, reject) => {
-    const readable = tts.toStream(clean);
-    readable.on('data', chunk => chunks.push(chunk));
-    readable.on('end', () => { console.log(`[TTS] stream ok, bytes=${chunks.reduce((a, c) => a + c.length, 0)}`); resolve(); });
-    readable.on('error', err => { console.warn('[TTS] stream error:', err?.message || String(err), JSON.stringify(err)); reject(err || new Error('stream error')); });
+  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    method: 'POST',
+    headers: {
+      'xi-api-key': key,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text: clean,
+      model_id: 'eleven_multilingual_v2',
+      voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+    }),
   });
 
-  const buf = Buffer.concat(chunks);
-  if (!buf.length) throw new Error('TTS gerou buffer vazio');
-  return buf;
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`ElevenLabs HTTP ${res.status}: ${err}`);
+  }
+
+  const buf = await res.arrayBuffer();
+  return Buffer.from(buf);
 }
