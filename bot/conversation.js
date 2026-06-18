@@ -102,13 +102,17 @@ async function handleVozCommand(chatId, text) {
     ).join('\n');
     await sendMessage(chatId,
       `🎙️ *Vozes disponíveis:*\n\n${lines}\n\n` +
-      `Para trocar:\n_/voz francisca_  _/voz antonio_  _/voz thalita_`
+      `Para trocar:\n_/voz celeste_  _/voz fritz_  _/voz arista_`
     );
     return;
   }
-  const found = AVAILABLE_VOICES.find(v =>
-    v.id.toLowerCase().includes(arg) || v.label.toLowerCase().includes(arg)
-  );
+  const normalize = s => s.toLowerCase().replace(/[^a-z]/g, '');
+  const found = AVAILABLE_VOICES.find(v => {
+    const a = normalize(arg);
+    const id = normalize(v.id);
+    const firstName = normalize(v.label.split(' ')[0]);
+    return id.includes(a) || normalize(v.label).includes(a) || a.startsWith(firstName) || firstName.startsWith(a);
+  });
   if (!found) {
     await sendMessage(chatId, `❌ Voz não encontrada. Use /voz para ver as opções.`);
     return;
