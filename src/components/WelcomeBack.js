@@ -15,7 +15,7 @@ function getGreeting() {
 
 export default function WelcomeBack() {
   const { colors } = useTheme();
-  const { userName } = useSettings();
+  const { userName, ready } = useSettings();
   const appState      = useRef('active'); // inicia como active para ignorar transição de cold start
   const backgroundTime = useRef(null);
   const isColdStart   = useRef(true);
@@ -37,13 +37,13 @@ export default function WelcomeBack() {
   };
 
   // Caso 1: cold start — app foi fechado nos recentes e reaberto.
-  // isColdStart garante que dispara só uma vez por sessão, quando userName carrega.
+  // Espera o SettingsContext terminar de carregar (ready). Se já tinha nome
+  // gravado = retorno legítimo. Se estava vazio = primeiro acesso, não mostra.
   useEffect(() => {
-    if (isColdStart.current && userName) {
-      isColdStart.current = false;
-      show();
-    }
-  }, [userName]); // eslint-disable-line
+    if (!ready || !isColdStart.current) return;
+    isColdStart.current = false;
+    if (userName) show();
+  }, [ready]); // eslint-disable-line
 
   // Animação sequenciada
   useEffect(() => {
