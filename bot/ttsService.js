@@ -45,32 +45,37 @@ function stripMarkdown(text) {
     .trim();
 }
 
-export async function textToSpeech(text, chatId) {
-  const key = process.env.ELEVENLABS_API_KEY;
-  if (!key) throw new Error('ELEVENLABS_API_KEY não configurada');
-
-  const voiceId = getVoiceForChat(chatId);
-  const clean = stripMarkdown(text);
-  console.log(`[TTS] ElevenLabs: voz=${voiceId}, chars=${clean.length}`);
-
-  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': key,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      text: clean,
-      model_id: 'eleven_multilingual_v2',
-      voice_settings: { stability: 0.5, similarity_boost: 0.75 },
-    }),
+async function googleTTSChunk(chunk) {
+  const encoded = encodeURIComponent(chunk);
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=pt-BR&client=tw-ob&ttsspeed=1`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
   });
+  if (!res.ok) throw new Error(`Google TTS HTTP ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`ElevenLabs HTTP ${res.status}: ${err}`);
+export async function textToSpeech(text, chatId) {
+  const clean = stripMarkdown(text);
+  console.log(`[TTS] Google: chars=${clean.length}`);
+
+  // Google TTS limita ~200 chars por request — divide em sentenças se necessário
+  const sentences = clean.match(/[^.!?]+[.!?]*/g) || [clean];
+  const chunks = [];
+  let current = '';
+  for (const s of sentences) {
+    if ((current + s).length > 190) {
+      if (current) chunks.push(current.trim());
+      current = s;
+    } else {
+      current += s;
+    }
   }
+  if (current.trim()) chunks.push(current.trim());
 
-  const buf = await res.arrayBuffer();
-  return Buffer.from(buf);
+  const buffers = await Promise.all(chunks.map(googleTTSChunk));
+  const buf = Buffer.concat(buffers);
+  if (!buf.length) throw new Error('Google TTS gerou buffer vazio');
+  console.log(`[TTS] ok, bytes=${buf.length}`);
+  return buf;
 }
