@@ -9,7 +9,7 @@ workflows:
       events: []  # nao dispara automaticamente — rode manualmente no dashboard
     scripts:
       - name: Install dependencies
-        script: npm install
+        script: npm install --legacy-peer-deps
 
       - name: Expo Prebuild
         script: npx expo prebuild --platform android --clean --no-install
@@ -33,7 +33,7 @@ workflows:
         - keystore
     scripts:
       - name: Install dependencies
-        script: npm install
+        script: npm install --legacy-peer-deps
 
       - name: Expo Prebuild (gera pasta android)
         script: npx expo prebuild --platform android --clean --no-install
