@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 
+const AWAY_THRESHOLD = 5 * 60 * 1000; // 5 minutos em ms
+
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return 'Bom dia';
@@ -14,7 +16,9 @@ function getGreeting() {
 export default function WelcomeBack() {
   const { colors } = useTheme();
   const { userName } = useSettings();
-  const appState = useRef('active'); // força 'active' para ignorar transição de cold start no Android
+  const appState      = useRef('active'); // inicia como active para ignorar transição de cold start
+  const backgroundTime = useRef(null);
+  const isColdStart   = useRef(true);
   const [visible, setVisible] = useState(false);
 
   const screenOpacity   = useRef(new Animated.Value(0)).current;
@@ -32,6 +36,16 @@ export default function WelcomeBack() {
     setVisible(true);
   };
 
+  // Caso 1: cold start — app foi fechado nos recentes e reaberto.
+  // isColdStart garante que dispara só uma vez por sessão, quando userName carrega.
+  useEffect(() => {
+    if (isColdStart.current && userName) {
+      isColdStart.current = false;
+      show();
+    }
+  }, [userName]); // eslint-disable-line
+
+  // Animação sequenciada
   useEffect(() => {
     if (!visible) return;
     Animated.sequence([
@@ -47,13 +61,20 @@ export default function WelcomeBack() {
     ]).start(() => setVisible(false));
   }, [visible]); // eslint-disable-line
 
+  // Caso 2: voltou do background após +5 minutos fora.
+  // Diálogos de permissão, troca rápida de app etc. ficam abaixo do threshold.
   useEffect(() => {
     const sub = AppState.addEventListener('change', nextState => {
-      if (appState.current.match(/inactive|background/) && nextState === 'active') show();
+      if (nextState.match(/inactive|background/)) {
+        backgroundTime.current = Date.now();
+      } else if (nextState === 'active' && appState.current.match(/inactive|background/)) {
+        const elapsed = backgroundTime.current ? Date.now() - backgroundTime.current : 0;
+        if (elapsed >= AWAY_THRESHOLD) show();
+      }
       appState.current = nextState;
     });
     return () => sub.remove();
-  }, []);
+  }, []); // eslint-disable-line
 
   if (!visible) return null;
 
