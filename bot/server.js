@@ -58,7 +58,7 @@ app.post('/webhook', async (req, res) => {
       if (!filePath) return;
       const audioB64 = await downloadFileAsBase64(filePath);
       if (!audioB64) return;
-      const transcribed = await transcribeAudio(audioB64, 'audio/ogg');
+      const transcribed = await transcribeAudio(audioB64);
       if (!transcribed) {
         await sendMessage(chatId, '🎙️ Não consegui entender o áudio. Pode repetir?');
         return;

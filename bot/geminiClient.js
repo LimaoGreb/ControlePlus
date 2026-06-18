@@ -853,28 +853,29 @@ Exemplos:
 
 Retorne apenas o JSON, nada mais.`;
 
-export async function transcribeAudio(audioBase64, mimeType = 'audio/ogg') {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
+export async function transcribeAudio(audioBase64) {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) { console.warn('[Groq] GROQ_API_KEY não configurada'); return null; }
   try {
-    const res = await fetch(`${GEMINI_URL}?key=${key}`, {
+    const audioBuffer = Buffer.from(audioBase64, 'base64');
+    const fd = new FormData();
+    fd.append('file', new Blob([audioBuffer], { type: 'audio/ogg' }), 'audio.ogg');
+    fd.append('model', 'whisper-large-v3-turbo');
+    fd.append('language', 'pt');
+    fd.append('response_format', 'text');
+    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: 'Transcreva o áudio em português. Retorne apenas o texto transcrito, sem explicações ou pontuação extra.' },
-            { inline_data: { mime_type: mimeType, data: audioBase64 } },
-          ],
-        }],
-        generationConfig: { temperature: 0, maxOutputTokens: 500 },
-      }),
+      headers: { Authorization: `Bearer ${key}` },
+      body: fd,
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`HTTP ${res.status}: ${err}`);
+    }
+    const text = await res.text();
+    return text.trim() || null;
   } catch (e) {
-    console.warn('[Gemini] transcribeAudio error:', e.message);
+    console.warn('[Groq] transcribeAudio error:', e.message);
     return null;
   }
 }
