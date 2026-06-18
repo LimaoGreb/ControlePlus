@@ -50,6 +50,7 @@ function splitIntoChunks(text, maxLen) {
 async function groqTTSChunk(chunk, voice) {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new Error('GROQ_API_KEY não configurada');
+  console.log(`[TTS] Groq request: voice=${voice}, chars=${chunk.length}`);
   const res = await fetch('https://api.groq.com/openai/v1/audio/speech', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -57,9 +58,12 @@ async function groqTTSChunk(chunk, voice) {
   });
   if (!res.ok) {
     const err = await res.text();
+    console.error(`[TTS] Groq erro HTTP ${res.status}:`, err);
     throw new Error(`Groq TTS HTTP ${res.status}: ${err}`);
   }
-  return Buffer.from(await res.arrayBuffer());
+  const buf = Buffer.from(await res.arrayBuffer());
+  console.log(`[TTS] Groq chunk ok: bytes=${buf.length}`);
+  return buf;
 }
 
 async function googleTTSChunk(chunk) {

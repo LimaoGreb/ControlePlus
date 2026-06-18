@@ -13,8 +13,8 @@ import { classifyIntent } from './geminiClient.js';
 import { answerQuery } from './queryHandler.js';
 import { generateCSV } from './exportHandler.js';
 import { addPendingExpense, readUserSnapshot, writeCommand, pollCommandResult, writeSessionContext, readSessionContext } from './firebaseWriter.js';
-import { sendMessage, sendTyping, sendDocument, getFile, downloadFileAsBase64 } from './telegramApi.js';
-import { AVAILABLE_VOICES, setVoiceForChat, getVoiceForChat } from './ttsService.js';
+import { sendMessage, sendTyping, sendDocument, sendVoice, getFile, downloadFileAsBase64 } from './telegramApi.js';
+import { AVAILABLE_VOICES, setVoiceForChat, getVoiceForChat, textToSpeech } from './ttsService.js';
 
 const MONTH_NAMES = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -118,7 +118,14 @@ async function handleVozCommand(chatId, text) {
     return;
   }
   setVoiceForChat(chatId, found.id);
-  await sendMessage(chatId, `✅ Voz alterada para *${found.label}*!`);
+  await sendMessage(chatId, `✅ Voz alterada para *${found.label}*! Testando agora...`);
+  try {
+    const buf = await textToSpeech(`Olá! Estou usando a voz ${found.label.split(' ')[0]} agora. Como posso te ajudar?`, chatId);
+    await sendVoice(chatId, buf);
+  } catch (e) {
+    console.error('[TTS] teste de voz falhou:', e.message);
+    await sendMessage(chatId, `⚠️ Não consegui gerar o áudio de teste. Erro: ${e.message}`);
+  }
 }
 
 export async function handleMessage(chatId, text, firstName) {
