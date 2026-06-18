@@ -48,17 +48,21 @@ function stripMarkdown(text) {
 export async function textToSpeech(text, chatId) {
   const voice = getVoiceForChat(chatId);
   const clean = stripMarkdown(text);
+  console.log(`[TTS] iniciando: voz=${voice}, chars=${clean.length}`);
 
   const tts = new MsEdgeTTS();
   await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+  console.log('[TTS] metadata ok, abrindo stream');
 
   const chunks = [];
   await new Promise((resolve, reject) => {
     const readable = tts.toStream(clean);
     readable.on('data', chunk => chunks.push(chunk));
-    readable.on('end', resolve);
-    readable.on('error', reject);
+    readable.on('end', () => { console.log(`[TTS] stream ok, bytes=${chunks.reduce((a, c) => a + c.length, 0)}`); resolve(); });
+    readable.on('error', err => { console.warn('[TTS] stream error:', err?.message || String(err), JSON.stringify(err)); reject(err || new Error('stream error')); });
   });
 
-  return Buffer.concat(chunks);
+  const buf = Buffer.concat(chunks);
+  if (!buf.length) throw new Error('TTS gerou buffer vazio');
+  return buf;
 }

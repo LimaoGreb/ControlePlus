@@ -27,7 +27,7 @@ export async function sendMessage(chatId, text, extra = {}) {
       await sendVoice(chatId, buf);
       return;
     } catch (e) {
-      console.warn('[TTS] fallback para texto:', e.message);
+      console.warn('[TTS] fallback para texto:', e?.message || String(e), JSON.stringify(e));
     }
   }
   await fetch(`${BASE()}/sendMessage`, {
