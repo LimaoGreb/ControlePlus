@@ -1,12 +1,12 @@
 const fetch = (...args) => import('node-fetch').then(m => m.default(...args));
 
 export const AVAILABLE_VOICES = [
-  { id: 'Celeste-PlayAI', label: 'Celeste (feminina, padrão)' },
-  { id: 'Fritz-PlayAI', label: 'Fritz (masculino)' },
-  { id: 'Arista-PlayAI', label: 'Arista (feminina, jovem)' },
+  { id: 'Vitoria', label: 'Vitória (feminina, padrão)' },
+  { id: 'Ricardo', label: 'Ricardo (masculino)' },
+  { id: 'Camila', label: 'Camila (feminina, jovem)' },
 ];
 
-const DEFAULT_VOICE = 'Celeste-PlayAI';
+const DEFAULT_VOICE = 'Vitoria';
 
 const _voicePrefs = new Map();
 const _voiceReplyChats = new Set();
@@ -47,23 +47,14 @@ function splitIntoChunks(text, maxLen) {
   return chunks;
 }
 
-async function groqTTSChunk(chunk, voice) {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) throw new Error('GROQ_API_KEY não configurada');
-  console.log(`[TTS] Groq request: voice=${voice}, chars=${chunk.length}`);
-  const res = await fetch('https://api.groq.com/openai/v1/audio/speech', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'playai-tts', input: chunk, voice, response_format: 'mp3' }),
+async function streamElementsTTSChunk(chunk, voice) {
+  const encoded = encodeURIComponent(chunk);
+  const url = `https://api.streamelements.com/kappa/v2/speech?voice=${voice}&text=${encoded}`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
   });
-  if (!res.ok) {
-    const err = await res.text();
-    console.error(`[TTS] Groq erro HTTP ${res.status}:`, err);
-    throw new Error(`Groq TTS HTTP ${res.status}: ${err}`);
-  }
-  const buf = Buffer.from(await res.arrayBuffer());
-  console.log(`[TTS] Groq chunk ok: bytes=${buf.length}`);
-  return buf;
+  if (!res.ok) throw new Error(`StreamElements TTS HTTP ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
 }
 
 async function googleTTSChunk(chunk) {
@@ -81,16 +72,17 @@ export async function textToSpeech(text, chatId) {
   const voice = getVoiceForChat(chatId);
   console.log(`[TTS] Groq PlayAI (${voice}): chars=${clean.length}`);
 
+  const chunks = splitIntoChunks(clean, 190);
+
   try {
-    const chunks = splitIntoChunks(clean, 800);
-    const buffers = await Promise.all(chunks.map(c => groqTTSChunk(c, voice)));
+    console.log(`[TTS] StreamElements (${voice}): ${chunks.length} chunk(s)`);
+    const buffers = await Promise.all(chunks.map(c => streamElementsTTSChunk(c, voice)));
     const buf = Buffer.concat(buffers);
     if (!buf.length) throw new Error('buffer vazio');
-    console.log(`[TTS] Groq ok, bytes=${buf.length}`);
+    console.log(`[TTS] StreamElements ok, bytes=${buf.length}`);
     return buf;
   } catch (e) {
-    console.warn(`[TTS] Groq falhou (${e.message}), fallback Google TTS...`);
-    const chunks = splitIntoChunks(clean, 190);
+    console.warn(`[TTS] StreamElements falhou (${e.message}), fallback Google TTS...`);
     const buffers = await Promise.all(chunks.map(googleTTSChunk));
     const buf = Buffer.concat(buffers);
     if (!buf.length) throw new Error('Google TTS gerou buffer vazio');

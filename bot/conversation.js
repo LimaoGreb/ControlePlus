@@ -102,7 +102,7 @@ async function handleVozCommand(chatId, text) {
     ).join('\n');
     await sendMessage(chatId,
       `🎙️ *Vozes disponíveis:*\n\n${lines}\n\n` +
-      `Para trocar:\n_/voz celeste_  _/voz fritz_  _/voz arista_`
+      `Para trocar:\n_/voz vitoria_  _/voz ricardo_  _/voz camila_`
     );
     return;
   }
