@@ -53,7 +53,7 @@ export default function OnboardingScreen() {
 
     Animated.sequence([
       Animated.timing(screenOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.spring(logoScale, { toValue: 1, friction: 4, tension: 70, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, friction: 7, tension: 60, useNativeDriver: true }),
       Animated.parallel([
         Animated.timing(textOpacity, { toValue: 1, duration: 380, useNativeDriver: true }),
         Animated.timing(textTranslateY, { toValue: 0, duration: 380, useNativeDriver: true }),
@@ -78,12 +78,17 @@ export default function OnboardingScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.welcomeContainer}
         >
-          <Animated.View style={[styles.logoCircle, { transform: [{ scale: logoScale }] }]}>
-            <Image
-              source={require('../../assets/android-icon-foreground.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+          <Animated.View
+            renderToHardwareTextureAndroid
+            style={{ transform: [{ scale: logoScale }] }}
+          >
+            <View style={styles.logoCircle}>
+              <Image
+                source={require('../../assets/android-icon-foreground.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
           </Animated.View>
 
           <Animated.Text

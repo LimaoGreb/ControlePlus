@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useScrollToTop } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { EXPENSE_CATEGORIES } from '../data/categories';
+import { getResolvedCategories, getCategoryById } from '../data/categories';
 import CurrencyInput from '../components/CurrencyInput';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -655,7 +655,7 @@ function BudgetEditorSheet({ visible, onClose }) {
             <Text style={[be.sub, { color: colors.textMuted }]}>Defina um limite mensal para cada categoria</Text>
           </View>
           <ScrollView contentContainerStyle={be.content} showsVerticalScrollIndicator={false}>
-            {EXPENSE_CATEGORIES.map(cat => {
+            {getResolvedCategories().map(cat => {
               const limit = categoryBudgets[cat.id] || 0;
               const isEditing = editing === cat.id;
               return (
@@ -833,7 +833,7 @@ function BudgetSection({ monthData, onOpenEditor, bare = false }) {
 
           {/* Categorias individuais */}
           {budgetEntries.map(([catId, limit]) => {
-            const cat = EXPENSE_CATEGORIES.find(c => c.id === catId);
+            const cat = getCategoryById(catId);
             if (!cat) return null;
             const spentAmt  = spent[catId] || 0;
             const pct       = limit > 0 ? spentAmt / limit : 0;

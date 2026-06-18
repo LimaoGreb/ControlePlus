@@ -1,3 +1,9 @@
+let _overrides = {};
+
+export function applyOverrides(overrides) {
+  _overrides = overrides || {};
+}
+
 export const EXPENSE_CATEGORIES = [
   { id: 'alimentacao', name: 'Alimentação',  icon: 'fast-food-outline',           color: '#F97316' },
   { id: 'transporte',  name: 'Transporte',   icon: 'car-outline',                 color: '#3B82F6' },
@@ -10,6 +16,14 @@ export const EXPENSE_CATEGORIES = [
   { id: 'outros',      name: 'Outros',       icon: 'ellipsis-horizontal-outline', color: '#9CA3AF' },
 ];
 
+export function getResolvedCategories() {
+  return EXPENSE_CATEGORIES.map(cat =>
+    _overrides[cat.id] ? { ...cat, ..._overrides[cat.id] } : cat
+  );
+}
+
 export function getCategoryById(id) {
-  return EXPENSE_CATEGORIES.find(c => c.id === id) || null;
+  const base = EXPENSE_CATEGORIES.find(c => c.id === id) || null;
+  if (!base) return null;
+  return _overrides[id] ? { ...base, ..._overrides[id] } : base;
 }

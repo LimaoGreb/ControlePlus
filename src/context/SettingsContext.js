@@ -23,8 +23,11 @@ import {
   saveCategoryBudgets,
   loadCustomCategories,
   saveCustomCategories,
+  loadDefaultOverrides,
+  saveDefaultOverrides,
 } from '../services/storage';
 
+import { applyOverrides } from '../data/categories';
 import { logActivity } from '../services/activityLog';
 
 const fmtLog = (v) => {
@@ -50,6 +53,7 @@ export function SettingsProvider({ children }) {
   const [telegramChatId, setTelegramChatIdState] = useState(null);
   const [categoryBudgets, setCategoryBudgetsState] = useState({});
   const [customCategories, setCustomCategoriesState] = useState([]);
+  const [defaultOverrides, setDefaultOverridesState] = useState({});
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -65,7 +69,8 @@ export function SettingsProvider({ children }) {
       loadTelegramChatId(),
       loadCategoryBudgets(),
       loadCustomCategories(),
-    ]).then(([n, pms, inv, invts, mc, goal, av, projs, tgId, catBudgets, customCats]) => {
+      loadDefaultOverrides(),
+    ]).then(([n, pms, inv, invts, mc, goal, av, projs, tgId, catBudgets, customCats, defOverrides]) => {
       setUserNameState(n);
       setPaymentMethods(pms);
       setIsInvestorState(inv);
@@ -77,6 +82,9 @@ export function SettingsProvider({ children }) {
       if (tgId) setTelegramChatIdState(tgId);
       setCategoryBudgetsState(catBudgets);
       setCustomCategoriesState(customCats || []);
+      const overrides = defOverrides || {};
+      applyOverrides(overrides);
+      setDefaultOverridesState(overrides);
       setReady(true);
     });
   }, []);
@@ -282,6 +290,21 @@ export function SettingsProvider({ children }) {
     saveCustomCategories(next);
   };
 
+  const updateDefaultCategory = (id, changes) => {
+    const next = { ...defaultOverrides, [id]: { ...(defaultOverrides[id] || {}), ...changes } };
+    applyOverrides(next);
+    setDefaultOverridesState(next);
+    saveDefaultOverrides(next);
+  };
+
+  const resetDefaultCategory = (id) => {
+    const next = { ...defaultOverrides };
+    delete next[id];
+    applyOverrides(next);
+    setDefaultOverridesState(next);
+    saveDefaultOverrides(next);
+  };
+
   const importSettings = async (s) => {
     if (!s) return;
     // Aplica estado em memória primeiro (resposta imediata na UI).
@@ -326,11 +349,12 @@ export function SettingsProvider({ children }) {
     importSettings, telegramChatId, setTelegramChatId,
     categoryBudgets, setCategoryBudget,
     customCategories, addCustomCategory, updateCustomCategory, removeCustomCategory,
+    defaultOverrides, updateDefaultCategory, resetDefaultCategory,
     ready,
   }), [
     userName, avatar, paymentMethods, isInvestor, investments, projects,
     makesContributions, contributionGoalPct, telegramChatId,
-    categoryBudgets, customCategories, ready,
+    categoryBudgets, customCategories, defaultOverrides, ready,
   ]); // setters e mutators omitidos: usam apenas setState (referência estável)
 
   return (

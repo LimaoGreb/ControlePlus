@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
-import { EXPENSE_CATEGORIES } from '../data/categories';
+import { getCategoryById } from '../data/categories';
 import { formatBRL } from '../utils/currency';
 
 function barColor(pct, colors) {
@@ -41,7 +41,7 @@ export default function CategoryBudgetCard({ month, monthIndex, onNavigateToBudg
     budgetEntries.forEach(async ([catId, limit]) => {
       const spent = totals[catId] || 0;
       const pct = limit > 0 ? spent / limit : 0;
-      const cat = EXPENSE_CATEGORIES.find(c => c.id === catId);
+      const cat = getCategoryById(catId);
       if (!cat) return;
       try {
         if (pct >= 1) {
@@ -80,7 +80,7 @@ export default function CategoryBudgetCard({ month, monthIndex, onNavigateToBudg
       </View>
 
       {budgetEntries.map(([catId, limit]) => {
-        const cat = EXPENSE_CATEGORIES.find(c => c.id === catId);
+        const cat = getCategoryById(catId);
         if (!cat) return null;
         const spent = totals[catId] || 0;
         const pct = limit > 0 ? Math.min(spent / limit, 1) : 0;

@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
-import { EXPENSE_CATEGORIES } from '../data/categories';
+import { EXPENSE_CATEGORIES, getResolvedCategories } from '../data/categories';
 
 const COLOR_PALETTE = [
   '#F97316', '#EF4444', '#EC4899', '#A855F7',
@@ -20,14 +20,29 @@ const EMPTY_FORM = { name: '', emoji: '', color: COLOR_PALETTE[0] };
 export default function SettingsCategoriesScreen() {
   const { colors } = useTheme();
   const route = useRoute();
-  const { customCategories, addCustomCategory, updateCustomCategory, removeCustomCategory } = useSettings();
+  const {
+    customCategories, addCustomCategory, updateCustomCategory, removeCustomCategory,
+    defaultOverrides, updateDefaultCategory, resetDefaultCategory,
+  } = useSettings();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [isDefault, setIsDefault] = useState(false);
+  const [defaultIcon, setDefaultIcon] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const openAdd = () => {
     setEditingId(null);
+    setIsDefault(false);
+    setDefaultIcon(null);
     setForm(EMPTY_FORM);
+    setModalVisible(true);
+  };
+
+  const openEditDefault = (cat) => {
+    setEditingId(cat.id);
+    setIsDefault(true);
+    setDefaultIcon(cat.icon);
+    setForm({ name: cat.name, emoji: '', color: cat.color });
     setModalVisible(true);
   };
 
@@ -39,6 +54,8 @@ export default function SettingsCategoriesScreen() {
 
   const openEdit = (cat) => {
     setEditingId(cat.id);
+    setIsDefault(false);
+    setDefaultIcon(null);
     setForm({ name: cat.name, emoji: cat.emoji, color: cat.color });
     setModalVisible(true);
   };
@@ -49,7 +66,9 @@ export default function SettingsCategoriesScreen() {
       Alert.alert('Nome obrigatório', 'Dê um nome pra sua categoria.');
       return;
     }
-    if (editingId) {
+    if (isDefault) {
+      updateDefaultCategory(editingId, { name, color: form.color });
+    } else if (editingId) {
       updateCustomCategory(editingId, { name, emoji: form.emoji || '🏷️', color: form.color });
     } else {
       addCustomCategory(name, form.color, form.emoji || '🏷️');
@@ -76,16 +95,32 @@ export default function SettingsCategoriesScreen() {
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PADRÃO</Text>
         <Text style={[styles.sectionSub, { color: colors.textMuted }]}>Não editáveis</Text>
       </View>
-      <View style={styles.defaultGrid}>
-        {EXPENSE_CATEGORIES.map((cat) => (
-          <View
-            key={cat.id}
-            style={[styles.defaultChip, { backgroundColor: cat.color + '18', borderColor: cat.color + '40' }]}
-          >
-            <Ionicons name={cat.icon} size={14} color={cat.color} />
-            <Text style={[styles.defaultChipText, { color: cat.color }]}>{cat.name}</Text>
-          </View>
-        ))}
+      <View style={[styles.defaultList, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {getResolvedCategories().map((cat, idx) => {
+          const overridden = !!defaultOverrides[cat.id];
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              onPress={() => openEditDefault(cat)}
+              activeOpacity={0.7}
+              style={[
+                styles.defaultRow,
+                idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border + '40' },
+              ]}
+            >
+              <View style={[styles.defaultIconBadge, { backgroundColor: cat.color + '22' }]}>
+                <Ionicons name={EXPENSE_CATEGORIES.find(c => c.id === cat.id).icon} size={18} color={cat.color} />
+              </View>
+              <View style={styles.defaultTextCol}>
+                <Text style={[styles.defaultRowName, { color: colors.text }]}>{cat.name}</Text>
+                <Text style={[styles.defaultRowSub, { color: overridden ? cat.color : colors.textMuted }]}>
+                  {overridden ? 'Personalizada' : 'Toque para editar'}
+                </Text>
+              </View>
+              <Ionicons name="pencil-outline" size={15} color={overridden ? cat.color : colors.textMuted} />
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* ── Categorias personalizadas ── */}
@@ -173,21 +208,25 @@ export default function SettingsCategoriesScreen() {
                   style={[styles.nameInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
                 />
 
-                {/* Emoji */}
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginTop: 14 }]}>EMOJI</Text>
-                <View style={styles.emojiRow}>
-                  <TextInput
-                    value={form.emoji}
-                    onChangeText={(t) => setForm(f => ({ ...f, emoji: t.slice(-2) }))}
-                    placeholder="🏷️"
-                    placeholderTextColor={colors.textMuted}
-                    maxLength={2}
-                    style={[styles.emojiInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
-                  />
-                  <Text style={[styles.emojiHint, { color: colors.textMuted }]}>
-                    Digite qualquer emoji do seu teclado
-                  </Text>
-                </View>
+                {/* Emoji — só para categorias personalizadas */}
+                {!isDefault && (
+                  <>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginTop: 14 }]}>EMOJI</Text>
+                    <View style={styles.emojiRow}>
+                      <TextInput
+                        value={form.emoji}
+                        onChangeText={(t) => setForm(f => ({ ...f, emoji: t.slice(-2) }))}
+                        placeholder="🏷️"
+                        placeholderTextColor={colors.textMuted}
+                        maxLength={2}
+                        style={[styles.emojiInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
+                      />
+                      <Text style={[styles.emojiHint, { color: colors.textMuted }]}>
+                        Digite qualquer emoji do seu teclado
+                      </Text>
+                    </View>
+                  </>
+                )}
 
                 {/* Cor */}
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginTop: 14 }]}>COR</Text>
@@ -209,9 +248,24 @@ export default function SettingsCategoriesScreen() {
 
                 {/* Preview */}
                 <View style={[styles.previewChip, { backgroundColor: form.color + '22', borderColor: form.color }]}>
-                  <Text style={styles.previewEmoji}>{form.emoji || '🏷️'}</Text>
+                  {isDefault ? (
+                    <Ionicons name={defaultIcon} size={18} color={form.color} />
+                  ) : (
+                    <Text style={styles.previewEmoji}>{form.emoji || '🏷️'}</Text>
+                  )}
                   <Text style={[styles.previewName, { color: form.color }]}>{form.name || 'Prévia'}</Text>
                 </View>
+
+                {/* Restaurar — só para padrão com override */}
+                {isDefault && defaultOverrides[editingId] && (
+                  <TouchableOpacity
+                    onPress={() => { resetDefaultCategory(editingId); setModalVisible(false); }}
+                    style={[styles.resetBtn, { borderColor: colors.negative + '40' }]}
+                  >
+                    <Ionicons name="refresh-outline" size={14} color={colors.negative} />
+                    <Text style={[styles.resetBtnText, { color: colors.negative }]}>Restaurar nome e cor padrão</Text>
+                  </TouchableOpacity>
+                )}
 
                 {/* Ações */}
                 <View style={styles.modalActions}>
@@ -253,12 +307,21 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 10.5, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.4 },
   sectionSub: { fontSize: 11, fontWeight: '600' },
 
-  defaultGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  defaultChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6,
+  defaultList: {
+    borderRadius: 16, borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 4, overflow: 'hidden',
   },
-  defaultChipText: { fontSize: 12, fontWeight: '700' },
+  defaultRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 14, paddingVertical: 11,
+  },
+  defaultIconBadge: {
+    width: 34, height: 34, borderRadius: 9,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  defaultTextCol: { flex: 1 },
+  defaultRowName: { fontSize: 14, fontWeight: '800' },
+  defaultRowSub: { fontSize: 11.5, fontWeight: '500', marginTop: 1 },
 
   emptyCard: {
     borderRadius: 16, borderWidth: 1, padding: 24,
@@ -321,6 +384,13 @@ const styles = StyleSheet.create({
   },
   previewEmoji: { fontSize: 16 },
   previewName: { fontSize: 14, fontWeight: '800' },
+
+  resetBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, borderWidth: 1, borderRadius: 10,
+    paddingVertical: 9, marginBottom: 14,
+  },
+  resetBtnText: { fontSize: 13, fontWeight: '700' },
 
   modalActions: { flexDirection: 'row', gap: 10 },
   cancelBtn: {

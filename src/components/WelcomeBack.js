@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Text, View, StyleSheet, AppState } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, View, Text, Image, StyleSheet, AppState, StatusBar } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 
 function getGreeting() {
@@ -12,89 +12,124 @@ function getGreeting() {
 }
 
 export default function WelcomeBack() {
+  const { colors } = useTheme();
   const { userName } = useSettings();
-  const insets = useSafeAreaInsets();
-  const translateY = useRef(new Animated.Value(-120)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
   const appState = useRef(AppState.currentState);
-  const timerRef = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  const screenOpacity   = useRef(new Animated.Value(0)).current;
+  const logoScale       = useRef(new Animated.Value(0)).current;
+  const textOpacity     = useRef(new Animated.Value(0)).current;
+  const textTranslateY  = useRef(new Animated.Value(24)).current;
+  const subtitleOpacity = useRef(new Animated.Value(0)).current;
 
   const show = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    Animated.parallel([
-      Animated.spring(translateY, { toValue: 0, tension: 60, friction: 10, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-    ]).start();
-    timerRef.current = setTimeout(hide, 2800);
-  };
-
-  const hide = () => {
-    Animated.parallel([
-      Animated.timing(translateY, { toValue: -120, duration: 340, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0, duration: 280, useNativeDriver: true }),
-    ]).start();
+    screenOpacity.setValue(0);
+    logoScale.setValue(0);
+    textOpacity.setValue(0);
+    textTranslateY.setValue(24);
+    subtitleOpacity.setValue(0);
+    setVisible(true);
   };
 
   useEffect(() => {
+    if (!visible) return;
+    Animated.sequence([
+      Animated.timing(screenOpacity,  { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.spring(logoScale,       { toValue: 1, friction: 7, tension: 60, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.timing(textOpacity,    { toValue: 1, duration: 380, useNativeDriver: true }),
+        Animated.timing(textTranslateY, { toValue: 0, duration: 380, useNativeDriver: true }),
+      ]),
+      Animated.timing(subtitleOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.delay(1400),
+      Animated.timing(screenOpacity,  { toValue: 0, duration: 450, useNativeDriver: true }),
+    ]).start(() => setVisible(false));
+  }, [visible]); // eslint-disable-line
+
+  useEffect(() => {
     const sub = AppState.addEventListener('change', nextState => {
-      if (appState.current.match(/inactive|background/) && nextState === 'active') {
-        show();
-      }
+      if (appState.current.match(/inactive|background/) && nextState === 'active') show();
       appState.current = nextState;
     });
-    return () => {
-      sub.remove();
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    return () => sub.remove();
   }, []);
 
+  if (!visible) return null;
+
   const firstName = userName?.trim().split(' ')[0] || null;
-  const greeting = getGreeting();
+  const greeting  = getGreeting();
 
   return (
     <Animated.View
       pointerEvents="none"
-      style={[
-        styles.banner,
-        { top: insets.top + 12, opacity, transform: [{ translateY }] },
-      ]}
+      style={[StyleSheet.absoluteFill, { opacity: screenOpacity, zIndex: 9999 }]}
     >
-      <View style={styles.inner}>
-        <Ionicons name="hand-right-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-        <View>
-          <Text style={styles.greeting}>
-            {greeting}{firstName ? `, ${firstName}` : ''}! 👋
-          </Text>
-          <Text style={styles.sub}>Bem-vindo de volta ao Controle+</Text>
-        </View>
-      </View>
+      <StatusBar barStyle="light-content" />
+      <LinearGradient
+        colors={[colors.primary, colors.accent, colors.variable]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        <Animated.View
+          renderToHardwareTextureAndroid
+          style={{ transform: [{ scale: logoScale }] }}
+        >
+          <View style={styles.logoCircle}>
+            <Image
+              source={require('../../assets/android-icon-foreground.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+        </Animated.View>
+
+        <Animated.Text
+          style={[
+            styles.greeting,
+            { opacity: textOpacity, transform: [{ translateY: textTranslateY }] },
+          ]}
+        >
+          {greeting}{firstName ? `, ${firstName}` : ''}! 👋
+        </Animated.Text>
+
+        <Animated.Text style={[styles.sub, { opacity: subtitleOpacity }]}>
+          Bem-vindo de volta ao Controle+ 🚀
+        </Animated.Text>
+      </LinearGradient>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  banner: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    zIndex: 9999,
-    alignSelf: 'center',
-  },
-  inner: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
     alignItems: 'center',
-    backgroundColor: 'rgba(20,20,35,0.92)',
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 16,
+    justifyContent: 'center',
+    paddingHorizontal: 32,
   },
-  greeting: { fontSize: 14, fontWeight: '800', color: '#fff' },
-  sub:      { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
+  logoCircle: {
+    width: 132, height: 132, borderRadius: 66,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 28,
+    shadowColor: '#000',
+    shadowOpacity: 0.25, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  logo: { width: 96, height: 96 },
+  greeting: {
+    fontSize: 34, fontWeight: '900', color: '#FFFFFF',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.15)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  sub: {
+    fontSize: 17, fontWeight: '600',
+    color: 'rgba(255,255,255,0.88)',
+    marginTop: 12, textAlign: 'center',
+  },
 });

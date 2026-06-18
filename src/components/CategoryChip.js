@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { contrastText } from '../utils/colorUtils';
-import { EXPENSE_CATEGORIES } from '../data/categories';
+import { getResolvedCategories } from '../data/categories';
 
 export default function CategoryChip({ categoryId, onChange }) {
   const { colors } = useTheme();
@@ -14,7 +14,7 @@ export default function CategoryChip({ categoryId, onChange }) {
   const { customCategories } = useSettings();
   const [open, setOpen] = useState(false);
 
-  const allCategories = [...EXPENSE_CATEGORIES, ...customCategories];
+  const allCategories = [...getResolvedCategories(), ...customCategories];
   const selected = allCategories.find(c => c.id === categoryId) || null;
 
   const choose = (cat) => {
@@ -64,7 +64,7 @@ export default function CategoryChip({ categoryId, onChange }) {
                 <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }}>
                   {/* Categorias padrão */}
                   <View style={styles.grid}>
-                    {EXPENSE_CATEGORIES.map((cat) => {
+                    {getResolvedCategories().map((cat) => {
                       const isSel = categoryId === cat.id;
                       return (
                         <TouchableOpacity

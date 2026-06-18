@@ -7,8 +7,9 @@ import { useTheme } from '../theme/ThemeContext';
 
 const MENU_ITEMS = [
   { key:'perfil',   screen:'SettingsPerfil',  icon:'person-outline',        label:'Perfil' },
-  { key:'cartoes',  screen:'SettingsCartoes', icon:'card-outline',           label:'Pagamentos' },
-  { key:'temas',    screen:'SettingsTemas',   icon:'color-palette-outline',  label:'Temas' },
+  { key:'cartoes',    screen:'SettingsCartoes',    icon:'card-outline',           label:'Pagamentos' },
+  { key:'categorias', screen:'SettingsCategories', icon:'pricetag-outline',       label:'Categorias' },
+  { key:'temas',      screen:'SettingsTemas',       icon:'color-palette-outline',  label:'Temas' },
   { key:'backup',   screen:'SettingsBackup',  icon:'cloud-upload-outline',   label:'Backup' },
   { key:'geral',    screen:'Settings',        icon:'settings-outline',       label:'Configurações' },
 ];

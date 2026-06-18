@@ -4,7 +4,7 @@ import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
-import { EXPENSE_CATEGORIES } from '../data/categories';
+import { getResolvedCategories } from '../data/categories';
 import { formatBRL } from '../utils/currency';
 import CurrencyInput from '../components/CurrencyInput';
 
@@ -20,7 +20,7 @@ export default function SettingsBudgetScreen() {
       </Text>
 
       <View style={styles.section}>
-        {EXPENSE_CATEGORIES.map((cat, idx) => {
+        {getResolvedCategories().map((cat, idx) => {
           const limit = categoryBudgets[cat.id] || 0;
           const isEditing = editing === cat.id;
 

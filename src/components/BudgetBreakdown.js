@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
-import { EXPENSE_CATEGORIES } from '../data/categories';
+import { getCategoryById } from '../data/categories';
 import { formatBRL } from '../utils/currency';
 
 function barColor(pct, colors) {
@@ -68,7 +68,7 @@ export default function BudgetBreakdown({ month }) {
 
       {/* Barras por categoria */}
       {budgetEntries.map(([catId, limit]) => {
-        const cat = EXPENSE_CATEGORIES.find(c => c.id === catId);
+        const cat = getCategoryById(catId);
         if (!cat) return null;
         const spentAmt  = spent[catId] || 0;
         const pct       = limit > 0 ? spentAmt / limit : 0;

@@ -267,6 +267,23 @@ export async function saveCustomCategories(cats) {
   }
 }
 
+const DEFAULT_OVERRIDES_KEY = '@financas:categoriasOverrides';
+
+export async function loadDefaultOverrides() {
+  try {
+    const raw = await AsyncStorage.getItem(DEFAULT_OVERRIDES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export async function saveDefaultOverrides(overrides) {
+  try {
+    await AsyncStorage.setItem(DEFAULT_OVERRIDES_KEY, JSON.stringify(overrides || {}));
+  } catch (e) {
+    console.warn('Falha ao salvar overrides de categorias padrão:', e);
+  }
+}
+
 // ─── Multi-ano ────────────────────────────────────────────────────────────────
 export const getYearKey = (year) => `@financas:dados:${year}`;
 
