@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Alert, Text, TouchableOpacity, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/DataContext';
@@ -7,10 +7,10 @@ import { monthTotals } from '../utils/calculations';
 import Collapsible from './Collapsible';
 import ItemRow from './ItemRow';
 
-export default function IncomeSection({ monthIndex, month }) {
+function IncomeSection({ monthIndex, month }) {
   const { colors } = useTheme();
   const { addItem, removeItem, updateItem, replicateIncomeToAllMonths } = useData();
-  const totals = monthTotals(month);
+  const totals = useMemo(() => monthTotals(month), [month]);
   const incomes = month.incomes || [];
   const hasValues = incomes.some((it) => it.value > 0);
 
@@ -67,6 +67,8 @@ export default function IncomeSection({ monthIndex, month }) {
     </Collapsible>
   );
 }
+
+export default React.memo(IncomeSection);
 
 const styles = StyleSheet.create({
   actionsRow: { flexDirection: 'row', gap: 8, marginTop: 6 },

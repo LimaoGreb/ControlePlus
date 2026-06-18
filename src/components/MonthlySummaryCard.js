@@ -6,7 +6,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { formatBRL, formatPercent } from '../utils/currency';
 import ProgressBar from './ProgressBar';
 
-export default function MonthlySummaryCard({ totals, onHistoryPress = null, simulationActive = false, simulationOutflow = 0 }) {
+function MonthlySummaryCard({ totals, onHistoryPress = null, simulationActive = false, simulationOutflow = 0 }) {
   const { colors } = useTheme();
   const negative = totals.sobraTotal < 0;
   const sobraColor = negative ? colors.negative : colors.positive;
@@ -85,6 +85,13 @@ export default function MonthlySummaryCard({ totals, onHistoryPress = null, simu
     </View>
   );
 }
+
+export default React.memo(MonthlySummaryCard, (prev, next) =>
+  prev.totals === next.totals &&
+  prev.simulationActive === next.simulationActive &&
+  prev.simulationOutflow === next.simulationOutflow &&
+  prev.onHistoryPress === next.onHistoryPress
+);
 
 const styles = StyleSheet.create({
   card: { marginBottom: 20, paddingVertical: 4 },

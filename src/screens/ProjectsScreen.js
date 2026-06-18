@@ -1,5 +1,5 @@
 // Tela de Projetos: metas pessoais + projetos compartilhados do casal.
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import {
   ScrollView, View, Text, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
@@ -54,11 +54,11 @@ export default function ProjectsScreen() {
   const scrollRef = useRef(null);
   useScrollToTop(scrollRef);
 
-  const personalSaved  = projects.reduce((a, p) => a + projectStats(p).saved, 0);
-  const personalTarget = projects.reduce((a, p) => a + projectStats(p).target, 0);
+  const personalSaved  = useMemo(() => projects.reduce((a, p) => a + projectStats(p).saved, 0), [projects]);
+  const personalTarget = useMemo(() => projects.reduce((a, p) => a + projectStats(p).target, 0), [projects]);
 
-  const coupleSaved    = coupleProjects.reduce((a, p) => a + projectStats(p).saved, 0);
-  const coupleTarget   = coupleProjects.reduce((a, p) => a + projectStats(p).target, 0);
+  const coupleSaved    = useMemo(() => coupleProjects.reduce((a, p) => a + projectStats(p).saved, 0), [coupleProjects]);
+  const coupleTarget   = useMemo(() => coupleProjects.reduce((a, p) => a + projectStats(p).target, 0), [coupleProjects]);
 
   const partnerFirst = (partnerName || 'Parceiro(a)').split(' ')[0];
 

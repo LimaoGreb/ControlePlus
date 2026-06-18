@@ -1,5 +1,5 @@
 // Base reutilizável para listas dinâmicas de despesas (fixas e variáveis). Colapsável.
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Text, TouchableOpacity, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/DataContext';
@@ -11,7 +11,7 @@ import { YEAR } from '../data/initialData';
 import Collapsible from './Collapsible';
 import ItemRow from './ItemRow';
 
-export default function ExpensesSection({
+function ExpensesSection({
   monthIndex,
   items,
   section,
@@ -30,15 +30,16 @@ export default function ExpensesSection({
   const { requestInstallment } = useInstallment();
   const onColor = contrastText(color);
 
-  const now = new Date();
-  const isItemOverdue = (item) => {
+  // now calculado uma vez por mount, não por render
+  const now = useMemo(() => new Date(), []); // eslint-disable-line
+  const isItemOverdue = useCallback((item) => {
     if (!item.dueDay || item.concluded) return false;
     return new Date(YEAR, monthIndex, item.dueDay, 23, 59, 59) < now;
-  };
+  }, [monthIndex, now]);
 
   // Ao escolher uma forma de pagamento: marca no item e, se for cartão de
   // crédito (e já tiver valor), abre a janela de parcelamento.
-  const handlePayment = (item, pmName) => {
+  const handlePayment = useCallback((item, pmName) => {
     updateItem(monthIndex, section, item.id, 'payment', pmName);
     if (!pmName || !allowInstallments) return;
     const pm = paymentMethods.find((m) => m.name === pmName);
@@ -52,7 +53,7 @@ export default function ExpensesSection({
         payment: pmName,
       });
     }
-  };
+  }, [monthIndex, section, updateItem, allowInstallments, paymentMethods, requestInstallment]);
 
   return (
     <Collapsible icon={icon} title={title} total={total} color={color} count={items.length} forceOpen={forceOpen}>
@@ -95,6 +96,8 @@ export default function ExpensesSection({
     </Collapsible>
   );
 }
+
+export default React.memo(ExpensesSection);
 
 const styles = StyleSheet.create({
   empty: { fontSize: 13, fontStyle: 'italic', marginBottom: 12 },

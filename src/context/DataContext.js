@@ -1,8 +1,10 @@
 // Estado central de todos os dados financeiros, com salvamento automático.
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -460,27 +462,14 @@ export function DataProvider({ children }) {
     setData(newData);
   };
 
-  const value = {
-    data,
-    ready,
-    activeYear,
-    switching,
-    switchYear,
-    addItem,
-    removeItem,
-    updateItem,
-    copyFixedFromPrevious,
-    addInstallments,
-    setMonthCompleted,
-    concludeAllItems,
-    replicateIncomeToAllMonths,
-    clearMonth,
-    importData,
-    clearFutureYears,
-    addSimItem,
-    removeSimItem,
-    updateSimItem,
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const value = useMemo(() => ({
+    data, ready, activeYear, switching, switchYear,
+    addItem, removeItem, updateItem, copyFixedFromPrevious,
+    addInstallments, setMonthCompleted, concludeAllItems,
+    replicateIncomeToAllMonths, clearMonth, importData,
+    clearFutureYears, addSimItem, removeSimItem, updateSimItem,
+  }), [data, ready, activeYear, switching]); // funções omitidas: todas usam setData(prev=>) ou dataRef.current
 
   return (
     <PersonalDataContext.Provider value={value}>

@@ -1,5 +1,5 @@
 // Configurações do usuário: nome, formas de pagamento, perfil investidor e carteira.
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   loadUserName,
   saveUserName,
@@ -313,47 +313,28 @@ export function SettingsProvider({ children }) {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const ctxValue = useMemo(() => ({
+    userName, setUserName, avatar, setAvatar,
+    paymentMethods, addPaymentMethod, removePaymentMethod, updatePaymentMethod,
+    setPaymentCredit, setPaymentBank, setPaymentLimit,
+    isInvestor, setIsInvestor,
+    investments, addInvestment, updateInvestment, removeInvestment,
+    projects, addProject, addProjectFull, updateProject, removeProject,
+    makesContributions, setMakesContributions,
+    contributionGoalPct, setContributionGoalPct,
+    importSettings, telegramChatId, setTelegramChatId,
+    categoryBudgets, setCategoryBudget,
+    customCategories, addCustomCategory, updateCustomCategory, removeCustomCategory,
+    ready,
+  }), [
+    userName, avatar, paymentMethods, isInvestor, investments, projects,
+    makesContributions, contributionGoalPct, telegramChatId,
+    categoryBudgets, customCategories, ready,
+  ]); // setters e mutators omitidos: usam apenas setState (referência estável)
+
   return (
-    <SettingsContext.Provider
-      value={{
-        userName,
-        setUserName,
-        avatar,
-        setAvatar,
-        paymentMethods,
-        addPaymentMethod,
-        removePaymentMethod,
-        updatePaymentMethod,
-        setPaymentCredit,
-        setPaymentBank,
-        setPaymentLimit,
-        isInvestor,
-        setIsInvestor,
-        investments,
-        addInvestment,
-        updateInvestment,
-        removeInvestment,
-        projects,
-        addProject,
-        addProjectFull,
-        updateProject,
-        removeProject,
-        makesContributions,
-        setMakesContributions,
-        contributionGoalPct,
-        setContributionGoalPct,
-        importSettings,
-        telegramChatId,
-        setTelegramChatId,
-        categoryBudgets,
-        setCategoryBudget,
-        customCategories,
-        addCustomCategory,
-        updateCustomCategory,
-        removeCustomCategory,
-        ready,
-      }}
-    >
+    <SettingsContext.Provider value={ctxValue}>
       {children}
     </SettingsContext.Provider>
   );

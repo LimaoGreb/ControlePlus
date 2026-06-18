@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
@@ -8,11 +8,11 @@ import CurrencyInput from './CurrencyInput';
 
 const SIM_COLOR = '#F5A524';
 
-export default function SimulationSection({ monthIndex, items = [] }) {
+function SimulationSection({ monthIndex, items = [] }) {
   const { colors } = useTheme();
   const { addSimItem, removeSimItem, updateSimItem } = useData();
 
-  const total = items.reduce((s, it) => s + (Number(it.value) || 0), 0);
+  const total = useMemo(() => items.reduce((s, it) => s + (Number(it.value) || 0), 0), [items]);
 
   return (
     <View style={[styles.container, { borderColor: SIM_COLOR + '35', backgroundColor: SIM_COLOR + '08' }]}>
@@ -69,6 +69,8 @@ export default function SimulationSection({ monthIndex, items = [] }) {
     </View>
   );
 }
+
+export default React.memo(SimulationSection);
 
 const styles = StyleSheet.create({
   container: {
