@@ -47,3 +47,8 @@ Thumbs.db
 
 # test output
 bot/test-report.json
+
+# instruções de IA — fora do repo
+CLAUDE.md
+AGENTS.md
+.claude/
